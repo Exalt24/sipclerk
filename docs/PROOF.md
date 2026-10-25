@@ -37,23 +37,32 @@ The call: 4,367 RTP packets in and 4,365 out (679,844 bytes of G.711 and events 
 ## 2. Tests
 
 ```
-python -m pytest                    # 445 passed, 25 deselected in 223 s
-python -m pytest -m voice           # 25 passed in 1472 s (24 minutes 32 seconds)
-python scripts/mutation_check.py --layer all --report docs/mutation_report.json   # 119 of 119 killed
+python -m pytest                    # 857 passed, 25 deselected in 292 s
+python -m pytest -m voice           # 25 passed in 1472 s (24 minutes 32 seconds), before the review round in section 7; not replayed since
+python scripts/mutation_check.py --layer all --report docs/mutation_report.json   # 177 of 177 killed, run in a copy of the repository
 ```
 
 | File | Tests | What it pins |
 |---|---|---|
 | `test_guard.py` | 52 | one test per rule, several phrasings each, and every scripted line of both firms passing the output guard |
+| `test_emergency_tense.py` | 77 | 30 narrative and 19 live emergency phrasings, every condition said with a past and a present subject, and the rule firing on fewer inputs than before (6,000 seeded sentences) |
 | `test_machine.py` | 41 | read-back, retries, limits, keypad, silence, partial phone numbers, transfer results, qualification boundaries |
 | `test_machine_property.py` | 163 | 160 seeded random calls over both firms, in and out of hours, with the invariants listed in the file, plus every record they produce being deliverable |
 | `test_parsers.py` | 51 | names, numbers, dates, yes and no, practice areas, masking |
+| `test_names_unicode.py` | 160 | 30 real names from several languages, with lead-ins and in decomposed form, and 4,000 seeded ASCII inputs read exactly as the old parser read them |
 | `test_tenants.py` | 22 | schema, refusals, the hash following content not formatting, two firms sharing nothing, hours |
-| `test_store.py` | 11 | encryption at rest, roles, a denied read leaving an audit line, a tampered audit chain, retention |
+| `test_store.py` | 23 | encryption at rest, roles, a denied read leaving an audit line, a tampered audit chain, retention, and one unreadable call folder never stopping the purge |
+| `test_retention.py`, `test_wiring.py` | 11 | the server applying retention at start and every interval on a fake clock, a failing pass retried, and every public method of the store, outbox and server being run by the line or listed with a reason |
 | `test_delivery.py` | 36 | signatures against the two receivers' documented formats, backoff, dead letters, 25 seeded random failure worlds |
+| `test_delivery_window.py` | 19 | a receiver down for ten minutes still gets the delivery, dead only after the 23 hour schedule, requeue by function and script, the dead count in the status |
+| `test_outbox_at_rest.py`, `test_logs_carry_no_caller_words.py` | 10 | the raw outbox bytes holding no name, number, email or story in any state, bodies bound to firm and call, purge at retention, no log call carrying caller words |
+| `test_dialled_number.py` | 88 | every written form of the dialled number for both firms, look-alike firms never confused, a `tel:` INVITE answered, an unparseable INVITE getting a 400, four shapes through the whole line |
+| `test_route_set.py` | 11 | Record-Route echoed in the 200 OK in order, the BYE and ACK following the route set, strict and loose routers, the first route as the next hop |
+| `test_anonymous_callers.py` | 11 | a withheld caller id never counting as a duplicate, a real number twice still refused |
+| `test_transfer_leg.py` | 9 | the caller hanging up at every stage of a transfer: a CANCEL or BYE, no RTP afterwards, sockets and tasks back to the count before the call |
 | `test_sip_stack.py`, `test_audio.py` | 20 | SIP parsing, SDP negotiation, a call over UDP with audio and digits, retransmissions, G.711, resampling |
 | `test_llm.py`, `test_processors.py` | 32 | the language model's fences, what the Intake processor refuses to say, what the Stt processor refuses to hear |
-| `test_pipeline_fast.py` | 14 | the whole line with real SIP, RTP and voice activity detection and stand-in speech models |
+| `test_pipeline_fast.py` | 18 | the whole line with real SIP, RTP and voice activity detection and stand-in speech models, including an abandoned transfer and two anonymous callers |
 | `test_bridge_contract.py` | 3 | our delivery against the real verification code of `clio-matter-bridge` (skipped without node and the sibling checkout) |
 | `test_voice_suite.py` | 25 | the spoken scenarios below |
 
@@ -112,7 +121,7 @@ Tokens and seconds, not dollars: nothing here is billed.
 
 ## 4. The mutation check
 
-119 deliberate breaks, one at a time (101 in the unit layer, 18 through the real line with stand-in models). A mutant counts as killed only when pytest ran and a test failed; a crash or a collection error does not count. The report with the test that killed each one is [`docs/mutation_report.json`](docs/mutation_report.json).
+177 deliberate breaks, one at a time (156 in the unit layer, 21 through the real line with stand-in models), run in a temporary copy of the repository so the working tree is never edited. A mutant counts as killed only when pytest ran and a test failed; a crash or a collection error does not count. The report with the test that killed each one is [`docs/mutation_report.json`](docs/mutation_report.json). Rows in `scripts/mutants_derived.py` (62 of them) take their edit from the code's syntax tree with `Operations/tools/mutate_ast.py` (a function, a kind of change and a snippet of the code at that site), so rewording a line moves the site instead of leaving a typed old text that matches nowhere.
 
 Every guard rule, every branch of the state machine that decides something, every field parser check, every tenant, storage and delivery rule, and the barge-in, silence, keypad, recording, transfer and routing paths in the pipeline each have a mutant. The check found seven test gaps while it was being built, each now closed: an unclear recording answer (the test sent "I don't know", which the parser reads as a no), an unsupported practice area never driven through the machine, the callback task of a failed transfer never asserted, duplicate RTP packets, a recording gate that a second gate hid (found by timing how much of the greeting was in the recording), a failed transcription that the test did not require an answer to, and the refusal of a call with no common codec. One mutant was written and dropped as equivalent (`scripts/mutants_found.py` says why), and a branch that could not be reached was deleted instead of tested.
 
@@ -132,3 +141,24 @@ No Clio record was written. The stored Clio developer trial token was tried once
 - Anything about LiveKit, Asterisk, FreeSWITCH, Twilio, Telnyx, Deepgram or a hosted model: none was run.
 - Behaviour under load: two simultaneous calls were run, not twenty.
 - The guard against anything it has no rule for.
+
+## 7. The review round
+
+A reviewer who read the files instead of the code, and ran probes against a copy of the repository, found eleven things that mattered on an ordinary day; the first round fixed all eleven, each with a test that fails on the old code and a mutation row that is killed. What was measured, from the probes of that review replayed against this repository:
+
+| Finding | Before | After |
+|---|---|---|
+| Retention never ran | `TenantStore.purge` had no caller | applied at start and every hour; a call older than its firm's `retention_days` is gone, the other firm's window holds (`test_retention.py`) |
+| One half written call folder | `purge` raised `FileNotFoundError`, no firm lost any call | the folder is skipped and counted, both firms purged |
+| Caller data in the outbox | name, phone, email and story in plaintext, kept after delivery | the raw file holds none of them in any state; delivered entries keep id, status and times |
+| Delivery given up | dead after 6 attempts at 31 seconds | delivered at attempt 11 when the receiver returned after 10 minutes; dead only after 83,295 s; `requeue` and `scripts/requeue_dead.py` |
+| Transfer leg after hang-up | desk INVITE never cancelled, the desk phone answered a dead call, 101 RTP packets in 2 s kept arriving | CANCEL, then no answer, no RTP, the callback task still created |
+| Names | `Daniel Muñoz` stored as `Daniel Mu Oz`, `José García` refused twice | both read back and stored as said |
+| Dialled number | `s@host` with the number in To, ten digits and `tel:` all failed, `tel:` with no answer at all | each answered and routed to the right firm |
+| Route set | no Record-Route in the 200, BYE without Route | echoed in order, BYE carries them |
+| Anonymous callers | the second got 486 Busy Here | both answered |
+| Emergency rule | `taken to the emergency room` got the 911 line and a transfer | the intake completes; `he is bleeding` and 17 other live phrasings still escalate |
+
+Left alone on purpose, with the reason: a torn last line of the audit file (needs a crash during an append), a new SSRC with a random sequence number, a redial 0.3 s after a dropped call, a 30 ms packet time, date guesses without a read back, and the group of DTMF, SDP and memory items, each scored low by the review; and every limit in the README.
+
+The spoken suite (section 3) was not replayed after this round. The phrasings it speaks are all in the text replay used for the impact check: the machine and guard fed the 21 scenario scripts and 25 everyday utterances give the same answers before and after.

@@ -8,7 +8,7 @@ A voice intake line for invented law firms: a real SIP call comes in, the dialle
 
 *A separate SIP client (SIPp, in Docker) places an INVITE with G.711 audio and keypad digits. This is the logged run replayed at 4x. Full quality: [`docs/demo.mp4`](docs/demo.mp4).*
 
-**Proof, run on this machine on 2026-10-26:** 445 tests pass, 119 of 119 deliberate breaks are caught by a failing test, and 25 spoken tests over 20 scenarios pass over real SIP and RTP through Whisper, a local language model and Kokoro. The first audio of the agent's answer arrives 619 ms (median) and 1611 ms (95th percentile) after the caller stops talking. Every figure and command is in [`docs/PROOF.md`](docs/PROOF.md).
+**Proof, run on this machine on 2026-10-26:** 857 tests pass and 177 of 177 deliberate breaks are caught by a failing test. The 25 spoken tests over 20 scenarios (real SIP and RTP through Whisper, a local language model and Kokoro) last passed before the review round whose fixes are in [`docs/DECISIONS.md`](docs/DECISIONS.md) and have not been replayed since; the first audio of the agent's answer arrived 619 ms (median) and 1611 ms (95th percentile) after the caller stopped talking in that run. Every figure and command is in [`docs/PROOF.md`](docs/PROOF.md).
 
 > **A lab, not a service.** Two invented firms, synthetic callers and voices, no real phone number, no production traffic and no customer. The one leg not tested is a real phone number from a carrier, because that is the only part that costs money. [Limits](#limits) lists the rest.
 
@@ -61,6 +61,9 @@ The SIP leg, from [`docs/sipp_run.json`](docs/sipp_run.json): SIPp offered PCMA,
 - **A failed write killed the hang-up.** The first full voice run left calls that never ended: a record with no qualification (a caller who went silent) crashed the delivery builder inside the hang-up path. The property test `test_every_record_a_random_call_can_produce_can_be_delivered` now covers every record a random call can make, and a failing write or a raising transfer is logged and the call still ends.
 - **The model sits behind fences.** It is asked only when the plain parser could not read an answer, its answer goes through the same validators, its acknowledgement goes through the output guard, and with it down the call completes (`provider_llm_error`).
 - **A guard rule fired on ordinary calls.** The first emergency rule matched "I was hurt in a crash", which is most personal injury calls. A test that mixes an in-scope word with a charge found it.
+- **Features tested and never run.** A review that read the files found that `TenantStore.purge` had no caller (every call kept for ever), that the outbox held callers' names, numbers and stories in plaintext, and that six retries over 31 seconds gave up on a receiver down for ten minutes. Retention now runs hourly, the outbox body is encrypted per firm and dropped once delivered, retries last about 23 hours with a `requeue`, and `tests/test_wiring.py` fails when a public method of the store, outbox or server has no caller.
+- **A transfer that outlived its call.** A caller who hung up while the desk phone rang left the INVITE uncancelled: the receptionist answered a dead call and heard the whisper while RTP kept flowing to her phone. The desk leg is now its own task that the end of the call cancels at every stage (`tests/test_transfer_leg.py`).
+- **The guard fired on the past tense again.** "I was taken to the emergency room" got the 911 line and a transfer. The rule now fires on a danger happening now, with 30 narrative and 19 live phrasings pinned.
 - **A test helper lied twice.** The transfer check used a desk-phone call from an earlier scenario, and a quiet gap before the whisper counted as the whisper being over. Both were found because a bridge test failed on a call that worked, and fixed in the harness, not the agent.
 
 ## Run it
@@ -88,14 +91,14 @@ python scripts/sipp_demo.py --out docs/sipp_run.json
 
 | Layer | Command | What it covers | Count |
 |---|---|---|---|
-| Unit and property | `python -m pytest` | tenant files, parsers, the guard (one test per rule), the state machine (examples plus 160 seeded random calls), storage and access, the outbox under random failures, SIP, SDP, RTP, the language model fences | 445 |
-| The line with stand-in models | included in the above | real SIP and RTP over UDP, real voice activity detection and Pipecat, with Whisper and Kokoro replaced: routing, barge-in, silence, keypad, recording consent, transfer and bridge, a full intake | 14 |
+| Unit and property | `python -m pytest` | tenant files, parsers, names in any language, the guard (one test per rule, emergency phrasings in the past and the present), the state machine (examples plus 160 seeded random calls), storage, retention and access, the outbox at rest and over a day of retries, the dialled number in every written form, route sets, SIP, SDP, RTP, the language model fences | 857 |
+| The line with stand-in models | included in the above | real SIP and RTP over UDP, real voice activity detection and Pipecat, with Whisper and Kokoro replaced: routing, barge-in, silence, keypad, recording consent, transfer and bridge, an abandoned transfer, anonymous callers, a full intake | 18 |
 | Spoken scenarios | `python -m pytest -m voice` | 25 tests over 20 scenarios replayed as WAV through real SIP, Whisper, the model and Kokoro (about 25 minutes, each call in real time) | 25 |
-| Mutation check | `python scripts/mutation_check.py --layer all` | 119 deliberate breaks, one at a time, each must fail a named test | 119 killed |
+| Mutation check | `python scripts/mutation_check.py --layer all` | 177 deliberate breaks, one at a time, run in a copy of the repository, each must fail a named test | 177 killed |
 
 The scenarios: a normal intake, the second firm, barge-in, a long silence, endless silence, a noisy line (white noise at 15 dB), a caller correction, invalid answers, an unsupported practice area, a request for legal advice (once, then repeated), an existing client, a busy desk phone, a desk phone that rings out, keypad digits, zero for a person, speech to text timing out, the language model down, the webhook receiver failing three times, and an after-hours call.
 
-The mutation check found seven test gaps while it was being built (an unclear recording answer that the test turned into a no, an unsupported area never driven through the machine, a failed-transfer task nobody asserted, duplicate RTP packets, and later a recording gate hidden by a second gate, a failed transcription that the test did not require an answer to, and a refusal for a call with no common codec). One mutant was dropped as equivalent; the file says why.
+Rows in `scripts/mutants_derived.py` take their edit from the syntax tree (a function, a kind of change, a snippet of code), not from typed text, so rewording a line cannot break them. The mutation check found seven test gaps while it was being built (an unclear recording answer that the test turned into a no, an unsupported area never driven through the machine, a failed-transfer task nobody asserted, duplicate RTP packets, and later a recording gate hidden by a second gate, a failed transcription that the test did not require an answer to, and a refusal for a call with no common codec). One mutant was dropped as equivalent; the file says why.
 
 ## Limits
 
@@ -103,6 +106,7 @@ The mutation check found seven test gaps while it was being built (an unclear re
 - **The SIP stack is small on purpose.** UDP only. No TLS, REGISTER, digest authentication, SRTP, forking, session timers or REFER; the transfer is a second call bridged by this process. [`docs/DECISIONS.md`](docs/DECISIONS.md) says why it is not LiveKit, Asterisk or FreeSWITCH, and none of those was run.
 - **Invented everything.** Two made-up firms, made-up callers, Kokoro voices, white noise for the noisy line. No accent or dialect testing, English only, one speech model.
 - **The guard is keyword rules.** It misses a rewording it was not written for and can fire on an innocent phrase.
+- **Retention and delivery have edges.** A call folder with no readable `meta.json` is skipped by retention, never deleted, because it cannot be told from a call still being saved. A delivery is dead about 23 hours after it was queued and then waits for `scripts/requeue_dead.py` until its firm's retention removes it. A route given as a host name is not resolved: the BYE goes to the first route only when that is an IPv4 address.
 - **Latency is this machine's.** A GPU shared with other work, one event loop for the line and the test caller, and a language model of 4 billion parameters. Nothing here says what a production deployment would measure.
 - **Case management is not Clio.** No Clio record is written: the stored Clio developer trial token answers 401 (the trial ended in August 2026). The intake goes to the verification code of `clio-matter-bridge` as a Clio-shaped delivery, and to a local `clinic-call-console` API as its documented call ingest. That console's reasons are clinic ones, so every intake maps to `OTHER`.
 - **No conflict check, no booking, no calendar.** A caller who says they are an existing client is handed to a person; nothing checks a conflict list.
@@ -120,7 +124,7 @@ sipclerk/store.py    encrypted per-tenant storage, roles, audit chain, retention
 sipclerk/delivery.py signed deliveries with an outbox
 tenants/             the two invented firms and the JSON schema
 voice_scripts/       the spoken scenarios and the rendered WAV clips
-scripts/             replay, mutation check, SIPp media, integration checks
+scripts/             replay, mutation check, SIPp media, integration checks, requeue of dead deliveries
 tools/               SIPp in Docker, the bridge receiver
 docs/                PROOF.md, DECISIONS.md, the run logs
 ```
