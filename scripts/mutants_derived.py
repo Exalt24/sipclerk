@@ -74,6 +74,7 @@ def PD(id: str, file: str, function: str, kind_re: str, snippet: str, desc: str,
 STORE = ["tests/test_store.py"]
 RETENTION = ["tests/test_retention.py", "tests/test_store.py", "tests/test_wiring.py"]
 OUTBOX = ["tests/test_outbox_at_rest.py", "tests/test_delivery.py"]
+REPORT = ["tests/test_emergency_report.py", "tests/test_emergency_tense.py", "tests/test_guard.py"]
 TENSE = ["tests/test_emergency_tense.py", "tests/test_guard.py", "tests/test_machine.py"]
 ANON = ["tests/test_anonymous_callers.py"]
 ROUTE = ["tests/test_route_set.py", "tests/test_sip_stack.py"]
@@ -157,6 +158,12 @@ DERIVED_MUTANTS: list[DerivedMutant] = [
     D("guard-emergency-present-verb-is-live", GD, "_is_account", "negate the condition", "(?:is|are)", "a hit that says `is bleeding` is dropped when the clause mentions the past", TENSE),
     D("guard-emergency-now-before-the-hit", GD, "_is_account", "negate the condition", "_NOW_BEFORE_HIT", "`he's unconscious after the fall` is dropped as an account", TENSE),
     D("guard-emergency-past-clause", GD, "_is_account", "return value -> None", "", "no clause is ever an account of the past", TENSE),
+    # ---- the emergency rule fires on a danger now, not on an injury or a deadline being reported (output round 2, F1 and F2)
+    D("guard-report-is-checked", GD, "_emergency_now", "remove `not`", "_is_report", "a report of an injury is taken for an alarm and an alarm is dropped as a report", REPORT),
+    D("guard-report-body-part", GD, "_is_report", "negate the condition", "_BODY_PART_BEFORE", "`my back is hurt` is an alarm and `my husband is hurt` is a report", REPORT),
+    D("guard-report-hedge", GD, "_is_report", "return value -> None", "_HEDGE_BEFORE", "`kind of an emergency` is an alarm", REPORT),
+    D("guard-report-asks-for-help", GD, "_is_report", "remove `not`", "_HELP_NOW", "`my son is hurt, please help` is dropped as a report", REPORT),
+    D("guard-report-badly-hurt", GD, "_is_report", "remove `not`", "(?:badly|seriously)", "`my husband is badly hurt` is dropped as a report", REPORT),
 ]
 
 

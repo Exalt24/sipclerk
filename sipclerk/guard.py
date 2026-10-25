@@ -53,13 +53,19 @@ EMERGENCY = [
     r"\b(?:call|calling|dial|dialing|phone)\b(?: (?:now|me|us|them))? 911\b",
     r"\b911\b(?= (?:please|now|help|right now|immediately|asap)\b)|^\W*911\W*$",
     r"\bemergency\b(?! (?:rooms?|departments?|dept|ward|surgery|surgeries|contacts?|care|services?|vehicles?|personnel|crews?|responders?|medical|"
-    r"technicians?|treatment|visits?|doctors?|physicians?|staff|lane|brakes?|exits?|lights?|stop|fund|calls?|bills?|transport|helicopter|workers?)\b)",
-    r"\bin (?:immediate )?danger\b",
-    r"\b(?:is|are) (?:badly |seriously )?(?:hurt|bleeding|dying|unconscious)\b",
+    r"technicians?|treatment|visits?|doctors?|physicians?|staff|lane|brakes?|exits?|lights?|stop|fund|calls?|bills?|transport|helicopter|workers?|"
+    r"hearings?|motions?|orders?|petitions?|filings?|applications?|injunctions?|relief|appeals?|stay|custody|guardianship|protective|restraining|temporary|"
+    r"ex parte|visitation|divorce|bail|court|session|extension|relocation|removal|proceedings?|consultations?|appointments?|meetings?)\b)",
+    r"\bin (?:immediate )?danger\b(?! of (?:losing (?:my|our|his|her|their|the) (?:home|house|job|visa|custody|business|license|apartment|rights|status|car|"
+    r"benefits|insurance|case|claim)|being (?:evicted|deported|fired|sued|arrested)|eviction|foreclosure|deportation|bankruptcy|defaulting)\b)",
+    r"\b(?:is|are) (?:badly |seriously )?(?:bleeding|dying|unconscious)\b",
+    r"\b(?:is|are) (?:badly |seriously )?hurt\b",
     r"\b(?:unconscious|overdos\w*|bleeding (?:badly|heavily|out))\b",
     r"\bsuicid\w*|\bkill myself\b",
     r"\bnot breathing\b",
-    r"\bbeing (?:attacked|followed|threatened)\b",
+    r"\bbeing (?:attacked|followed)\b",
+    r"\bbeing threatened\b(?! with (?:an? )?(?:lawsuit|suit|eviction|foreclosure|deportation|termination|arrest|prosecution|legal|collections?|repossession|"
+    r"garnishment|jail|losing|being (?:fired|evicted|sued|deported|arrested|reported))\b)",
 ]
 # An emergency is a danger that is happening now. A keyword hit inside an account of something that happened (`I was unconscious for a minute after the
 # crash`, `the paramedics said she was not breathing when they arrived`) is an ordinary injury story, so a hit is dropped when its clause is in the past
@@ -68,6 +74,13 @@ _CLAUSE_BREAKS = (".", "!", "?", ";", " and ", " but ", " then ", " so ", " beca
 _PAST = re.compile(r"\b(?:was|were|wasn't|weren't|had|been|ago|yesterday|last (?:night|week|month|year)|when|after|while|until|since|before|rushed|taken|took|went|woke|arrived)\b")
 _SUICIDE_PAST = re.compile(r"\b(?:died by|death by|death from|committed|completed|took (?:his|her|their|my) own life|ago|last (?:night|week|month|year))\b")
 _NOW_BEFORE_HIT = re.compile(r"(?:\b(?:is|are|am|isn't|aren't)|'s|'re|'m|\bjust|\bnow|\bstill)\s+(?:(?:not|badly|seriously|really|completely|currently|an?|the|medical|so|very)\s+)*$")
+# An injury REPORTED is not a danger now (`my back is hurt`, `my kids are hurt too` are how an injury call goes). `hurt` alone is an alarm only for a person
+# who is badly or seriously hurt, or when the caller asks for help right then; a body part that is hurt is never an alarm. `emergency` after a hedge
+# (`kind of an emergency`) says the caller is below an alarm.
+_BODY_PART_BEFORE = re.compile(r"\b(?:back|neck|knees?|shoulders?|arms?|legs?|hips?|ankles?|wrists?|hands?|feet|foot|head|elbows?|spine|ribs?|chest|jaw|face|eyes?|"
+                               r"ears?|fingers?|toes?|body|stomach|hip|thighs?|calf|calves)\s*$")
+_HELP_NOW = re.compile(r"\b(?:right now|hurry|asap|immediately|please help|send (?:help|someone|an ambulance)|won't wake|not waking|not responding|not moving|can't move)\b")
+_HEDGE_BEFORE = re.compile(r"\b(?:(?:kind|sort) of|(?:a )?(?:bit|little) of|somewhat of)\s*(?:an?\s+)?$")
 
 # --------------------------------------------------------------------------- agent side (after the model)
 
@@ -155,11 +168,23 @@ def _is_account(text: str, m: re.Match) -> bool:
     return bool((_SUICIDE_PAST if "suicid" in m.re.pattern else _PAST).search(text[left:right]))
 
 
+def _is_report(text: str, m: re.Match) -> bool:
+    """True when the hit `m` is an injury or an urgency being reported, not a danger happening now (see _BODY_PART_BEFORE)."""
+    hit = m.group(0)
+    if hit == "emergency":
+        return bool(_HEDGE_BEFORE.search(text[:m.start()]))
+    if hit.endswith("hurt"):
+        if _BODY_PART_BEFORE.search(text[:m.start()]):
+            return True
+        return not re.search(r"(?:badly|seriously) hurt$", hit) and not _HELP_NOW.search(text)
+    return False
+
+
 def _emergency_now(text: str) -> str | None:
-    """The first emergency keyword that is not part of an account of the past, or None."""
+    """The first emergency keyword that is not part of an account of the past or a report of an injury, or None."""
     for p in EMERGENCY:
         for m in re.finditer(p, text):
-            if not _is_account(text, m):
+            if not _is_account(text, m) and not _is_report(text, m):
                 return m.group(0)
     return None
 
