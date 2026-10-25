@@ -236,6 +236,16 @@ def dialled_numbers(req: "SipMessage") -> list[str]:
     return out
 
 
+WITHHELD_NUMBERS = {"266696687"}  # ANONYMOUS on a telephone keypad, which some carriers send in place of a number
+
+
+def caller_is_withheld(caller: str) -> bool:
+    """True when a normalised caller id says nothing about who is calling: empty (sip:anonymous@anonymous.invalid, a name, no user), a placeholder
+    number, or only zeros. Two such calls are two callers, not one."""
+    digits = caller.lstrip("+")
+    return not digits or digits in WITHHELD_NUMBERS or set(digits) == {"0"}
+
+
 def make_response(req: SipMessage, code: int, reason: str, *, to_tag: str = "", contact: str = "",
                   body: str = "", content_type: str = "", extra: list[tuple[str, str]] | None = None) -> SipMessage:
     headers = [("Via", v) for v in req.get_all("via")]

@@ -13,6 +13,7 @@ from fake_models import FakeModels
 from sipclerk import audio
 from sipclerk.harness import WAV_DIR, read_wav_8k, wav_name
 from sipclerk.labrun import LabRig
+from sipclerk.sip import message as sm
 from sipclerk.sip.phone import SoftPhone, goertzel_power, tone
 from sipclerk.store import Actor
 from sipclerk.voice.llm import Llm
@@ -335,3 +336,65 @@ async def test_the_caller_hanging_up_during_the_whisper_hangs_up_the_desk_phone_
         await asyncio.sleep(1.0)
         assert desk.rtp.packets_in == before, "RTP kept flowing to the desk phone after the call ended"
         assert res.record["outcome"] in ("caller_hung_up", "transferred") and not r.server.sessions
+
+
+# ----------------------------------------------------------------------------------------------- withheld caller ids
+
+
+async def test_two_anonymous_callers_on_one_line_are_two_calls_a_real_number_twice_is_one_and_a_retransmission_is_not_a_second_call():
+    async with rig(["yes"]) as r:
+        a, s1 = await place(r, ASH, "anonymous")
+        b, s2 = await place(r, ASH, "restricted")
+        c, s3 = await place(r, ASH, "+266696687")
+        assert (s1, s2, s3) == (200, 200, 200) and await _wait_until(lambda: len(r.server.sessions) == 3) and r.server.counters["duplicate_call"] == 0
+        real, s4 = await place(r, ASH, "+14155550177")
+        again, s5 = await place(r, ASH, "+14155550177")
+        assert s4 == 200 and again is None and s5 == 486 and r.server.counters["duplicate_call"] == 1
+        for call in (a, b, c, real):
+            await call.hangup()
+        assert await _wait_until(lambda: not r.server.sessions)
+
+
+async def test_a_retransmitted_invite_from_an_anonymous_caller_is_one_call():
+    import socket
+
+    async with rig([]) as r:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.bind(("127.0.0.1", 0))
+        sock.setblocking(False)
+        rtp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        rtp.bind(("127.0.0.1", 0))
+        sdp = f"v=0\r\no=- 1 1 IN IP4 127.0.0.1\r\ns=-\r\nc=IN IP4 127.0.0.1\r\nt=0 0\r\nm=audio {rtp.getsockname()[1]} RTP/AVP 0 101\r\na=rtpmap:101 telephone-event/8000\r\n"
+        msg = (f"INVITE sip:{ASH}@127.0.0.1:{r.server.port} SIP/2.0\r\nVia: SIP/2.0/UDP 127.0.0.1:{sock.getsockname()[1]};branch=z9hG4bKretx\r\nFrom: <sip:anonymous@anonymous.invalid>;tag=a\r\n"
+               f"To: <sip:{ASH}@127.0.0.1>\r\nCall-ID: retx1@x\r\nCSeq: 1 INVITE\r\nContact: <sip:anon@127.0.0.1:{sock.getsockname()[1]}>\r\nContent-Type: application/sdp\r\n"
+               f"Content-Length: {len(sdp)}\r\n\r\n{sdp}")
+        try:
+            for _ in range(3):
+                sock.sendto(msg.encode(), ("127.0.0.1", r.server.port))
+                await asyncio.sleep(0.15)
+            replies = []
+            while True:
+                try:
+                    replies.append(sm.parse(sock.recv(8192)))
+                except BlockingIOError:
+                    break
+            oks = [m for m in replies if m.status_code == 200]
+            assert oks and len({m.tag_of("to") for m in oks}) == 1, "every retransmission must get the first call's answer"
+            ack = (f"ACK sip:{ASH}@127.0.0.1:{r.server.port} SIP/2.0\r\nVia: SIP/2.0/UDP 127.0.0.1:{sock.getsockname()[1]};branch=z9hG4bKretack\r\n"
+                   f"From: <sip:anonymous@anonymous.invalid>;tag=a\r\nTo: <sip:{ASH}@127.0.0.1>;tag={oks[0].tag_of('to')}\r\nCall-ID: retx1@x\r\nCSeq: 1 ACK\r\n"
+                   "Content-Length: 0\r\n\r\n")
+            sock.sendto(ack.encode(), ("127.0.0.1", r.server.port))
+            assert await _wait_until(lambda: r.server.counters["answered"] == 1)
+            assert r.server.counters["duplicate_call"] == 0 and r.server.stack.stats["retransmits_absorbed"] >= 2 and len(r.server.sessions) == 1
+        finally:
+            sock.close()
+            rtp.close()
+
+
+async def _wait_until(predicate, timeout=8.0):
+    end = time.monotonic() + timeout
+    while time.monotonic() < end:
+        if predicate():
+            return True
+        await asyncio.sleep(0.05)
+    return predicate()

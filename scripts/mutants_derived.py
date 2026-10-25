@@ -69,6 +69,7 @@ def D(id: str, file: str, function: str, kind_re: str, snippet: str, desc: str, 
 STORE = ["tests/test_store.py"]
 RETENTION = ["tests/test_retention.py", "tests/test_store.py", "tests/test_wiring.py"]
 OUTBOX = ["tests/test_outbox_at_rest.py", "tests/test_delivery.py"]
+ANON = ["tests/test_anonymous_callers.py"]
 ROUTE = ["tests/test_route_set.py", "tests/test_sip_stack.py"]
 DIAL = ["tests/test_dialled_number.py", "tests/test_sip_stack.py", "tests/test_tenants.py"]
 NAMES = ["tests/test_names_unicode.py", "tests/test_parsers.py", "tests/test_machine.py"]
@@ -139,4 +140,9 @@ DERIVED_MUTANTS: list[DerivedMutant] = [
     D("stack-no-route-set-no-route", SK, "request_target", "negate the condition", "not self.route_set", "a dialog without a route set still builds routes", ROUTE),
     D("stack-loose-router-first", SK, "request_target", "negate the condition", "is_loose_route", "a loose router first is treated as strict and the other way round", ROUTE),
     D("stack-next-hop-is-the-first-route", SK, "next_hop", "negate the condition", "_ip_literal(host)", "a request is sent to where the INVITE came from, not to the first route", ROUTE),
+    # ---- a withheld caller id is nobody in particular (F10)
+    D("server-withheld-caller-is-not-a-duplicate", SV, "_already_on_this_line", "negate the condition", "caller_is_withheld", "a second anonymous caller is turned away as a duplicate", ANON),
+    D("server-duplicate-needs-the-same-firm", SV, "_already_on_this_line", "and <-> or", "s.caller == caller", "the same number on the other firm's line counts as a duplicate", ANON),
+    D("message-withheld-placeholder-numbers", MS, "caller_is_withheld", "and <-> or", "WITHHELD_NUMBERS", "the keypad placeholder for anonymous counts as a real number", ANON),
+    D("message-withheld-zeros", MS, "caller_is_withheld", "Eq -> NotEq", "set(digits)", "a caller id of only zeros counts as a real number", ANON),
 ]

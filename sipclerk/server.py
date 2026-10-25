@@ -129,6 +129,13 @@ class ClerkServer:
                 pass
             self.run_retention_pass()
 
+    def _already_on_this_line(self, caller: str, tenant_id: str) -> bool:
+        """A caller who is already in a call on this firm's line. A withheld caller id is nobody in particular: two anonymous callers are two calls.
+        (A retransmitted INVITE never gets here: the stack answers it from the first one's response.)"""
+        if sm.caller_is_withheld(caller):
+            return False
+        return any(s.caller == caller and s.cfg.tenant_id == tenant_id for s in self.sessions.values())
+
     async def on_invite(self, inv: IncomingInvite) -> None:
         tenant = self.registry.resolve(inv.candidates)
         if tenant is None:  # a wrong number: nothing is loaded and nothing is recorded
@@ -140,7 +147,7 @@ class ClerkServer:
             self.counters["blocked_caller"] += 1
             inv.reject(603, "Decline")
             return
-        if any(s.caller == inv.caller and s.cfg.tenant_id == tenant.config.tenant_id for s in self.sessions.values()):
+        if self._already_on_this_line(inv.caller, tenant.config.tenant_id):
             self.counters["duplicate_call"] += 1  # the same caller on the same line already has a call open
             inv.reject(486, "Busy Here")
             return
