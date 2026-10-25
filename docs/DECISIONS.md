@@ -13,6 +13,8 @@ updated: 2026-10-25
 
 **What it costs:** no TCP, TLS, REGISTER, digest authentication, SRTP, forking, session timers or REFER, and only the transaction behaviour the lab needed. A production line would sit behind a carrier or session border controller (Twilio Elastic SIP Trunking, Telnyx, a LiveKit SIP service) that speaks plain SIP to this process, or this module would be replaced by that platform. None of those was run here.
 
+**Dialogs follow the proxies on their path.** A carrier proxy that record-routes asks to see every later request of the call. The line echoes the INVITE's Record-Route headers in its provisional and 2xx responses unchanged and in order (RFC 3261 12.1.1), keeps them as the dialog's route set, and sends its BYE with a Route header per entry and the peer's Contact as the Request-URI (loose routing, 12.2.1.1; a strict router first takes the Request-URI and the Contact goes last). For a call the line places, the route set is the 2xx's Record-Route read backwards (12.1.2) and the ACK carries it too. A request goes to the first route when that is an IPv4 address and otherwise to where the INVITE came from; a route given as a host name is not resolved, because the lab has no DNS and the nearest hop is the sender in every record-routing deployment tried. The first version dropped Record-Route and sent its BYE straight to a private Contact, so the carrier never saw the hang-up.
+
 **SIPp** (GPL-2.0, from the Debian package, in Docker) is the second, independent SIP caller, so the INVITE is not only ever produced by the code that answers it.
 
 ## Pipecat carries the media, the speech models are shared

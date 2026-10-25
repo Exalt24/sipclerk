@@ -157,6 +157,31 @@ def contact_uri(value: str) -> str:
     return m.group(1) if m else value.split(";")[0].strip()
 
 
+def split_list_header(values: list[str]) -> list[str]:
+    """Header lines that each hold one or more comma separated entries (`Record-Route: <a>, <b>`), as the entries in order. A comma inside <...> or
+    quotes belongs to the entry."""
+    out: list[str] = []
+    for line in values:
+        depth, quoted, start = 0, False, 0
+        for i, c in enumerate(line):
+            if c == '"':
+                quoted = not quoted
+            elif not quoted and c == "<":
+                depth += 1
+            elif not quoted and c == ">":
+                depth = max(0, depth - 1)
+            elif c == "," and depth == 0 and not quoted:
+                out.append(line[start:i].strip())
+                start = i + 1
+        out.append(line[start:].strip())
+    return [e for e in out if e]
+
+
+def is_loose_route(entry: str) -> bool:
+    """RFC 3261 19.1.1: a route URI with the `lr` parameter is a loose router."""
+    return bool(re.search(r";\s*lr\s*(?:;|>|=|$)", contact_uri(entry), re.I))
+
+
 def normalize_did(raw: str) -> str:
     """'+1 (415) 555-0101', '14155550101' and 'tel:+14155550101' all become '+14155550101'."""
     raw = raw.replace("tel:", "")
@@ -214,6 +239,8 @@ def dialled_numbers(req: "SipMessage") -> list[str]:
 def make_response(req: SipMessage, code: int, reason: str, *, to_tag: str = "", contact: str = "",
                   body: str = "", content_type: str = "", extra: list[tuple[str, str]] | None = None) -> SipMessage:
     headers = [("Via", v) for v in req.get_all("via")]
+    if req.is_request and req.method == "INVITE" and 101 <= code < 300:  # a response that makes a dialog carries the proxies' Record-Route back, unchanged and in order
+        headers.extend(("Record-Route", v) for v in req.get_all("record-route"))
     headers.append(("From", req.get("from")))
     to = req.get("to")
     if to_tag and "tag=" not in to:

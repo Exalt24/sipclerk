@@ -63,6 +63,28 @@ class Dialog:
     last_answer_sdp: str = ""
     on_dtmf: Callable[[str], None] | None = None
     ended_by: str = ""
+    route_set: list[str] = field(default_factory=list)  # the proxies that asked to stay on the path, nearest the peer first (RFC 3261 12.1)
+
+    def request_target(self) -> tuple[str, list[str]]:
+        """The Request-URI and Route headers of a request inside this dialog (RFC 3261 12.2.1.1). With no route set the request goes to the peer's Contact.
+        With a loose router first, the Contact stays the Request-URI and every route becomes a Route header. A strict router first takes the Request-URI
+        itself, and the Contact goes last in the Route headers."""
+        if not self.route_set:
+            return self.remote_target, []
+        if sm.is_loose_route(self.route_set[0]):
+            return self.remote_target, list(self.route_set)
+        return sm.contact_uri(self.route_set[0]), [*self.route_set[1:], f"<{self.remote_target}>"]
+
+    def next_hop(self) -> tuple[str, int]:
+        """Where a request is sent: the first route when it names an address, else where the dialog's first request came from."""
+        if self.route_set:
+            try:
+                host, port = sm.uri_hostport(sm.contact_uri(self.route_set[0]))
+                if _ip_literal(host):
+                    return host, port
+            except sm.SipParseError:
+                pass
+        return self.peer_addr
 
     async def bye(self, timeout: float = 2.0) -> bool:
         """Hang up. Returns True if the peer answered the BYE."""
@@ -70,7 +92,7 @@ class Dialog:
             return True
         self.cseq += 1
         req = self.stack.build_in_dialog(self, "BYE")
-        ok = await self.stack.request(req, self.peer_addr, timeout=timeout)
+        ok = await self.stack.request(req, self.next_hop(), timeout=timeout)
         self.ended_by = "local"
         self.terminated.set()
         self.stack.dialogs.pop(self.call_id, None)
@@ -118,7 +140,8 @@ class IncomingInvite:
                    local_uri=sm.contact_uri(self.req.get("to")), remote_uri=sm.contact_uri(self.req.get("from")),
                    local_tag=self.to_tag, remote_tag=self.req.tag_of("from"),
                    remote_target=sm.contact_uri(self.req.get("contact")) or sm.contact_uri(self.req.get("from")),
-                   peer_addr=self.addr, local_contact=contact, state="confirmed", last_answer_sdp=sdp_body)
+                   peer_addr=self.addr, local_contact=contact, state="confirmed", last_answer_sdp=sdp_body,
+                   route_set=sm.split_list_header(self.req.get_all("record-route")))  # the UAS keeps the request's Record-Route in order (12.1.1)
         d.cseq = 0
         self.dialog = d
         self.stack.dialogs[d.call_id] = d
@@ -345,9 +368,11 @@ class SipStack(asyncio.DatagramProtocol):
 
     def build_in_dialog(self, d: Dialog, method: str, body: str = "", ctype: str = "") -> SipMessage:
         host = self.local_host_for(d.peer_addr)
+        target, routes = d.request_target()
         headers = [
             ("Via", f"SIP/2.0/UDP {host}:{self.port};rport;branch={sm.new_branch()}"),
             ("Max-Forwards", "70"),
+            *[("Route", r) for r in routes],
             ("From", f"<{d.local_uri}>;tag={d.local_tag}"),
             ("To", f"<{d.remote_uri}>;tag={d.remote_tag}"),
             ("Call-ID", d.call_id),
@@ -357,7 +382,7 @@ class SipStack(asyncio.DatagramProtocol):
         ]
         if body:
             headers.append(("Content-Type", ctype or "application/sdp"))
-        return SipMessage(f"{method} {d.remote_target} SIP/2.0", headers, body)
+        return SipMessage(f"{method} {target} SIP/2.0", headers, body)
 
     async def request(self, req: SipMessage, addr, timeout: float = 2.0) -> SipMessage | None:
         """Send a non-INVITE request and wait for its final response (retransmits at T1, 2*T1, ...)."""
@@ -413,7 +438,8 @@ class SipStack(asyncio.DatagramProtocol):
 
         def make_dialog(resp: SipMessage) -> Dialog:
             d = Dialog(self, call_id, "uac", local_uri=from_uri, remote_uri=to_uri, local_tag=tag, remote_tag=resp.tag_of("to"),
-                       remote_target=sm.contact_uri(resp.get("contact")) or to_uri, peer_addr=addr, local_contact=contact, state="confirmed", cseq=1)
+                       remote_target=sm.contact_uri(resp.get("contact")) or to_uri, peer_addr=addr, local_contact=contact, state="confirmed", cseq=1,
+                       route_set=list(reversed(sm.split_list_header(resp.get_all("record-route")))))  # the UAC reads the 2xx's Record-Route backwards (12.1.2)
             self.dialogs[call_id] = d
             return d
 
@@ -448,8 +474,10 @@ class SipStack(asyncio.DatagramProtocol):
             raise
 
     def _send_ack(self, inv: SipMessage, resp: SipMessage, addr, dialog: Dialog | None = None) -> None:
+        routes: list[str] = []
         if dialog:
-            target = dialog.remote_target
+            target, routes = dialog.request_target()
+            addr = dialog.next_hop()
             branch = sm.new_branch()  # ACK for a 2xx is its own transaction
         else:
             target = inv.request_uri
@@ -458,6 +486,7 @@ class SipStack(asyncio.DatagramProtocol):
         headers = [
             ("Via", f"SIP/2.0/UDP {local_host}:{self.port};rport;branch={branch}"),
             ("Max-Forwards", "70"),
+            *[("Route", r) for r in routes],
             ("From", inv.get("from")),
             ("To", resp.get("to")),
             ("Call-ID", inv.call_id),

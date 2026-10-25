@@ -69,6 +69,7 @@ def D(id: str, file: str, function: str, kind_re: str, snippet: str, desc: str, 
 STORE = ["tests/test_store.py"]
 RETENTION = ["tests/test_retention.py", "tests/test_store.py", "tests/test_wiring.py"]
 OUTBOX = ["tests/test_outbox_at_rest.py", "tests/test_delivery.py"]
+ROUTE = ["tests/test_route_set.py", "tests/test_sip_stack.py"]
 DIAL = ["tests/test_dialled_number.py", "tests/test_sip_stack.py", "tests/test_tenants.py"]
 NAMES = ["tests/test_names_unicode.py", "tests/test_parsers.py", "tests/test_machine.py"]
 LEG = ["tests/test_transfer_leg.py", "tests/test_sip_stack.py"]
@@ -130,4 +131,12 @@ DERIVED_MUTANTS: list[DerivedMutant] = [
     D("tenants-resolve-national-unique", TN, "resolve", "Eq -> NotEq", "len(hits) == 1", "a national number two firms share loads one of them", DIAL),
     D("stack-400-needs-the-five-headers", SK, "_refuse_unreadable_invite", "Lt -> GtE", "len(found) < 5", "an unparseable INVITE gets no 400, or a 400 that is not a valid response", DIAL),
     D("stack-400-only-for-an-invite", SK, "_refuse_unreadable_invite", "negate the condition", "re.match", "a request that is not an INVITE gets a 400 or an INVITE gets none", DIAL),
+    # ---- a dialog follows the route set of the proxies on its path (F7)
+    D("message-record-route-echo", MS, "make_response", "negate the condition", "'INVITE'", "the 200 OK does not echo the proxies' Record-Route", ROUTE),
+    D("message-record-route-not-on-refusals", MS, "make_response", "Lt -> GtE", "101", "a refusal echoes Record-Route as if it made a dialog", ROUTE),
+    D("message-loose-router-test", MS, "is_loose_route", "return value -> None", "", "no router is ever loose", ROUTE),
+    D("message-list-header-quoted-comma", MS, "split_list_header", "and <-> or", "depth == 0", "a comma inside quotes or brackets splits an entry in two", ROUTE),
+    D("stack-no-route-set-no-route", SK, "request_target", "negate the condition", "not self.route_set", "a dialog without a route set still builds routes", ROUTE),
+    D("stack-loose-router-first", SK, "request_target", "negate the condition", "is_loose_route", "a loose router first is treated as strict and the other way round", ROUTE),
+    D("stack-next-hop-is-the-first-route", SK, "next_hop", "negate the condition", "_ip_literal(host)", "a request is sent to where the INVITE came from, not to the first route", ROUTE),
 ]
