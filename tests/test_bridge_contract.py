@@ -36,6 +36,7 @@ def free_port() -> int:
 def receiver():
     port = free_port()
     env = dict(os.environ, CLIO_BRIDGE_DIR=str(BRIDGE_DIR), BRIDGE_SECRET=SECRET, PORT=str(port))
+    # authoring-ok: a server that lives for the module, not a call that returns; its start is polled for 10 s below and it is killed in teardown
     p = subprocess.Popen(["node", str(ROOT / "tools" / "bridge_receiver.mjs")], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     url = f"http://127.0.0.1:{port}"
     for _ in range(100):

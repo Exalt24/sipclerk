@@ -65,6 +65,8 @@ def killed_by(output: str) -> list[str]:
     return re.findall(r"^FAILED (\S+)", output, re.M)
 
 
+COPY_RUN_TIMEOUT_S = 6 * 3600  # the whole run, every layer, with room to spare; each single mutant already has its own pytest timeout
+
 HEAVY = {".git", "models", "scratch", "demo", "__pycache__", ".pytest_cache", ".secrets", "tools", "docs"}
 
 
@@ -78,7 +80,12 @@ def run_in_copy(argv: list[str]) -> int:
             i = args.index("--report")
             args[i + 1] = str((ROOT / args[i + 1]).resolve())
         env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1")
-        return subprocess.run([sys.executable, str(tmp / "repo" / "scripts" / "mutation_check.py"), "--in-place", *args], cwd=tmp / "repo", env=env).returncode
+        try:
+            return subprocess.run([sys.executable, str(tmp / "repo" / "scripts" / "mutation_check.py"), "--in-place", *args], cwd=tmp / "repo", env=env,
+                                  timeout=COPY_RUN_TIMEOUT_S).returncode
+        except subprocess.TimeoutExpired:
+            print(f"the run in the copy took longer than {COPY_RUN_TIMEOUT_S // 3600} hours and was stopped; run a layer or an --only list at a time")
+            return 124
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
