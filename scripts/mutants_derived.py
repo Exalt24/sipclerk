@@ -79,6 +79,7 @@ SCOPE = ["tests/test_scope_confirmed_area.py", "tests/test_machine.py", "tests/t
 STOPWORDS = ["tests/test_names_stopwords.py", "tests/test_names_unicode.py", "tests/test_parsers.py"]
 CALLERS = ["tests/test_caller_number.py", "tests/test_anonymous_callers.py", "tests/test_guard.py", "tests/test_sip_stack.py"]
 RECEIVERS = ["tests/test_outcome_receivers.py", "tests/test_delivery.py", "tests/test_wiring.py", "tests/test_bridge_contract.py"]
+ACKWIN = ["tests/test_ack_window.py"]
 TENSE = ["tests/test_emergency_tense.py", "tests/test_guard.py", "tests/test_machine.py"]
 ANON = ["tests/test_anonymous_callers.py"]
 ROUTE = ["tests/test_route_set.py", "tests/test_sip_stack.py"]
@@ -208,6 +209,17 @@ PIPELINE_DERIVED: list[DerivedMutant] = [
       ["tests/test_pipeline_fast.py", "-k", "full_intake or saved_call"], layer="pipeline"),
     D("pipe-hangup-reaches-the-bridge", CA, "_finalize", "delete the call statement", "on_caller_hangup", "a caller who hangs up mid intake leaves no outcome, no task and nothing for the bridge",
       ["tests/test_outcome_receivers.py", "-k", "reaches_the_bridge"], layer="pipeline"),
+    # ---- the line waits for the ACK as long as the stack takes one, and a call whose ACK never comes is ended and recorded (output round 2, F3); real time, so the pipeline layer
+    D("pipe-ack-window-is-64-t1", SK, "_retransmit_until_ack", "Mult -> FloorDiv", "64 * t1", "the ACK is waited for far longer or far shorter than 64 * T1", ACKWIN, nth=1, layer="pipeline"),
+    D("pipe-ack-2xx-is-resent", SK, "_retransmit_until_ack", "delete the call statement", "self.stack.send", "the 2xx is not resent while the ACK is awaited", ACKWIN, layer="pipeline"),
+    D("pipe-ack-stops-the-resend", SK, "_retransmit_until_ack", "negate the condition", "done", "the 2xx is resent and the call ended after the ACK came", ACKWIN, layer="pipeline"),
+    D("pipe-ack-lost-is-told", SK, "_retransmit_until_ack", "delete the call statement", "self.ack_lost.set()", "the line is never told the ACK was lost", ACKWIN, layer="pipeline"),
+    D("pipe-ack-answer-from-the-stack", SK, "wait_for_ack", "negate the condition", "self.ack_lost.is_set()", "a lost ACK is reported as a caller who hung up", ACKWIN, layer="pipeline"),
+    D("pipe-ack-line-waits-for-the-stack", SV, "on_invite", "negate the condition", "got != 'acked'", "a call whose ACK came is dropped, or one whose ACK did not is started", ACKWIN, layer="pipeline"),
+    D("pipe-ack-lost-is-recorded", SV, "on_invite", "negate the condition", "got == 'lost'", "a call whose ACK never came leaves no record", ACKWIN, layer="pipeline"),
+    D("pipe-ack-record-has-the-cause", SV, "_record_unacknowledged_call", "delete the call statement", "m.on_no_ack()", "the record of a lost ACK does not name the cause", ACKWIN, layer="pipeline"),
+    D("pipe-ack-record-is-filed", SV, "_record_unacknowledged_call", "delete the call statement", "self.file_call", "the record of a lost ACK is built and never stored or queued", ACKWIN, layer="pipeline"),
+    D("pipe-ack-record-leaves-a-task", "sipclerk/intake/machine.py", "on_no_ack", "delete the call statement", "self.tasks.append", "a call whose ACK never came leaves no callback task", ACKWIN, layer="pipeline"),
     D("pipe-dialled-shapes", TN, "resolve", "negate the condition", "fullmatch", "a call dialled as ten digits is turned away",
       ["tests/test_dialled_number.py", "-k", "line_answers_each_shape"], layer="pipeline"),
 ]

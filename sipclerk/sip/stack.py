@@ -108,6 +108,7 @@ class IncomingInvite:
         self.addr = addr
         self.to_tag = sm.new_tag()
         self.acked = asyncio.Event()
+        self.ack_lost = asyncio.Event()  # no ACK came while the 2xx was being resent: the stack has hung the dialog up with a BYE
         self.cancelled = asyncio.Event()
         self.final: SipMessage | None = None
         self.dialog: Dialog | None = None
@@ -148,24 +149,41 @@ class IncomingInvite:
         self.stack.pending_invites.pop(self.req.call_id, None)
         self.stack.remember(self.req, resp)
         self.stack.send(resp, self.addr)
-        asyncio.get_running_loop().create_task(self._retransmit_until_ack(resp))
+        self._resender = asyncio.get_running_loop().create_task(self._retransmit_until_ack(resp))
         return d
 
+    async def wait_for_ack(self) -> str:
+        """Wait for the ACK of our 2xx for as long as the stack still accepts one (it resends the 2xx until the ACK arrives or 64*T1 has passed, RFC 3261
+        13.3.1.4). Returns "acked", "lost" (no ACK in that time: the stack has sent a BYE and the session is over) or "gone" (the caller hung up first)."""
+        waits = [asyncio.ensure_future(e.wait()) for e in (self.acked, self.ack_lost, self.dialog.terminated)]
+        try:
+            await asyncio.wait(waits, return_when=asyncio.FIRST_COMPLETED)
+        finally:
+            for w in waits:
+                w.cancel()
+        return "acked" if self.acked.is_set() else "lost" if self.ack_lost.is_set() else "gone"
+
     async def _retransmit_until_ack(self, resp: SipMessage) -> None:
-        delay = T1
-        waited = 0.0
-        while waited < 32 and not self.acked.is_set():
-            try:
-                await asyncio.wait_for(self.acked.wait(), delay)
-            except asyncio.TimeoutError:
+        """RFC 3261 13.3.1.4: the 2xx goes out again after T1, 2*T1 and so on up to T2 until the ACK arrives. After 64*T1 without one the dialog is
+        confirmed but the session SHOULD be ended with a BYE: that is sent here, and `ack_lost` tells whoever waits for the ACK."""
+        t1, loop, d = self.stack.t1, asyncio.get_running_loop(), self.dialog
+        deadline, delay = loop.time() + 64 * t1, t1
+        stop = [asyncio.ensure_future(self.acked.wait()), asyncio.ensure_future(d.terminated.wait())]
+        try:
+            while (remaining := deadline - loop.time()) > 0:
+                done, _ = await asyncio.wait(stop, timeout=min(delay, remaining), return_when=asyncio.FIRST_COMPLETED)
+                if done:
+                    return
                 self.stack.send(resp, self.addr)
-                waited += delay
-                delay = min(delay * 2, 4.0)
-        if not self.acked.is_set() and self.dialog and not self.dialog.terminated.is_set():
-            log.warning("no ACK for call %s, dropping dialog", self.req.call_id)
-            self.dialog.ended_by = "no-ack"
-            self.dialog.terminated.set()
-            self.stack.dialogs.pop(self.req.call_id, None)
+                delay = min(delay * 2, 8 * t1)  # T2 is 8 * T1
+        finally:
+            for w in stop:
+                w.cancel()
+        log.warning("no ACK for call %s in %.0f s: ending the session with a BYE", self.req.call_id, 64 * t1)
+        self.ack_lost.set()
+        self.stack._acks.pop(self.req.call_id, None)  # the stack no longer takes an ACK for this dialog
+        await d.bye()
+        d.ended_by = "no-ack"
 
 
 @dataclass
@@ -182,6 +200,7 @@ class SipStack(asyncio.DatagramProtocol):
         self.host = host
         self.port = port
         self.advertise_host = advertise_host
+        self.t1 = T1  # RFC 3261 T1: the 2xx resend interval starts here and the ACK is waited for 64 * T1; a test shortens it
         self.on_invite = on_invite
         self.transport: asyncio.DatagramTransport | None = None
         self.dialogs: dict[str, Dialog] = {}

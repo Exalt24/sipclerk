@@ -1,0 +1,179 @@
+"""The line waits for the caller's ACK as long as the stack still accepts one, and a call whose ACK never comes is ended and recorded.
+
+RFC 3261 13.3.1.4: the UAS resends its 2xx, starting at T1 and doubling up to T2, until the ACK arrives; "if the server retransmits the 2xx response for 64*T1
+seconds without receiving an ACK, the dialog is confirmed, but the session SHOULD be terminated. This is accomplished with a BYE". The first version gave up
+on the call after 5 seconds while the stack went on resending the 2xx for 32, so an ACK that came at 6 s (a lost ACK that was resent, a slow carrier) left an
+answered call with no session, no media and no record, and an ACK that never came dropped the dialog silently. T1 is `SipStack.t1`; these tests shorten it."""
+import asyncio
+import re
+import secrets
+import time
+
+import pytest
+
+from sipclerk.sip.rtp import RtpSession
+from sipclerk.store import Actor
+from test_pipeline_fast import ASH, rig
+
+
+class Udp(asyncio.DatagramProtocol):
+    def __init__(self):
+        self.log: list[tuple[float, bytes]] = []
+
+    def connection_made(self, t):
+        self.t = t
+
+    def datagram_received(self, d, a):
+        self.log.append((time.monotonic(), d))
+
+
+async def udp():
+    t, p = await asyncio.get_running_loop().create_datagram_endpoint(Udp, local_addr=("127.0.0.1", 0))
+    return t, p, t.get_extra_info("sockname")[1]
+
+
+def sdp(port):
+    return "\r\n".join(["v=0", "o=c 1 1 IN IP4 127.0.0.1", "s=c", "c=IN IP4 127.0.0.1", "t=0 0", f"m=audio {port} RTP/AVP 0 101", "a=rtpmap:0 PCMU/8000",
+                        "a=rtpmap:101 telephone-event/8000", "a=fmtp:101 0-16", "a=sendrecv"]) + "\r\n"
+
+
+def invite(sport, lport, rport, caller, cid):
+    body = sdp(rport)
+    return (f"INVITE sip:{ASH}@127.0.0.1:{sport} SIP/2.0\r\nVia: SIP/2.0/UDP 127.0.0.1:{lport};branch=z9hG4bK{secrets.token_hex(5)};rport\r\nMax-Forwards: 70\r\n"
+            f"From: <sip:{caller}@127.0.0.1>;tag=ft1\r\nTo: <sip:{ASH}@127.0.0.1:{sport}>\r\nCall-ID: {cid}\r\nCSeq: 1 INVITE\r\nContact: <sip:{caller}@127.0.0.1:{lport}>\r\n"
+            f"Content-Type: application/sdp\r\nContent-Length: {len(body)}\r\n\r\n{body}").encode()
+
+
+def request(method, sport, lport, caller, cid, cseq, totag):
+    return (f"{method} sip:127.0.0.1:{sport} SIP/2.0\r\nVia: SIP/2.0/UDP 127.0.0.1:{lport};branch=z9hG4bK{secrets.token_hex(5)};rport\r\nMax-Forwards: 70\r\n"
+            f"From: <sip:{caller}@127.0.0.1>;tag=ft1\r\nTo: <sip:{ASH}@127.0.0.1:{sport}>;tag={totag}\r\nCall-ID: {cid}\r\nCSeq: {cseq} {method}\r\nContent-Length: 0\r\n\r\n").encode()
+
+
+def answer_to_bye(bye: bytes) -> bytes:
+    """A 200 for the BYE the line sent, copying the headers a response copies."""
+    text = bye.decode()
+    keep = [ln for ln in text.split("\r\n") if ln.split(":")[0].lower() in ("via", "from", "to", "call-id", "cseq")]
+    return ("SIP/2.0 200 OK\r\n" + "\r\n".join(keep) + "\r\nContent-Length: 0\r\n\r\n").encode()
+
+
+async def until(predicate, timeout, step=0.05):
+    end = time.monotonic() + timeout
+    while time.monotonic() < end:
+        if predicate():
+            return True
+        await asyncio.sleep(step)
+    return predicate()
+
+
+class Caller:
+    def __init__(self, r, caller):
+        self.r, self.caller, self.cid = r, caller, f"ack-{secrets.token_hex(4)}@127.0.0.1"
+
+    async def start(self):
+        self.t, self.p, self.lport = await udp()
+        self.rt, self.rp, self.rport = await udp()  # where the line's RTP goes
+        self.sport = self.r.server.port
+        self.t.sendto(invite(self.sport, self.lport, self.rport, self.caller, self.cid), ("127.0.0.1", self.sport))
+        assert await until(lambda: any(d.startswith(b"SIP/2.0 200") for _, d in self.p.log), 5), "no 200 OK"
+        ok = next(d for _, d in self.p.log if d.startswith(b"SIP/2.0 200")).decode()
+        self.totag = re.search(r"To:[^\r]*tag=([^;>\r\s]+)", ok).group(1)
+        self.t0 = next(t for t, d in self.p.log if d.startswith(b"SIP/2.0 200"))
+        return self
+
+    def count(self, prefix: bytes) -> int:
+        return sum(1 for _, d in self.p.log if d.startswith(prefix))
+
+    def send(self, method, cseq=1):
+        self.t.sendto(request(method, self.sport, self.lport, self.caller, self.cid, cseq, self.totag), ("127.0.0.1", self.sport))
+
+    def close(self):
+        self.t.close()
+        self.rt.close()
+
+
+@pytest.fixture
+def opened_media(monkeypatch):
+    """Every RTP socket the line opens, to see that a call that never started has its media freed."""
+    seen: list[RtpSession] = []
+    real = RtpSession.open.__func__
+
+    async def recording_open(cls, *a, **kw):
+        s = await real(cls, *a, **kw)
+        seen.append(s)
+        return s
+
+    monkeypatch.setattr(RtpSession, "open", classmethod(recording_open))
+    return seen
+
+
+async def test_an_ack_that_comes_in_time_starts_the_call_and_the_window_running_out_later_does_nothing_to_it():
+    async with rig(["yes"]) as r:
+        r.server.stack.t1 = 0.05  # the ACK window is 3.2 s
+        c = await Caller(r, "+14155550171").start()
+        await asyncio.sleep(0.3)
+        c.send("ACK")
+        assert await until(lambda: r.server.sessions, 3) and r.server.counters["answered"] == 1 and r.server.counters.get("no_ack", 0) == 0
+        assert await until(lambda: len(c.rp.log) > 20, 5), "no audio reached the caller"
+        resent = c.count(b"SIP/2.0 200")
+        await asyncio.sleep(3.6)  # past the moment the window would have ended had the ACK not come
+        assert c.count(b"BYE") == 0 and r.server.sessions and c.count(b"SIP/2.0 200") == resent, "the 2xx kept being resent or the call was ended after its ACK"
+        c.send("BYE", cseq=2)
+        assert await until(lambda: r.results, 15) and r.results[0].record["caller_number"] == "+14155550171"
+        c.close()
+
+
+async def test_an_ack_that_comes_after_the_old_five_second_wait_still_starts_the_call():
+    """T1 0.2 s: the stack resends the 2xx for 12.8 s. The ACK comes at 5.6 s, which is after the five seconds the line used to wait."""
+    async with rig(["yes"]) as r:
+        r.server.stack.t1 = 0.2
+        c = await Caller(r, "+14155550172").start()
+        await asyncio.sleep(5.6)
+        assert not r.server.sessions and c.count(b"BYE") == 0 and c.count(b"SIP/2.0 200") >= 4  # still waiting, still resending the 2xx
+        c.send("ACK")
+        assert await until(lambda: r.server.sessions, 3), "the late ACK did not start the call"
+        assert await until(lambda: len(c.rp.log) > 20, 5), "no audio reached the caller after the late ACK"
+        assert c.count(b"BYE") == 0 and r.server.counters.get("no_ack", 0) == 0
+        c.send("BYE", cseq=2)
+        assert await until(lambda: r.results, 15) and r.results[0].record["outcome"] == "caller_hung_up"
+        c.close()
+
+
+async def test_an_ack_that_never_comes_ends_the_session_with_a_bye_frees_the_media_and_leaves_a_record_with_a_callback(opened_media):
+    """T1 0.05 s: 64 * T1 is 3.2 s. Nothing comes back. The line must resend the 2xx, then send BYE, free its media and store the call."""
+    async with rig([]) as r:
+        r.server.stack.t1 = 0.05
+        c = await Caller(r, "+14155550173").start()
+        assert await until(lambda: c.count(b"BYE") >= 1, 3.2 + 3), "no BYE from the line after the ACK window"
+        bye_after = next(t for t, d in c.p.log if d.startswith(b"BYE")) - c.t0
+        assert 3.0 <= bye_after <= 5.0, bye_after  # 64 * T1, not the old five seconds and not never
+        assert c.count(b"SIP/2.0 200") >= 5, "the 2xx was not resent while the ACK was awaited"
+        c.t.sendto(answer_to_bye(next(d for _, d in c.p.log if d.startswith(b"BYE"))), ("127.0.0.1", c.sport))
+        assert await until(lambda: r.server.counters["no_ack"] == 1 and r.store.list_calls("ashgrovepell"), 5)
+        assert not r.server.sessions and r.server.counters["answered"] == 0
+        assert opened_media and all(s.transport.is_closing() for s in opened_media), "the media socket of a call that never started is still open"
+        (call_id,) = r.store.list_calls("ashgrovepell")
+        rec = r.store.read(Actor("sam", "ashgrovepell", "intake_staff"), "ashgrovepell", call_id, "record")
+        assert rec["outcome"] == "dropped_no_ack" and rec["ended_by"] == "no-ack" and rec["caller_number"] == "+14155550173"
+        assert rec["tasks"] and rec["tasks"][0]["kind"] == "callback" and "ACK" in rec["tasks"][0]["reason"]
+        assert sorted(e.target for e in r.outbox.entries.values() if e.key == rec["idempotency_key"]) == ["bridge", "console"]
+        c.send("ACK")  # a stray ACK after the BYE changes nothing
+        await asyncio.sleep(0.3)
+        assert not r.server.sessions and len(r.store.list_calls("ashgrovepell")) == 1
+        c.close()
+
+
+async def test_a_caller_who_hangs_up_before_the_ack_is_not_recorded_as_a_lost_ack():
+    async with rig([]) as r:
+        r.server.stack.t1 = 0.05
+        c = await Caller(r, "+14155550174").start()
+        c.send("BYE", cseq=2)
+        await asyncio.sleep(4.0)
+        assert r.server.counters.get("no_ack", 0) == 0 and not r.server.sessions and c.count(b"BYE") == 0
+        c.close()
+
+
+def test_the_resend_rule_is_the_rfc_one():
+    """T1 is the stack's own attribute and defaults to the RFC value; the window is 64 times it."""
+    from sipclerk.sip.stack import T1, SipStack
+
+    assert T1 == 0.5 and SipStack("127.0.0.1", 0).t1 == 0.5 and 64 * T1 == 32

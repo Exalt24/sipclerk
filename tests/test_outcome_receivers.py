@@ -69,6 +69,12 @@ def hung_up(m):
     return m
 
 
+def no_ack(tenant):
+    m = IntakeMachine(tenant, "c1", "+14155550142", IN_HOURS)  # the line answered and no ACK came: the machine never began
+    m.on_no_ack()
+    return m
+
+
 def declined_by_word(tenant):
     m = to_question(tenant, "practice_area")
     m.handle_text("I need a lawyer for a DUI")
@@ -86,6 +92,7 @@ CASES = [
     ("a request for a person after hours", "callback_requested", lambda t: transferring(t, now=AFTER_HOURS)),
     ("a transfer nobody answered", "callback_after_failed_transfer", lambda t: transferring(t, ok=False)),
     ("a transfer that connected", "transferred", lambda t: transferring(t, ok=True)),
+    ("an ACK that never came", "dropped_no_ack", no_ack),
     ("a hang up mid intake", "caller_hung_up", lambda t: hung_up(to_question(t, "practice_area"))),
     ("a hang up while the desk phone rings", "caller_hung_up", lambda t: hung_up(transferring(t))),
 ]

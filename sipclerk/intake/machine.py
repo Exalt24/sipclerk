@@ -517,6 +517,15 @@ class IntakeMachine:
             if not self.submitted:
                 self.tasks.append({"kind": "callback", "reason": "caller hung up before the intake finished"})
 
+    def on_no_ack(self) -> None:
+        """The line answered and the caller's ACK never came (RFC 3261 13.3.1.4): no session was set up and the intake never began. The call ends as
+        `dropped_no_ack` with a callback task, so the firm has a trace of a call it answered."""
+        if self.state != State.DONE and not self.outcome:
+            self.outcome = "dropped_no_ack"
+            self.state = State.DONE
+            self._log("no_ack")
+            self.tasks.append({"kind": "callback", "reason": "the call was answered but the caller's ACK never came, so no intake was taken; call this number back"})
+
     def idempotency_key(self) -> str:
         return hashlib.sha256(f"{self.cfg.tenant_id}|{self.call_id}|intake".encode()).hexdigest()
 

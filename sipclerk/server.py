@@ -12,6 +12,7 @@ from pathlib import Path
 from sipclerk import audio, delivery, guard
 from sipclerk.call import CallResult, CallSession, Faults
 from sipclerk.delivery import Outbox, Target
+from sipclerk.intake.machine import IntakeMachine
 from sipclerk.sip import message as sm
 from sipclerk.sip.rtp import RtpSession
 from sipclerk.sip.stack import IncomingInvite, SipStack
@@ -47,7 +48,7 @@ class ClerkServer:
         self.sessions: dict[str, CallSession] = {}
         self.results: list[CallResult] = []
         self.counters = {"answered": 0, "wrong_number": 0, "blocked_caller": 0, "duplicate_call": 0, "busy": 0, "no_codec": 0,
-                         "no_offer": 0}
+                         "no_offer": 0, "no_ack": 0}
         self.retention_every_s = retention_every_s
         self.retention = {"passes": 0, "failures": 0, "calls_purged": 0, "folders_skipped": 0, "outbox_entries_purged": 0, "last_ok_at": None, "audit_broken": []}
         self._stop = asyncio.Event()
@@ -184,10 +185,11 @@ class ClerkServer:
         inv.provisional(180, "Ringing")
         host = self.stack.advertise_host or (inv.dialled_ip if self.stack.host in ("0.0.0.0", "") and inv.dialled_ip else self.stack.local_host_for(inv.addr))
         dialog = await inv.answer(sm.build_sdp(host, rtp.local_port, [codec], offer.dtmf_pt), local_host=host)
-        try:
-            await asyncio.wait_for(inv.acked.wait(), 5)
-        except asyncio.TimeoutError:
+        got = await inv.wait_for_ack()  # as long as the stack still takes an ACK: a lost or late ACK is ordinary over UDP and a carrier
+        if got != "acked":
             await rtp.close()
+            if got == "lost":
+                await self._record_unacknowledged_call(tenant, inv, codec)
             return
         rtp.start()
         call_id = secrets.token_hex(6)
@@ -198,6 +200,22 @@ class ClerkServer:
         self.sessions[call_id] = session
         self.counters["answered"] += 1
         asyncio.get_running_loop().create_task(self._run(call_id, session))
+
+    async def _record_unacknowledged_call(self, tenant, inv: IncomingInvite, codec: str) -> None:
+        """The line answered and no ACK ever came, so the stack ended the session with a BYE. The firm still gets what it would for any call that ends
+        without an intake: a stored record with a callback task, and the same deliveries."""
+        self.counters["no_ack"] += 1
+        call_id = secrets.token_hex(6)
+        m = IntakeMachine(tenant, call_id, inv.caller, self.now_fn())
+        m.on_no_ack()
+        record = m.record()
+        record.update({"ended_by": "no-ack", "duration_s": 0.0, "codec": codec})
+        cfg = tenant.config
+        summary = f"A call from this number was answered for {cfg.display_name} but never acknowledged, so no intake was taken. A callback task is open."
+        try:
+            self.file_call(cfg, record, [], summary, None, 0)
+        except Exception:
+            log.exception("call %s: the record of an unacknowledged call could not be stored", call_id)
 
     async def _run(self, call_id: str, session: CallSession) -> None:
         try:
