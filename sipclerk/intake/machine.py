@@ -509,6 +509,14 @@ class IntakeMachine:
             return v is False
         return False
 
+    def on_caller_hangup(self) -> None:
+        """The caller's line went away before the machine ended the call (mid intake, or while a transfer was being set up): the call ends as
+        `caller_hung_up` with a callback task, unless the intake was already handed on. A call that already has an outcome keeps it."""
+        if self.state != State.DONE and not self.outcome:
+            self.outcome = "caller_hung_up"
+            if not self.submitted:
+                self.tasks.append({"kind": "callback", "reason": "caller hung up before the intake finished"})
+
     def idempotency_key(self) -> str:
         return hashlib.sha256(f"{self.cfg.tenant_id}|{self.call_id}|intake".encode()).hexdigest()
 

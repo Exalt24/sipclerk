@@ -251,7 +251,7 @@ async def test_the_saved_call_is_readable_only_by_that_firms_staff_and_both_deli
         rec = res.record
         assert r.store.read(Actor("sam", "ashgrovepell", "intake_staff"), "ashgrovepell", rec["call_id"], "record")["call_id"] == rec["call_id"]
         assert r.store.list_calls("tidewaterquint") == []
-        assert [e.target for e in r.outbox.entries.values() if e.key == rec["idempotency_key"]] == ["console"]  # no intake was submitted
+        assert sorted(e.target for e in r.outbox.entries.values() if e.key == rec["idempotency_key"]) == ["bridge", "console"]  # a hang up carries a callback task: both receivers get it
 
 
 async def test_a_full_intake_with_stand_in_models_is_saved_and_queued_to_both_receivers(caplog):

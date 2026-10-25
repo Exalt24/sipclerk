@@ -105,9 +105,7 @@ class CallSession:
     def _on_submit(self, record: dict) -> None:
         """The intake is complete: queue the case-management delivery now, while the closing line is still being spoken."""
         self.submitted_key = record["idempotency_key"]
-        if self.cfg.integrations.case_management:
-            self.server.outbox.enqueue("bridge", record["idempotency_key"], delivery.build_bridge_payload(record, ""),
-                                       tenant_id=self.cfg.tenant_id, call_id=self.call_id)
+        if delivery.queue_call(self.server.outbox, self.cfg, record, [], 0, only="bridge"):
             asyncio.get_running_loop().create_task(self.server.outbox.deliver_due())
 
     async def _hang_up(self, reason: str) -> None:
@@ -269,10 +267,7 @@ class CallSession:
     async def _finalize(self) -> CallResult:
         m = self.machine
         duration = time.monotonic() - self.started
-        if m.state.value != "done" and not m.outcome:
-            m.outcome = "caller_hung_up"
-            if not m.submitted:
-                m.tasks.append({"kind": "callback", "reason": "caller hung up before the intake finished"})
+        m.on_caller_hangup()
         record = m.record()
         record.update({
             "ended_by": self.ended_by,
@@ -290,11 +285,7 @@ class CallSession:
         transcript = [{"speaker": t["speaker"], "text": t["text"], "t": round(t["t"] - self.started_wall, 2)} for t in self.ctx.transcript]
         summary = await self._summary(record)
         rec_pcm = self.recording_pcm()
-        parts = self.server.store.save_call(self.cfg.tenant_id, self.call_id, record, transcript, summary, rec_pcm)
-        if self.cfg.integrations.call_console:
-            payload = delivery.build_console_payload(record, transcript, int(duration), self.cfg.display_name)
-            self.server.outbox.enqueue("console", record["idempotency_key"], payload, tenant_id=self.cfg.tenant_id, call_id=self.call_id)
-        asyncio.get_running_loop().create_task(self.server.outbox.deliver_due())
+        parts = self.server.file_call(self.cfg, record, transcript, summary, rec_pcm, int(duration))
         return CallResult(record, transcript, summary, len(rec_pcm or b""), {"saved_parts": parts})
 
     @staticmethod

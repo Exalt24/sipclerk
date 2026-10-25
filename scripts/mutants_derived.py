@@ -78,6 +78,7 @@ REPORT = ["tests/test_emergency_report.py", "tests/test_emergency_tense.py", "te
 SCOPE = ["tests/test_scope_confirmed_area.py", "tests/test_machine.py", "tests/test_guard.py"]
 STOPWORDS = ["tests/test_names_stopwords.py", "tests/test_names_unicode.py", "tests/test_parsers.py"]
 CALLERS = ["tests/test_caller_number.py", "tests/test_anonymous_callers.py", "tests/test_guard.py", "tests/test_sip_stack.py"]
+RECEIVERS = ["tests/test_outcome_receivers.py", "tests/test_delivery.py", "tests/test_wiring.py", "tests/test_bridge_contract.py"]
 TENSE = ["tests/test_emergency_tense.py", "tests/test_guard.py", "tests/test_machine.py"]
 ANON = ["tests/test_anonymous_callers.py"]
 ROUTE = ["tests/test_route_set.py", "tests/test_sip_stack.py"]
@@ -186,6 +187,13 @@ DERIVED_MUTANTS: list[DerivedMutant] = [
     D("match-number-national-unique", MS, "match_number", "Eq -> NotEq", "len(hits) == 1", "a ten digit number two countries share is taken for one of them", CALLERS),
     D("server-duplicate-uses-match-number", SV, "_already_on_this_line", "return value -> None", "match_number", "a caller already in a call is never recognised", CALLERS),
     D("server-duplicate-ignores-withheld-open-calls", SV, "_already_on_this_line", "remove `not`", "caller_is_withheld(s.caller)", "a withheld open call is compared with the new caller", CALLERS),
+    # ---- every outcome that stores a callback task reaches the same receivers by one code path (output round 2, F4)
+    D("queue-call-bridge-needs-a-task", DE, "queue_call", "and <-> or", "record['tasks']", "a call that carries no task is queued for the case-management bridge", RECEIVERS),
+    D("queue-call-console-gets-every-call", DE, "queue_call", "negate the condition", "call_console", "a call is not queued for the console", RECEIVERS),
+    D("queue-call-only-names-a-receiver", DE, "queue_call", "In -> NotIn", "only in (None, 'bridge')", "the early bridge entry is queued for no receiver or for both", RECEIVERS),
+    D("server-file-call-queues-the-receivers", SV, "file_call", "delete the call statement", "queue_call", "a finished call is stored and never queued for a receiver", RECEIVERS),
+    D("machine-hangup-leaves-a-task", "sipclerk/intake/machine.py", "on_caller_hangup", "delete the call statement", "self.tasks.append", "a caller who hangs up mid intake leaves no callback task", RECEIVERS),
+    D("machine-hangup-keeps-an-outcome", "sipclerk/intake/machine.py", "on_caller_hangup", "remove `not`", "not self.outcome", "a hang up overwrites the outcome a call already has", RECEIVERS),
 ]
 
 
@@ -194,6 +202,12 @@ PIPELINE_DERIVED: list[DerivedMutant] = [
     PD("pipe-anonymous-callers", SV, "_already_on_this_line", "negate the condition", "caller_is_withheld", "a second anonymous caller is turned away as a duplicate", "anonymous"),
     PD("pipe-caller-hangs-up-during-the-transfer", CA, "_watch_caller_bye", "Is -> IsNot", "self.bridged_at is None", "a caller who hangs up while the desk phone rings or hears the whisper does not end the call",
        "desk_invite_and_still or hangs_up_the_desk"),
+    D("pipe-bridge-delivery", DE, "queue_call", "negate the condition", "case_management", "a finished intake is not sent to the case-management receiver",
+      ["tests/test_pipeline_fast.py", "-k", "full_intake or saved_call"], layer="pipeline"),
+    D("pipe-console-delivery", DE, "queue_call", "negate the condition", "call_console", "the masked call is not sent to the console",
+      ["tests/test_pipeline_fast.py", "-k", "full_intake or saved_call"], layer="pipeline"),
+    D("pipe-hangup-reaches-the-bridge", CA, "_finalize", "delete the call statement", "on_caller_hangup", "a caller who hangs up mid intake leaves no outcome, no task and nothing for the bridge",
+      ["tests/test_outcome_receivers.py", "-k", "reaches_the_bridge"], layer="pipeline"),
     D("pipe-dialled-shapes", TN, "resolve", "negate the condition", "fullmatch", "a call dialled as ten digits is turned away",
       ["tests/test_dialled_number.py", "-k", "line_answers_each_shape"], layer="pipeline"),
 ]

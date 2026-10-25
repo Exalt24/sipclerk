@@ -89,6 +89,22 @@ def build_console_payload(record: dict, transcript: list[dict], duration_s: int,
     }
 
 
+def queue_call(outbox: "Outbox", cfg, record: dict, transcript: list[dict], duration_s: int, summary: str = "", *, only: str | None = None) -> list[str]:
+    """The one place a finished call is queued for its receivers, whichever way the call ended: the console gets every call, and the case-management bridge
+    gets every call that carries a task (a callback, a review, the follow-up of a complete intake), as `intake.incomplete` when the call was never qualified.
+    Each (receiver, call) is queued once, so a second call to this with the same record is harmless. `only` names one receiver, for the bridge entry that is
+    queued while the closing line is still being spoken. Returns the receivers newly queued."""
+    kw = {"tenant_id": cfg.tenant_id, "call_id": record["call_id"]}
+    key, queued = record["idempotency_key"], []
+    if only in (None, "bridge") and cfg.integrations.case_management and record["tasks"]:
+        if outbox.enqueue("bridge", key, build_bridge_payload(record, summary), **kw):
+            queued.append("bridge")
+    if only in (None, "console") and cfg.integrations.call_console:
+        if outbox.enqueue("console", key, build_console_payload(record, transcript, duration_s, cfg.display_name), **kw):
+            queued.append("console")
+    return queued
+
+
 @dataclass
 class Target:
     name: str

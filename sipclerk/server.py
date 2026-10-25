@@ -9,7 +9,7 @@ from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 
-from sipclerk import audio, guard
+from sipclerk import audio, delivery, guard
 from sipclerk.call import CallResult, CallSession, Faults
 from sipclerk.delivery import Outbox, Target
 from sipclerk.sip import message as sm
@@ -80,6 +80,14 @@ class ClerkServer:
         """What an operator looks at: call counters, deliveries (the dead letters among them) and the retention passes."""
         return {"calls_open": len(self.sessions), "counters": dict(self.counters), "deliveries": {**self.outbox.stats(), "waiting": len(self.outbox.pending)},
                 "retention": dict(self.retention)}
+
+    def file_call(self, cfg, record: dict, transcript: list[dict], summary: str, rec_pcm: bytes | None, duration_s: int) -> list[str]:
+        """Store a finished call and queue it for its receivers: the one way every call ends up in the record and in the outbox, whether it was a complete
+        intake, a hang up, a failed transfer or a dialog that never got its ACK."""
+        parts = self.store.save_call(cfg.tenant_id, record["call_id"], record, transcript, summary, rec_pcm)
+        delivery.queue_call(self.outbox, cfg, record, transcript, duration_s, summary)
+        asyncio.get_running_loop().create_task(self.outbox.deliver_due())
+        return parts
 
     # ---- retention
 
