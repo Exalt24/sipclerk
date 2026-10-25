@@ -108,12 +108,6 @@ class Rig:
         return sockets, tasks
 
 
-async def hang_up_and_settle(call):
-    t0 = time.monotonic()
-    await call.hangup()
-    return t0
-
-
 async def test_the_caller_hanging_up_while_the_desk_phone_rings_cancels_the_desk_invite():
     async with Rig(answer_delay=3.0) as r:
         call, session = await r.call()
