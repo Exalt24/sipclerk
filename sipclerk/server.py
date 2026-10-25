@@ -134,7 +134,8 @@ class ClerkServer:
         (A retransmitted INVITE never gets here: the stack answers it from the first one's response.)"""
         if sm.caller_is_withheld(caller):
             return False
-        return any(s.caller == caller and s.cfg.tenant_id == tenant_id for s in self.sessions.values())
+        open_here = [s.caller for s in self.sessions.values() if s.cfg.tenant_id == tenant_id and not sm.caller_is_withheld(s.caller)]
+        return bool(sm.match_number(caller, open_here))
 
     async def on_invite(self, inv: IncomingInvite) -> None:
         tenant = self.registry.resolve(inv.candidates)

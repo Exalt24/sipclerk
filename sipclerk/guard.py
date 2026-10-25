@@ -15,6 +15,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from sipclerk.sip import message as sm
 from sipclerk.tenants import TenantConfig
 
 # --------------------------------------------------------------------------- caller side (before the model)
@@ -152,8 +153,9 @@ class InputVerdict:
 
 def check_caller(number: str, tenant: TenantConfig) -> InputVerdict:
     """Spam and known-bad numbers are refused before the call is answered."""
-    if number and number in tenant.guard.blocked_callers:
-        return InputVerdict("blocked_caller", "blocked_caller", number)
+    n = sm.caller_number(number)
+    if n and sm.match_number(n, [sm.caller_number(b) for b in tenant.guard.blocked_callers]):
+        return InputVerdict("blocked_caller", "blocked_caller", n)
     return InputVerdict("allow")
 
 

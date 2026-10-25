@@ -113,7 +113,7 @@ class IncomingInvite:
         self.dialog: Dialog | None = None
         self.candidates = sm.dialled_numbers(req)  # the number as dialled: Request-URI first, then the To header
         self.did = self.candidates[0] if self.candidates else ""
-        self.caller = sm.normalize_did(sm.uri_user(req.get("from")))
+        self.caller = sm.caller_number(req.get("from"))
         self.offer = req.body
         # The address the caller dialled is the one it can reach us on: behind NAT or a Docker bridge our own interface address is not.
         try:

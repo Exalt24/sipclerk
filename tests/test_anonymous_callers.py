@@ -35,7 +35,7 @@ def test_a_real_number_already_in_a_call_on_the_same_line_is_a_duplicate(registr
 def test_the_withheld_forms_a_carrier_sends_all_read_as_withheld():
     def caller_of(frm):
         req = sm.parse(f"INVITE sip:+14155550101@h SIP/2.0\r\nVia: SIP/2.0/UDP h;branch=z9hG4bKa\r\nFrom: {frm};tag=1\r\nTo: <sip:+14155550101@h>\r\nCall-ID: a@h\r\nCSeq: 1 INVITE\r\n\r\n".encode())
-        return sm.normalize_did(sm.uri_user(req.get("from")))
+        return sm.caller_number(req.get("from"))
 
     for frm in ('"Anonymous" <sip:anonymous@anonymous.invalid>', "<sip:Restricted@carrier.example>", "<sip:unavailable@h>", "<sip:+266696687@h>", "<sip:alice@pbx.example>",
                 '"Private" <sip:private@h>'):

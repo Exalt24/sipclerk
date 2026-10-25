@@ -47,7 +47,6 @@ MUTANTS: list[Mutant] = [
     M("guard-legal-advice-request", G, "LEGAL_ADVICE_REQUEST", "", "the legal advice request rule is deleted", kind="empty_list"),
     M("guard-out-of-scope", G, "    if check_scope:\n        in_scope", "    if False:\n        in_scope", "the out of scope practice area check is deleted"),
     M("guard-in-scope-wins", G, "if oos and not in_scope:", "if oos:", "an in scope word no longer outranks an out of scope one"),
-    M("guard-blocked-caller", G, "if number and number in tenant.guard.blocked_callers:", "if False:", "the blocked caller list is ignored"),
     # ---- the guard, after the model
     M("guard-promised-outcome", G, "PROMISED_OUTCOME", "", "the promised outcome rule is deleted", kind="empty_list"),
     M("guard-legal-advice-out", G, "LEGAL_ADVICE_OUT", "", "the agent legal advice rule is deleted", kind="empty_list"),

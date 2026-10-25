@@ -77,6 +77,7 @@ OUTBOX = ["tests/test_outbox_at_rest.py", "tests/test_delivery.py"]
 REPORT = ["tests/test_emergency_report.py", "tests/test_emergency_tense.py", "tests/test_guard.py"]
 SCOPE = ["tests/test_scope_confirmed_area.py", "tests/test_machine.py", "tests/test_guard.py"]
 STOPWORDS = ["tests/test_names_stopwords.py", "tests/test_names_unicode.py", "tests/test_parsers.py"]
+CALLERS = ["tests/test_caller_number.py", "tests/test_anonymous_callers.py", "tests/test_guard.py", "tests/test_sip_stack.py"]
 TENSE = ["tests/test_emergency_tense.py", "tests/test_guard.py", "tests/test_machine.py"]
 ANON = ["tests/test_anonymous_callers.py"]
 ROUTE = ["tests/test_route_set.py", "tests/test_sip_stack.py"]
@@ -152,7 +153,7 @@ DERIVED_MUTANTS: list[DerivedMutant] = [
     D("stack-next-hop-is-the-first-route", SK, "next_hop", "negate the condition", "_ip_literal(host)", "a request is sent to where the INVITE came from, not to the first route", ROUTE),
     # ---- a withheld caller id is nobody in particular (F10)
     D("server-withheld-caller-is-not-a-duplicate", SV, "_already_on_this_line", "negate the condition", "caller_is_withheld", "a second anonymous caller is turned away as a duplicate", ANON),
-    D("server-duplicate-needs-the-same-firm", SV, "_already_on_this_line", "and <-> or", "s.caller == caller", "the same number on the other firm's line counts as a duplicate", ANON),
+    D("server-duplicate-needs-the-same-firm", SV, "_already_on_this_line", "Eq -> NotEq", "s.cfg.tenant_id == tenant_id", "the same number on the other firm's line counts as a duplicate", ANON),
     D("message-withheld-placeholder-numbers", MS, "caller_is_withheld", "and <-> or", "WITHHELD_NUMBERS", "the keypad placeholder for anonymous counts as a real number", ANON),
     D("message-withheld-zeros", MS, "caller_is_withheld", "Eq -> NotEq", "set(digits)", "a caller id of only zeros counts as a real number", ANON),
     # ---- the emergency rule fires on a danger happening now, not on an account of one (F12)
@@ -175,6 +176,16 @@ DERIVED_MUTANTS: list[DerivedMutant] = [
     D("parse-name-ambiguous-needs-a-capital", PA, "parse_name", "remove `not`", "named or all", "a lower case an, to, case or hurt is read as part of a name, or a capitalised one is not", STOPWORDS),
     D("parse-name-lone-ambiguous-word", PA, "parse_name", "Eq -> NotEq", "len(ambiguous) == len(tokens)", "`to` or `an` on its own is taken for a name", STOPWORDS),
     D("proc-model-name-is-a-name", "sipclerk/voice/processors.py", "_interpret", "True -> False", "True", "the model's extracted name is rejected by the capital letter check", STOPWORDS, nth=1),
+    # ---- who is calling is read one way: the stored number, the block list and the one call per number rule (output round 2, F5 and F6)
+    D("guard-blocked-caller", GD, "check_caller", "negate the condition", "match_number", "the blocked caller list is ignored", CALLERS),
+    D("caller-number-reads-uris", MS, "caller_number", "negate the condition", "re.search", "a From header with sip, sips or tel in it is read as a bare number", CALLERS),
+    D("caller-number-uri-form", MS, "caller_number", "return value -> None", "number_in_uri", "a caller id written as a URI reads as nobody", CALLERS),
+    D("caller-number-bare-form", MS, "caller_number", "return value -> None", "_number_from", "a number written without a scheme, as a firm writes its block list, reads as nobody", CALLERS),
+    D("match-number-needs-the-input", MS, "match_number", "remove `not`", "not probe", "an empty caller matches an empty entry", CALLERS),
+    D("match-number-national-suffix", MS, "match_number", "negate the condition", "fullmatch", "a ten digit caller is never matched to an international number that ends with it", CALLERS),
+    D("match-number-national-unique", MS, "match_number", "Eq -> NotEq", "len(hits) == 1", "a ten digit number two countries share is taken for one of them", CALLERS),
+    D("server-duplicate-uses-match-number", SV, "_already_on_this_line", "return value -> None", "match_number", "a caller already in a call is never recognised", CALLERS),
+    D("server-duplicate-ignores-withheld-open-calls", SV, "_already_on_this_line", "remove `not`", "caller_is_withheld(s.caller)", "a withheld open call is compared with the new caller", CALLERS),
 ]
 
 

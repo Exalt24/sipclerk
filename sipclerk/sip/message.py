@@ -226,6 +226,34 @@ def number_in_uri(uri: str) -> str:
     return _number_from(number, unquote(context.group(1)) if context else "")
 
 
+def caller_number(value: str) -> str:
+    """The one reading of who is calling, used for the stored caller number, the block list (both the carrier's number and each entry a firm wrote) and the
+    one call per number rule. `value` is a From header or a URI (`sip:`, `sips:` or `tel:`, any parameter after the `;` dropped) or a bare number, and it is read
+    the way a dialled number is: `+1 (415) 555-0101;cpc=ordinary`, `%2B14155550101`, `0014155550101` and `tel:+1-415-555-0101` are all `+14155550101`, ten digits
+    stay national, and a name (`anonymous`, `Restricted`, `trunk01`) is nothing."""
+    if re.search(r"\b(?:sips?|tel):", value, re.I):
+        return number_in_uri(value)
+    return _number_from(value.partition(";")[0])
+
+
+def match_number(probe: str, others: list[str]) -> str:
+    """The entry of `others` that the normalised number `probe` is, or ''. Equal numbers match. A national number (ten digits) also matches an international one
+    that ends with it, and the other way round, but only when exactly one entry does: the rule a dialled number follows against the firms' numbers, so two
+    countries that share ten digits are never taken for one caller."""
+    others = [o for o in others if o]
+    if not probe:
+        return ""
+    if probe in others:
+        return probe
+    if re.fullmatch(r"\d{10}", probe):
+        hits = {o for o in others if o.startswith("+") and o.endswith(probe)}
+    elif probe.startswith("+"):
+        hits = {o for o in others if re.fullmatch(r"\d{10}", o) and probe.endswith(o)}
+    else:
+        hits = set()
+    return next(iter(hits)) if len(hits) == 1 else ""
+
+
 def dialled_numbers(req: "SipMessage") -> list[str]:
     """What the caller dialled, as candidates in the order they are trusted: the Request-URI, then the To header. P-Called-Party-ID and
     P-Asserted-Identity are not used: the first is a hint a proxy may add and the second says who the caller is, not what was dialled."""
