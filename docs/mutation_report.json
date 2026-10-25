@@ -1,0 +1,1315 @@
+{
+  "killed": 119,
+  "total": 119,
+  "results": [
+    {
+      "id": "guard-emergency",
+      "file": "sipclerk/guard.py",
+      "desc": "the emergency rule is deleted",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_guard.py::test_emergency_is_its_own_verdict[this"
+      ],
+      "seconds": 3.9
+    },
+    {
+      "id": "guard-existing-client",
+      "file": "sipclerk/guard.py",
+      "desc": "the existing client rule is deleted",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_guard.py::test_existing_client_escalates[I'm"
+      ],
+      "seconds": 3.8
+    },
+    {
+      "id": "guard-human-request",
+      "file": "sipclerk/guard.py",
+      "desc": "the request for a person rule is deleted",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_guard.py::test_human_request_escalates[I"
+      ],
+      "seconds": 3.8
+    },
+    {
+      "id": "guard-legal-advice-request",
+      "file": "sipclerk/guard.py",
+      "desc": "the legal advice request rule is deleted",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_guard.py::test_legal_advice_request_is_deflected[Do"
+      ],
+      "seconds": 3.9
+    },
+    {
+      "id": "guard-out-of-scope",
+      "file": "sipclerk/guard.py",
+      "desc": "the out of scope practice area check is deleted",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_guard.py::test_out_of_scope_is_only_checked_when_asked_and_in_scope_words_win"
+      ],
+      "seconds": 3.9
+    },
+    {
+      "id": "guard-in-scope-wins",
+      "file": "sipclerk/guard.py",
+      "desc": "an in scope word no longer outranks an out of scope one",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_guard.py::test_out_of_scope_is_only_checked_when_asked_and_in_scope_words_win"
+      ],
+      "seconds": 4.0
+    },
+    {
+      "id": "guard-blocked-caller",
+      "file": "sipclerk/guard.py",
+      "desc": "the blocked caller list is ignored",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_guard.py::test_blocked_caller_is_refused_before_answering"
+      ],
+      "seconds": 3.9
+    },
+    {
+      "id": "guard-promised-outcome",
+      "file": "sipclerk/guard.py",
+      "desc": "the promised outcome rule is deleted",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_guard.py::test_output_rules_block_and_replace[You"
+      ],
+      "seconds": 3.9
+    },
+    {
+      "id": "guard-legal-advice-out",
+      "file": "sipclerk/guard.py",
+      "desc": "the agent legal advice rule is deleted",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_guard.py::test_output_rules_block_and_replace[You"
+      ],
+      "seconds": 3.9
+    },
+    {
+      "id": "guard-attorney-client",
+      "file": "sipclerk/guard.py",
+      "desc": "the implied attorney client relationship rule is deleted",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_guard.py::test_output_rules_block_and_replace[You're"
+      ],
+      "seconds": 3.9
+    },
+    {
+      "id": "guard-unmade-commitment",
+      "file": "sipclerk/guard.py",
+      "desc": "the unmade commitment rule is deleted",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_guard.py::test_output_rules_block_and_replace[I"
+      ],
+      "seconds": 4.0
+    },
+    {
+      "id": "guard-output-off",
+      "file": "sipclerk/guard.py",
+      "desc": "the output guard blocks nothing",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_guard.py::test_output_rules_block_and_replace[You"
+      ],
+      "seconds": 4.1
+    },
+    {
+      "id": "guard-no-replacement",
+      "file": "sipclerk/guard.py",
+      "desc": "a blocked line is not replaced",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_guard.py::test_output_rules_block_and_replace[You"
+      ],
+      "seconds": 4.0
+    },
+    {
+      "id": "machine-retry-limit-off-by-one",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "one retry fewer than the question allows",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_machine.py::test_invalid_answers_retry_then_escalate_a_required_field"
+      ],
+      "seconds": 3.9
+    },
+    {
+      "id": "machine-required-never-escalates",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "a required field that keeps failing is skipped instead of escalated",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_machine.py::test_invalid_answers_retry_then_escalate_a_required_field"
+      ],
+      "seconds": 4.7
+    },
+    {
+      "id": "machine-no-readback",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "the read-back confirmation is skipped",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_machine.py::test_full_intake_completes_with_qualified_record_and_one_submit"
+      ],
+      "seconds": 4.0
+    },
+    {
+      "id": "machine-confirm-not-recorded",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "a confirmed value is stored as unconfirmed",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_machine.py::test_full_intake_completes_with_qualified_record_and_one_submit"
+      ],
+      "seconds": 3.8
+    },
+    {
+      "id": "machine-correction-ignored",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "a correction spoken with the no is thrown away",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_machine.py::test_caller_correction_inside_the_no_is_taken_and_read_back_again"
+      ],
+      "seconds": 3.8
+    },
+    {
+      "id": "machine-unclear-confirm-forever",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "an unclear yes or no is asked again forever",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_machine.py::test_unclear_confirm_is_asked_once_more_then_counts_as_no"
+      ],
+      "seconds": 3.8
+    },
+    {
+      "id": "machine-unclear-consent-records",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "no clear yes to the recording question still records",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_machine.py::test_consent_unclear_twice_means_no_recording"
+      ],
+      "seconds": 3.9
+    },
+    {
+      "id": "machine-consent-no-records",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "a no to recording still records",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_machine.py::test_consent_yes_starts_recording_and_no_does_not"
+      ],
+      "seconds": 3.9
+    },
+    {
+      "id": "machine-consent-yes-not-recorded",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "a yes to recording never starts the recording",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_machine.py::test_consent_yes_starts_recording_and_no_does_not"
+      ],
+      "seconds": 4.0
+    },
+    {
+      "id": "machine-all-party-records-at-start",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "an all-party-consent firm records before the caller agrees",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_machine.py::test_begin_gives_greeting_and_both_disclosures_and_asks_for_consent"
+      ],
+      "seconds": 4.0
+    },
+    {
+      "id": "machine-dtmf-zero-ignored",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "pressing zero does not reach a person",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_machine.py::test_dtmf_zero_is_a_person_at_any_moment"
+      ],
+      "seconds": 4.0
+    },
+    {
+      "id": "machine-dtmf-zero-in-number",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "a zero typed inside a phone number transfers the call",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_machine.py::test_dtmf_digits_fill_the_phone_field_and_pound_ends_the_entry"
+      ],
+      "seconds": 4.0
+    },
+    {
+      "id": "machine-dtmf-logged",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "keypad digits are written to the event log",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_machine.py::test_dtmf_never_lands_in_the_event_log"
+      ],
+      "seconds": 3.9
+    },
+    {
+      "id": "machine-dtmf-pound",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "pound no longer ends a keypad entry",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_machine.py::test_partial_digits_are_not_kept_forever_and_a_keypad_entry_is_never_completed_by_speech"
+      ],
+      "seconds": 3.8
+    },
+    {
+      "id": "machine-dtmf-star",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "star no longer repeats the question",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_machine.py::test_dtmf_is_ignored_where_the_question_does_not_take_it_and_star_repeats"
+      ],
+      "seconds": 3.8
+    },
+    {
+      "id": "machine-silence-limit",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "endless silence never ends the call",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_machine.py::test_silence_reprompts_then_ends_the_call_with_a_callback_task"
+      ],
+      "seconds": 4.0
+    },
+    {
+      "id": "machine-silence-not-reset",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "an answer does not reset the silence count",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_machine.py::test_an_answer_resets_the_silence_count"
+      ],
+      "seconds": 4.0
+    },
+    {
+      "id": "machine-existing-client-flag",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "the existing client answer escalates the wrong way round",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_machine.py::test_full_intake_completes_with_qualified_record_and_one_submit"
+      ],
+      "seconds": 3.9
+    },
+    {
+      "id": "machine-advice-repeat",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "a repeated request for advice never reaches a person",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_machine.py::test_legal_advice_request_is_deflected_then_asks_again_and_a_repeat_escalates"
+      ],
+      "seconds": 3.9
+    },
+    {
+      "id": "machine-unsupported-area",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "an unsupported practice area is accepted",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_machine.py::test_a_practice_area_the_firm_does_not_list_is_declined_even_when_a_model_named_it"
+      ],
+      "seconds": 5.1
+    },
+    {
+      "id": "machine-after-hours-transfer",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "a transfer is attempted out of hours",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_machine.py::test_after_hours_says_so_and_a_person_request_becomes_a_callback_not_a_transfer"
+      ],
+      "seconds": 3.8
+    },
+    {
+      "id": "machine-qualification-order",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "a priority flag outranks a decline",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_machine.py::test_a_decline_outranks_a_priority_flag_when_both_rules_fail"
+      ],
+      "seconds": 3.8
+    },
+    {
+      "id": "machine-missing-field-passes",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "a missing field satisfies a qualification rule",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_machine.py::test_qualification_rules_read_missing_fields_as_failed"
+      ],
+      "seconds": 3.8
+    },
+    {
+      "id": "machine-boundary-days",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "the three year window is off by one day",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_machine.py::test_the_three_year_window_includes_its_last_day_and_excludes_the_next"
+      ],
+      "seconds": 3.8
+    },
+    {
+      "id": "machine-key-ignores-call",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "the idempotency key is the same for every call",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_machine.py::test_record_is_stamped_with_tenant_version_and_hash_and_a_stable_key"
+      ],
+      "seconds": 3.8
+    },
+    {
+      "id": "machine-stamp-missing",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "the config version and hash are not stamped on the record",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_machine.py::test_record_is_stamped_with_tenant_version_and_hash_and_a_stable_key"
+      ],
+      "seconds": 3.8
+    },
+    {
+      "id": "machine-no-inactive-guard",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "events after the call ends are acted on",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_machine_property.py::test_invariants_hold_over_a_random_call[0]"
+      ],
+      "seconds": 3.8
+    },
+    {
+      "id": "machine-no-submit",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "a finished intake is never submitted",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_machine.py::test_full_intake_completes_with_qualified_record_and_one_submit"
+      ],
+      "seconds": 3.8
+    },
+    {
+      "id": "machine-optional-skip",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "an optional field cannot be skipped",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_machine.py::test_optional_field_is_skipped_after_the_limit_and_when_the_caller_declines"
+      ],
+      "seconds": 3.8
+    },
+    {
+      "id": "machine-transfer-failed-no-task",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "a failed transfer leaves no callback task",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_machine.py::test_transfer_result_connected_hands_the_call_over_and_failed_leaves_a_callback"
+      ],
+      "seconds": 3.7
+    },
+    {
+      "id": "parsers-nanp",
+      "file": "sipclerk/intake/parsers.py",
+      "desc": "an impossible area code is accepted",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_parsers.py::test_phone_rejected[012"
+      ],
+      "seconds": 3.9
+    },
+    {
+      "id": "parsers-country-code",
+      "file": "sipclerk/intake/parsers.py",
+      "desc": "a leading 1 is not stripped",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_parsers.py::test_phone_ok[one"
+      ],
+      "seconds": 4.0
+    },
+    {
+      "id": "parsers-future-date",
+      "file": "sipclerk/intake/parsers.py",
+      "desc": "a date in the future is accepted",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_parsers.py::test_date_future_and_too_old_and_garbage"
+      ],
+      "seconds": 4.0
+    },
+    {
+      "id": "parsers-too-old",
+      "file": "sipclerk/intake/parsers.py",
+      "desc": "an impossibly old date is accepted",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_parsers.py::test_date_future_and_too_old_and_garbage"
+      ],
+      "seconds": 3.9
+    },
+    {
+      "id": "parsers-last-name",
+      "file": "sipclerk/intake/parsers.py",
+      "desc": "a first name alone is accepted",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_machine.py::test_invalid_answers_retry_then_escalate_a_required_field"
+      ],
+      "seconds": 3.8
+    },
+    {
+      "id": "parsers-name-length",
+      "file": "sipclerk/intake/parsers.py",
+      "desc": "a sentence is accepted as a name",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_parsers.py::test_name_rejected[yes-not_a_name]"
+      ],
+      "seconds": 3.9
+    },
+    {
+      "id": "parsers-skip-required",
+      "file": "sipclerk/intake/parsers.py",
+      "desc": "a required question can be skipped",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_parsers.py::test_skip_only_for_optional_questions"
+      ],
+      "seconds": 3.9
+    },
+    {
+      "id": "parsers-email",
+      "file": "sipclerk/intake/parsers.py",
+      "desc": "anything is accepted as an email address",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_machine.py::test_optional_field_is_skipped_after_the_limit_and_when_the_caller_declines"
+      ],
+      "seconds": 3.8
+    },
+    {
+      "id": "parsers-yesno-ambiguity",
+      "file": "sipclerk/intake/parsers.py",
+      "desc": "yes and no in one answer is read as yes",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_parsers.py::test_yesno_ambiguous_and_unclear"
+      ],
+      "seconds": 3.9
+    },
+    {
+      "id": "parsers-area-ambiguity",
+      "file": "sipclerk/intake/parsers.py",
+      "desc": "an ambiguous practice area is guessed",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_parsers.py::test_area_by_keyword_and_ambiguity"
+      ],
+      "seconds": 3.9
+    },
+    {
+      "id": "parsers-min-words",
+      "file": "sipclerk/intake/parsers.py",
+      "desc": "a one word description is accepted",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_parsers.py::test_option_and_text"
+      ],
+      "seconds": 4.0
+    },
+    {
+      "id": "parsers-mask",
+      "file": "sipclerk/intake/parsers.py",
+      "desc": "numbers and emails are not masked for the console copy",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_parsers.py::test_masking_for_the_console_copy"
+      ],
+      "seconds": 4.0
+    },
+    {
+      "id": "tenants-duplicate-did",
+      "file": "sipclerk/tenants.py",
+      "desc": "two firms can answer the same number",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_tenants.py::test_two_tenants_cannot_answer_the_same_number"
+      ],
+      "seconds": 4.2
+    },
+    {
+      "id": "tenants-extra-fields",
+      "file": "sipclerk/tenants.py",
+      "desc": "a misspelt config key is ignored",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_tenants.py::test_bad_configs_are_refused_with_a_reason[<lambda>-unknown_field]"
+      ],
+      "seconds": 4.0
+    },
+    {
+      "id": "tenants-hours-end",
+      "file": "sipclerk/tenants.py",
+      "desc": "the office is open one minute too long",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_tenants.py::test_opening_hours_follow_the_firms_own_clock"
+      ],
+      "seconds": 4.1
+    },
+    {
+      "id": "tenants-hash-order",
+      "file": "sipclerk/tenants.py",
+      "desc": "the config hash depends on key order",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_tenants.py::test_hash_follows_content_not_formatting"
+      ],
+      "seconds": 4.0
+    },
+    {
+      "id": "tenants-rule-field",
+      "file": "sipclerk/tenants.py",
+      "desc": "a rule can read a field that does not exist",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_tenants.py::test_bad_configs_are_refused_with_a_reason[<lambda>-unknown"
+      ],
+      "seconds": 4.1
+    },
+    {
+      "id": "store-shared-key",
+      "file": "sipclerk/store.py",
+      "desc": "every firm shares one encryption key",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_store.py::test_a_file_moved_to_another_call_or_tenant_will_not_decrypt"
+      ],
+      "seconds": 4.3
+    },
+    {
+      "id": "store-no-aad",
+      "file": "sipclerk/store.py",
+      "desc": "an encrypted file can be moved to another call",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_store.py::test_a_file_moved_to_another_call_or_tenant_will_not_decrypt"
+      ],
+      "seconds": 4.3
+    },
+    {
+      "id": "store-tenant-check",
+      "file": "sipclerk/store.py",
+      "desc": "staff of one firm can read another firm's calls",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_store.py::test_another_firms_staff_cannot_read_even_with_a_matching_role"
+      ],
+      "seconds": 4.3
+    },
+    {
+      "id": "store-recording-roles",
+      "file": "sipclerk/store.py",
+      "desc": "any staff role can play a recording",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_store.py::test_least_privilege_staff_cannot_play_recordings"
+      ],
+      "seconds": 4.3
+    },
+    {
+      "id": "store-audit-read",
+      "file": "sipclerk/store.py",
+      "desc": "an allowed read leaves no audit line",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_store.py::test_every_read_leaves_one_audit_line_and_denials_are_audited_too"
+      ],
+      "seconds": 4.4
+    },
+    {
+      "id": "store-audit-denied",
+      "file": "sipclerk/store.py",
+      "desc": "a denied read leaves no audit line",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_store.py::test_every_read_leaves_one_audit_line_and_denials_are_audited_too"
+      ],
+      "seconds": 4.3
+    },
+    {
+      "id": "store-audit-chain",
+      "file": "sipclerk/store.py",
+      "desc": "the audit log is not chained",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_store.py::test_every_read_leaves_one_audit_line_and_denials_are_audited_too"
+      ],
+      "seconds": 4.3
+    },
+    {
+      "id": "store-retention",
+      "file": "sipclerk/store.py",
+      "desc": "nothing is ever purged",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_store.py::test_retention_deletes_only_expired_calls_per_tenant_setting"
+      ],
+      "seconds": 4.3
+    },
+    {
+      "id": "store-purge-audit",
+      "file": "sipclerk/store.py",
+      "desc": "a purge leaves no audit line",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_store.py::test_retention_deletes_only_expired_calls_per_tenant_setting"
+      ],
+      "seconds": 4.4
+    },
+    {
+      "id": "store-call-id",
+      "file": "sipclerk/store.py",
+      "desc": "a call id can walk out of its folder",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_store.py::test_bad_inputs_are_refused"
+      ],
+      "seconds": 4.4
+    },
+    {
+      "id": "store-master-key",
+      "file": "sipclerk/store.py",
+      "desc": "a short master key is accepted",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_store.py::test_keys_differ_per_tenant_and_master_must_be_long_enough"
+      ],
+      "seconds": 4.5
+    },
+    {
+      "id": "delivery-duplicate-enqueue",
+      "file": "sipclerk/delivery.py",
+      "desc": "a delivery can be queued twice",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_delivery.py::test_enqueue_is_idempotent_per_target_and_key"
+      ],
+      "seconds": 4.4
+    },
+    {
+      "id": "delivery-5xx-not-retried",
+      "file": "sipclerk/delivery.py",
+      "desc": "a server error is not retried",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_delivery.py::test_server_error_retries_with_backoff_and_the_call_is_untouched"
+      ],
+      "seconds": 4.4
+    },
+    {
+      "id": "delivery-4xx-retried",
+      "file": "sipclerk/delivery.py",
+      "desc": "a permanent refusal is retried forever",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_delivery.py::test_wrong_secret_is_a_permanent_refusal_and_goes_to_dead_letters"
+      ],
+      "seconds": 4.3
+    },
+    {
+      "id": "delivery-attempt-limit",
+      "file": "sipclerk/delivery.py",
+      "desc": "retries never stop",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_delivery.py::test_gives_up_after_the_attempt_limit"
+      ],
+      "seconds": 4.3
+    },
+    {
+      "id": "delivery-no-backoff",
+      "file": "sipclerk/delivery.py",
+      "desc": "retries hammer the receiver",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_delivery.py::test_server_error_retries_with_backoff_and_the_call_is_untouched"
+      ],
+      "seconds": 4.4
+    },
+    {
+      "id": "delivery-bridge-signature",
+      "file": "sipclerk/delivery.py",
+      "desc": "the bridge signature covers the wrong bytes",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_delivery.py::test_bridge_payload_is_clio_shaped_and_signature_verifies"
+      ],
+      "seconds": 4.4
+    },
+    {
+      "id": "delivery-console-signature",
+      "file": "sipclerk/delivery.py",
+      "desc": "the console signature leaves out the timestamp",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_delivery.py::test_console_signature_follows_the_documented_header"
+      ],
+      "seconds": 5.8
+    },
+    {
+      "id": "delivery-key-header",
+      "file": "sipclerk/delivery.py",
+      "desc": "a retry carries a new idempotency key",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_delivery.py::test_server_error_retries_with_backoff_and_the_call_is_untouched"
+      ],
+      "seconds": 4.4
+    },
+    {
+      "id": "delivery-console-mask",
+      "file": "sipclerk/delivery.py",
+      "desc": "the console copy of the transcript is not masked",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_delivery.py::test_console_payload_matches_the_documented_ingest_contract"
+      ],
+      "seconds": 5.7
+    },
+    {
+      "id": "sip-dtmf-dedupe",
+      "file": "sipclerk/sip/rtp.py",
+      "desc": "one keypad press arrives as many digits",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_sip_stack.py::test_call_audio_dtmf_and_bye_over_udp"
+      ],
+      "seconds": 7.1
+    },
+    {
+      "id": "sip-retransmit",
+      "file": "sipclerk/sip/stack.py",
+      "desc": "a retransmitted INVITE starts a second call",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_sip_stack.py::test_a_retransmitted_invite_gets_the_same_answer_not_a_second_call"
+      ],
+      "seconds": 8.5
+    },
+    {
+      "id": "sip-codec-order",
+      "file": "sipclerk/sip/message.py",
+      "desc": "the codec preference order is ignored",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_sip_stack.py::test_sdp_roundtrip_and_codec_negotiation"
+      ],
+      "seconds": 5.6
+    },
+    {
+      "id": "sip-bye",
+      "file": "sipclerk/sip/stack.py",
+      "desc": "a BYE does not end the dialog",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_sip_stack.py::test_call_audio_dtmf_and_bye_over_udp"
+      ],
+      "seconds": 9.0
+    },
+    {
+      "id": "sip-dedupe-seq",
+      "file": "sipclerk/sip/rtp.py",
+      "desc": "duplicate RTP packets are decoded twice",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_sip_stack.py::test_a_duplicate_or_late_rtp_packet_is_not_decoded_twice"
+      ],
+      "seconds": 8.7
+    },
+    {
+      "id": "delivery-unqualified-record",
+      "file": "sipclerk/delivery.py",
+      "desc": "a call that ended before it was qualified crashes the delivery builder",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_machine_property.py::test_every_record_a_random_call_can_produce_can_be_delivered[0]"
+      ],
+      "seconds": 3.9
+    },
+    {
+      "id": "proc-submit-error",
+      "file": "sipclerk/voice/processors.py",
+      "desc": "a failing write stops the call from ending",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_processors.py::test_a_failing_submit_is_recorded_and_the_call_still_ends"
+      ],
+      "seconds": 9.6
+    },
+    {
+      "id": "proc-transfer-error",
+      "file": "sipclerk/voice/processors.py",
+      "desc": "a transfer that raises leaves the caller on a dead line",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_processors.py::test_a_transfer_that_raises_becomes_a_failed_transfer_with_the_callback_line"
+      ],
+      "seconds": 10.2
+    },
+    {
+      "id": "proc-junk-filter",
+      "file": "sipclerk/voice/processors.py",
+      "desc": "a phantom word Whisper invents on noise is taken as the caller's answer",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_processors.py::test_phantom_words_are_not_passed_on_as_the_callers_answer[You-0.8-0.1-False]"
+      ],
+      "seconds": 9.0
+    },
+    {
+      "id": "proc-no-speech",
+      "file": "sipclerk/voice/processors.py",
+      "desc": "a transcript Whisper doubts is speech is kept",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_processors.py::test_phantom_words_are_not_passed_on_as_the_callers_answer[Jordan"
+      ],
+      "seconds": 9.4
+    },
+    {
+      "id": "proc-backchannel",
+      "file": "sipclerk/voice/processors.py",
+      "desc": "'hold on' counts as an invalid answer",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_processors.py::test_a_backchannel_gets_a_kind_word_and_does_not_count_as_an_answer"
+      ],
+      "seconds": 9.7
+    },
+    {
+      "id": "proc-guard-before-model",
+      "file": "sipclerk/voice/processors.py",
+      "desc": "the model sees an utterance the guard blocked",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_processors.py::test_the_guard_screens_the_words_before_the_model_is_asked"
+      ],
+      "seconds": 9.1
+    },
+    {
+      "id": "llm-outage",
+      "file": "sipclerk/voice/llm.py",
+      "desc": "a model outage escapes as an exception",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_llm.py::test_every_job_returns_none_when_the_provider_is_down"
+      ],
+      "seconds": 8.8
+    },
+    {
+      "id": "llm-area-list",
+      "file": "sipclerk/voice/llm.py",
+      "desc": "an area the firm does not list is accepted from the model",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_llm.py::test_classify_accepts_other_and_refuses_anything_outside_the_list"
+      ],
+      "seconds": 8.7
+    },
+    {
+      "id": "llm-timeout",
+      "file": "sipclerk/voice/llm.py",
+      "desc": "a slow model blocks the call",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_llm.py::test_a_slow_provider_is_cut_off_at_the_time_limit"
+      ],
+      "seconds": 10.7
+    },
+    {
+      "id": "llm-ack-length",
+      "file": "sipclerk/voice/llm.py",
+      "desc": "a long or empty acknowledgement is spoken",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_llm.py::test_acknowledgement_is_one_short_sentence_or_nothing"
+      ],
+      "seconds": 8.9
+    },
+    {
+      "id": "machine-endpointing-by-type",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "a story or a phone number is cut off at the short pause",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_processors.py::test_the_voice_activity_detector_waits_longer_while_the_caller_tells_a_story_or_says_a_number"
+      ],
+      "seconds": 40.3
+    },
+    {
+      "id": "proc-endpointing-follows-machine",
+      "file": "sipclerk/voice/processors.py",
+      "desc": "the detector never follows the question being asked",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_processors.py::test_the_voice_activity_detector_waits_longer_while_the_caller_tells_a_story_or_says_a_number"
+      ],
+      "seconds": 40.1
+    },
+    {
+      "id": "machine-partial-forgotten",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "digits heard before a pause are forgotten",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_machine.py::test_phone_digits_heard_so_far_are_kept_and_only_the_rest_is_asked_for"
+      ],
+      "seconds": 3.9
+    },
+    {
+      "id": "machine-partial-limit",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "partial digits can be asked for forever",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_machine.py::test_partial_digits_are_not_kept_forever_and_a_keypad_entry_is_never_completed_by_speech"
+      ],
+      "seconds": 3.8
+    },
+    {
+      "id": "machine-partial-keypad",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "a short keypad entry is completed by speech",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_machine.py::test_partial_digits_are_not_kept_forever_and_a_keypad_entry_is_never_completed_by_speech"
+      ],
+      "seconds": 3.8
+    },
+    {
+      "id": "pipe-barge-in",
+      "file": "sipclerk/voice/processors.py",
+      "desc": "talking over the agent does not interrupt it",
+      "layer": "pipeline",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_pipeline_fast.py::test_barge_in_silences_the_agent_within_a_second"
+      ],
+      "seconds": 9.7
+    },
+    {
+      "id": "pipe-clear-queue",
+      "file": "sipclerk/voice/processors.py",
+      "desc": "an interruption leaves the agent's queued speech in the RTP sender",
+      "layer": "pipeline",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_pipeline_fast.py::test_barge_in_silences_the_agent_within_a_second"
+      ],
+      "seconds": 9.8
+    },
+    {
+      "id": "pipe-silence-timer",
+      "file": "sipclerk/voice/processors.py",
+      "desc": "a silent caller is never re-prompted",
+      "layer": "pipeline",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_pipeline_fast.py::test_silence_is_reprompted_and_then_the_call_is_ended_with_a_callback"
+      ],
+      "seconds": 70.0
+    },
+    {
+      "id": "pipe-dtmf-forward",
+      "file": "sipclerk/voice/processors.py",
+      "desc": "keypad digits never reach the state machine",
+      "layer": "pipeline",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_pipeline_fast.py::test_pressing_zero_transfers_and_the_two_legs_are_bridged_with_a_whisper_first"
+      ],
+      "seconds": 27.9
+    },
+    {
+      "id": "pipe-dtmf-hook",
+      "file": "sipclerk/voice/processors.py",
+      "desc": "RFC 4733 events are not turned into keypad frames",
+      "layer": "pipeline",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_pipeline_fast.py::test_pressing_zero_transfers_and_the_two_legs_are_bridged_with_a_whisper_first"
+      ],
+      "seconds": 27.9
+    },
+    {
+      "id": "pipe-stt-failure",
+      "file": "sipclerk/voice/processors.py",
+      "desc": "a failed transcription is silently dropped",
+      "layer": "pipeline",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_pipeline_fast.py::test_a_failed_stt_utterance_asks_again_and_a_digit_pound_entry_fills_the_phone_field"
+      ],
+      "seconds": 44.7
+    },
+    {
+      "id": "pipe-recording-gate",
+      "file": "sipclerk/call.py",
+      "desc": "caller audio is kept without consent",
+      "layer": "pipeline",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_pipeline_fast.py::test_recording_is_kept_only_when_the_caller_agreed"
+      ],
+      "seconds": 16.7
+    },
+    {
+      "id": "pipe-whisper",
+      "file": "sipclerk/call.py",
+      "desc": "staff get no whisper before the bridge opens",
+      "layer": "pipeline",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_pipeline_fast.py::test_pressing_zero_transfers_and_the_two_legs_are_bridged_with_a_whisper_first"
+      ],
+      "seconds": 35.1
+    },
+    {
+      "id": "pipe-bridge",
+      "file": "sipclerk/call.py",
+      "desc": "the two legs are never bridged",
+      "layer": "pipeline",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_pipeline_fast.py::test_pressing_zero_transfers_and_the_two_legs_are_bridged_with_a_whisper_first"
+      ],
+      "seconds": 21.6
+    },
+    {
+      "id": "pipe-desk-hangup",
+      "file": "sipclerk/call.py",
+      "desc": "the caller stays on the line after the desk phone hangs up",
+      "layer": "pipeline",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_pipeline_fast.py::test_the_desk_phone_hanging_up_ends_the_callers_call_too"
+      ],
+      "seconds": 23.8
+    },
+    {
+      "id": "pipe-agent-bye",
+      "file": "sipclerk/call.py",
+      "desc": "the agent never hangs up",
+      "layer": "pipeline",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_pipeline_fast.py::test_silence_is_reprompted_and_then_the_call_is_ended_with_a_callback"
+      ],
+      "seconds": 31.5
+    },
+    {
+      "id": "pipe-bridge-delivery",
+      "file": "sipclerk/call.py",
+      "desc": "a finished intake is not sent to the case-management receiver",
+      "layer": "pipeline",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_pipeline_fast.py::test_a_full_intake_with_stand_in_models_is_saved_and_queued_to_both_receivers"
+      ],
+      "seconds": 54.1
+    },
+    {
+      "id": "pipe-console-delivery",
+      "file": "sipclerk/call.py",
+      "desc": "the masked call is not sent to the console",
+      "layer": "pipeline",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_pipeline_fast.py::test_a_full_intake_with_stand_in_models_is_saved_and_queued_to_both_receivers"
+      ],
+      "seconds": 53.5
+    },
+    {
+      "id": "pipe-duplicate-call",
+      "file": "sipclerk/server.py",
+      "desc": "the same caller can hold two calls on one line",
+      "layer": "pipeline",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_pipeline_fast.py::test_the_same_caller_cannot_hold_two_calls_on_one_line"
+      ],
+      "seconds": 6.3
+    },
+    {
+      "id": "pipe-blocked-caller",
+      "file": "sipclerk/server.py",
+      "desc": "a blocked number is answered",
+      "layer": "pipeline",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_pipeline_fast.py::test_a_blocked_caller_is_declined_and_no_session_starts"
+      ],
+      "seconds": 6.0
+    },
+    {
+      "id": "pipe-wrong-number",
+      "file": "sipclerk/server.py",
+      "desc": "a wrong number loads a tenant",
+      "layer": "pipeline",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_pipeline_fast.py::test_the_dialled_number_picks_the_tenant_and_other_numbers_get_404"
+      ],
+      "seconds": 6.0
+    },
+    {
+      "id": "pipe-capacity",
+      "file": "sipclerk/server.py",
+      "desc": "there is no limit on simultaneous calls",
+      "layer": "pipeline",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_pipeline_fast.py::test_calls_beyond_the_limit_get_503_and_a_call_with_no_common_codec_gets_488"
+      ],
+      "seconds": 6.6
+    },
+    {
+      "id": "pipe-no-codec",
+      "file": "sipclerk/server.py",
+      "desc": "a call with no common codec is answered",
+      "layer": "pipeline",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_pipeline_fast.py::test_a_call_that_offers_no_codec_we_speak_is_refused_with_488"
+      ],
+      "seconds": 6.4
+    }
+  ]
+}

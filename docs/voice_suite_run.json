@@ -1,0 +1,104 @@
+{
+  "scenarios_run": 20,
+  "caller_side_ms": {
+    "n": 141,
+    "p50": 619,
+    "p95": 1611,
+    "max": 2850
+  },
+  "agent_side_vad_stop_to_first_audio_ms": {
+    "cached_prompt_no_model": {
+      "n": 125,
+      "p50": 151,
+      "p95": 267
+    },
+    "a_sentence_rendered_on_the_spot": {
+      "n": 0,
+      "p50": null,
+      "p95": null
+    },
+    "language_model_in_the_turn": {
+      "n": 14,
+      "p50": 572,
+      "p95": 1019
+    }
+  },
+  "per_completed_intake": {
+    "calls": 13,
+    "call_seconds": 80.4,
+    "llm_calls": 1.08,
+    "llm_prompt_tokens": 82.62,
+    "llm_completion_tokens": 14.23,
+    "llm_seconds": 0.28,
+    "stt_calls": 9.46,
+    "stt_compute_seconds": 1.47,
+    "agent_speech_seconds": 45.54,
+    "caller_audio_seconds": 80.71
+  },
+  "tts_sentence_cache": {
+    "hits": 370,
+    "misses": 120
+  },
+  "calls": {
+    "normal_intake": {
+      "wall_s": 77.4
+    },
+    "normal_intake_second_firm": {
+      "wall_s": 89.8
+    },
+    "after_hours": {
+      "wall_s": 82.3
+    },
+    "barge_in": {
+      "wall_s": 71.0
+    },
+    "long_silence": {
+      "wall_s": 90.5
+    },
+    "abandoned_silence": {
+      "wall_s": 37.5
+    },
+    "noisy_line": {
+      "wall_s": 75.9
+    },
+    "caller_correction": {
+      "wall_s": 81.2
+    },
+    "invalid_answers": {
+      "wall_s": 94.2
+    },
+    "dtmf_phone_number": {
+      "wall_s": 72.2
+    },
+    "unsupported_practice_area": {
+      "wall_s": 63.7
+    },
+    "legal_advice_request": {
+      "wall_s": 83.7
+    },
+    "legal_advice_repeated": {
+      "wall_s": 50.1
+    },
+    "provider_llm_error": {
+      "wall_s": 77.4
+    },
+    "existing_client_transfer": {
+      "wall_s": 37.3
+    },
+    "transfer_busy": {
+      "wall_s": 28.6
+    },
+    "transfer_no_answer": {
+      "wall_s": 34.5
+    },
+    "dtmf_zero_for_a_person": {
+      "wall_s": 30.5
+    },
+    "provider_stt_timeout": {
+      "wall_s": 83.1
+    },
+    "provider_webhook_500": {
+      "wall_s": 76.4
+    }
+  }
+}

@@ -1,0 +1,466 @@
+"""A small SIP user agent over UDP: enough of RFC 3261 for inbound intake calls and a staff endpoint.
+
+Implemented: INVITE (as server and as client), 100/180/2xx/4xx-6xx, ACK, BYE, CANCEL, OPTIONS, INFO
+(application/dtmf-relay), re-INVITE answered with the current SDP, retransmission of a final response
+to a repeated INVITE, and 2xx retransmission until the ACK arrives.
+
+Not implemented, on purpose: TCP and TLS, registration, digest authentication, SRTP, forking, session
+timers, REFER (the warm transfer here is a bridged second call, see sipclerk.sip.transfer).
+"""
+from __future__ import annotations
+
+import asyncio
+import ipaddress
+import logging
+import re
+import socket
+import time
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass, field
+
+from sipclerk.sip import message as sm
+from sipclerk.sip.message import SipMessage
+
+log = logging.getLogger("sipclerk.sip")
+
+T1 = 0.5
+
+
+def _ip_literal(host: str) -> str:
+    try:
+        return str(ipaddress.IPv4Address(host))
+    except ValueError:
+        return ""
+
+
+def local_ip_for(peer_host: str, peer_port: int = 5060) -> str:
+    """The local address the OS would use to reach a peer (a UDP connect sends nothing)."""
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect((peer_host, peer_port))
+        return s.getsockname()[0]
+    except OSError:
+        return "127.0.0.1"
+    finally:
+        s.close()
+
+
+@dataclass
+class Dialog:
+    stack: SipStack
+    call_id: str
+    role: str  # "uas" or "uac"
+    local_uri: str
+    remote_uri: str
+    local_tag: str
+    remote_tag: str
+    remote_target: str  # Contact of the peer
+    peer_addr: tuple[str, int]
+    local_contact: str
+    cseq: int = 1
+    state: str = "early"
+    terminated: asyncio.Event = field(default_factory=asyncio.Event)
+    last_answer_sdp: str = ""
+    on_dtmf: Callable[[str], None] | None = None
+    ended_by: str = ""
+
+    async def bye(self, timeout: float = 2.0) -> bool:
+        """Hang up. Returns True if the peer answered the BYE."""
+        if self.terminated.is_set():
+            return True
+        self.cseq += 1
+        req = self.stack.build_in_dialog(self, "BYE")
+        ok = await self.stack.request(req, self.peer_addr, timeout=timeout)
+        self.ended_by = "local"
+        self.terminated.set()
+        self.stack.dialogs.pop(self.call_id, None)
+        return ok is not None and ok.status_code == 200
+
+
+class IncomingInvite:
+    """An INVITE that has reached us and not been answered yet."""
+
+    def __init__(self, stack: SipStack, req: SipMessage, addr: tuple[str, int]):
+        self.stack = stack
+        self.req = req
+        self.addr = addr
+        self.to_tag = sm.new_tag()
+        self.acked = asyncio.Event()
+        self.cancelled = asyncio.Event()
+        self.final: SipMessage | None = None
+        self.dialog: Dialog | None = None
+        self.did = sm.normalize_did(sm.uri_user(req.request_uri) or sm.uri_user(req.get("to")))
+        self.caller = sm.normalize_did(sm.uri_user(req.get("from")))
+        self.offer = req.body
+        # The address the caller dialled is the one it can reach us on: behind NAT or a Docker bridge our own interface address is not.
+        self.dialled_ip = _ip_literal(sm.uri_hostport(req.request_uri)[0]) if req.is_request else ""
+
+    def provisional(self, code: int = 180, reason: str = "Ringing") -> None:
+        self.stack.send(sm.make_response(self.req, code, reason, to_tag=self.to_tag if code != 100 else ""), self.addr)
+
+    def reject(self, code: int, reason: str) -> None:
+        self.final = sm.make_response(self.req, code, reason, to_tag=self.to_tag)
+        self.stack.send(self.final, self.addr)
+        self.stack.pending_invites.pop(self.req.call_id, None)
+        self.stack.remember(self.req, self.final)
+
+    async def answer(self, sdp_body: str, local_host: str | None = None) -> Dialog:
+        """Send 200 OK with our SDP and keep resending it until the ACK arrives."""
+        host = local_host or self.stack.local_host_for(self.addr)
+        contact = f"sip:{host}:{self.stack.port}"
+        resp = sm.make_response(self.req, 200, "OK", to_tag=self.to_tag, contact=contact, body=sdp_body)
+        self.final = resp
+        d = Dialog(self.stack, self.req.call_id, "uas",
+                   local_uri=sm.contact_uri(self.req.get("to")), remote_uri=sm.contact_uri(self.req.get("from")),
+                   local_tag=self.to_tag, remote_tag=self.req.tag_of("from"),
+                   remote_target=sm.contact_uri(self.req.get("contact")) or sm.contact_uri(self.req.get("from")),
+                   peer_addr=self.addr, local_contact=contact, state="confirmed", last_answer_sdp=sdp_body)
+        d.cseq = 0
+        self.dialog = d
+        self.stack.dialogs[d.call_id] = d
+        self.stack.pending_invites.pop(self.req.call_id, None)
+        self.stack.remember(self.req, resp)
+        self.stack.send(resp, self.addr)
+        asyncio.get_running_loop().create_task(self._retransmit_until_ack(resp))
+        return d
+
+    async def _retransmit_until_ack(self, resp: SipMessage) -> None:
+        delay = T1
+        waited = 0.0
+        while waited < 32 and not self.acked.is_set():
+            try:
+                await asyncio.wait_for(self.acked.wait(), delay)
+            except asyncio.TimeoutError:
+                self.stack.send(resp, self.addr)
+                waited += delay
+                delay = min(delay * 2, 4.0)
+        if not self.acked.is_set() and self.dialog and not self.dialog.terminated.is_set():
+            log.warning("no ACK for call %s, dropping dialog", self.req.call_id)
+            self.dialog.ended_by = "no-ack"
+            self.dialog.terminated.set()
+            self.stack.dialogs.pop(self.req.call_id, None)
+
+
+@dataclass
+class InviteResult:
+    status: int
+    reason: str
+    dialog: Dialog | None = None
+    answer_sdp: str = ""
+
+
+class SipStack(asyncio.DatagramProtocol):
+    def __init__(self, host: str, port: int, on_invite: Callable[[IncomingInvite], Awaitable[None]] | None = None,
+                 advertise_host: str | None = None):
+        self.host = host
+        self.port = port
+        self.advertise_host = advertise_host
+        self.on_invite = on_invite
+        self.transport: asyncio.DatagramTransport | None = None
+        self.dialogs: dict[str, Dialog] = {}
+        self.pending_invites: dict[str, IncomingInvite] = {}
+        self._responses: dict[tuple[str, int, str], asyncio.Queue[SipMessage]] = {}
+        self._seen: dict[tuple[str, str, str], SipMessage] = {}
+        self.stats = {"requests": 0, "responses": 0, "malformed": 0, "retransmits_absorbed": 0}
+        self.log: list[tuple[str, str, float]] = []  # (direction, first line, wall time) for the proof run
+        self._acks: dict[str, IncomingInvite] = {}
+
+    # ---- lifecycle
+
+    async def start(self) -> None:
+        loop = asyncio.get_running_loop()
+        self.transport, _ = await loop.create_datagram_endpoint(lambda: self, local_addr=(self.host, self.port))
+        self.port = self.transport.get_extra_info("sockname")[1]
+
+    async def stop(self) -> None:
+        for d in list(self.dialogs.values()):
+            await d.bye(timeout=0.5)
+        if self.transport:
+            self.transport.close()
+
+    def local_host_for(self, peer: tuple[str, int]) -> str:
+        if self.advertise_host:
+            return self.advertise_host
+        if self.host not in ("0.0.0.0", ""):
+            return self.host
+        return local_ip_for(peer[0], peer[1])
+
+    # ---- wire
+
+    def send(self, msg: SipMessage, addr: tuple[str, int]) -> None:
+        if self.transport is None or self.transport.is_closing():
+            return
+        if not msg.is_request:
+            self._stamp_via(msg, addr)
+        self.log.append(("out", msg.start_line, time.time()))
+        self.transport.sendto(msg.encode(), addr)
+
+    def remember(self, req: SipMessage, resp: SipMessage) -> None:
+        self._seen[(req.top_branch, req.method, req.call_id)] = resp
+
+    def datagram_received(self, data: bytes, addr) -> None:
+        try:
+            msg = sm.parse(data)
+        except sm.SipParseError as e:
+            self.stats["malformed"] += 1
+            log.debug("dropped malformed datagram from %s: %s", addr, e)
+            return
+        self.log.append(("in", msg.start_line, time.time()))
+        try:
+            if msg.is_request:
+                self.stats["requests"] += 1
+                self._on_request(msg, addr)
+            else:
+                self.stats["responses"] += 1
+                self._on_response(msg)
+        except Exception:  # a bad packet must never take the stack down
+            log.exception("error handling %s", msg.start_line)
+
+    # ---- server side
+
+    @staticmethod
+    def _stamp_via(resp: SipMessage, addr: tuple[str, int]) -> SipMessage:
+        """RFC 3581: tell the sender which address and port we saw it on."""
+        for i, (k, v) in enumerate(resp.headers):
+            if k.lower() == "via":
+                v = re.sub(r";rport(?!=)", f";rport={addr[1]}", v)
+                if "received=" not in v:
+                    v += f";received={addr[0]}"
+                resp.headers[i] = (k, v)
+                break
+        return resp
+
+    def _reply(self, req: SipMessage, addr, code: int, reason: str, **kw) -> SipMessage:
+        resp = self._stamp_via(sm.make_response(req, code, reason, **kw), addr)
+        self.send(resp, addr)
+        return resp
+
+    def _on_request(self, req: SipMessage, addr) -> None:
+        method = req.method
+        key = (req.top_branch, method, req.call_id)
+        if method != "ACK" and key in self._seen:  # retransmitted request: repeat our answer
+            self.stats["retransmits_absorbed"] += 1
+            self.send(self._seen[key], addr)
+            return
+        d = self.dialogs.get(req.call_id)
+        if method == "ACK":
+            inv = self._invite_for(req.call_id)
+            if inv is not None:
+                inv.acked.set()
+            return
+        if method == "OPTIONS":
+            self.remember(req, self._reply(req, addr, 200, "OK", to_tag=sm.new_tag(),
+                                           extra=[("Allow", "INVITE, ACK, BYE, CANCEL, OPTIONS, INFO")]))
+            return
+        if method == "INVITE" and d is None:
+            asyncio.get_running_loop().create_task(self._handle_new_invite(req, addr))
+            return
+        if method == "CANCEL":
+            inv = self.pending_invites.get(req.call_id)
+            if inv is None:
+                self._reply(req, addr, 481, "Call/Transaction Does Not Exist")
+                return
+            self._reply(req, addr, 200, "OK")
+            inv.cancelled.set()
+            inv.reject(487, "Request Terminated")
+            return
+        if d is None:
+            self._reply(req, addr, 481, "Call/Transaction Does Not Exist")
+            return
+        if method == "BYE":
+            self.remember(req, self._reply(req, addr, 200, "OK"))
+            d.ended_by = "remote"
+            d.terminated.set()
+            self.dialogs.pop(d.call_id, None)
+        elif method == "INFO":
+            self.remember(req, self._reply(req, addr, 200, "OK"))
+            ctype = req.get("content-type").lower()
+            if "dtmf" in ctype and d.on_dtmf:
+                digit = next((ln.split("=")[1].strip() for ln in req.body.splitlines() if ln.lower().startswith("signal")), "")
+                if digit:
+                    d.on_dtmf(digit)
+        elif method == "INVITE":  # re-INVITE (hold, refresh): keep the same media
+            self.remember(req, self._reply(req, addr, 200, "OK", to_tag=d.local_tag, contact=d.local_contact,
+                                           body=d.last_answer_sdp))
+        else:
+            self._reply(req, addr, 501, "Not Implemented")
+
+    def _invite_for(self, call_id: str) -> IncomingInvite | None:
+        return self._acks.get(call_id)
+
+    async def _handle_new_invite(self, req: SipMessage, addr) -> None:
+        inv = IncomingInvite(self, req, addr)
+        self.pending_invites[req.call_id] = inv
+        self._acks[req.call_id] = inv
+        trying = sm.make_response(req, 100, "Trying")
+        self.remember(req, trying)
+        self.send(trying, addr)
+        if self.on_invite is None:
+            inv.reject(404, "Not Found")
+            return
+        try:
+            await self.on_invite(inv)
+        except Exception:
+            log.exception("on_invite failed for %s", req.call_id)
+            if inv.final is None:
+                inv.reject(500, "Server Internal Error")
+
+    # ---- client side
+
+    def _on_response(self, resp: SipMessage) -> None:
+        q = self._responses.get((resp.call_id, resp.cseq_number, resp.cseq_method))
+        if q is not None:
+            q.put_nowait(resp)
+
+    def build_in_dialog(self, d: Dialog, method: str, body: str = "", ctype: str = "") -> SipMessage:
+        host = self.local_host_for(d.peer_addr)
+        headers = [
+            ("Via", f"SIP/2.0/UDP {host}:{self.port};rport;branch={sm.new_branch()}"),
+            ("Max-Forwards", "70"),
+            ("From", f"<{d.local_uri}>;tag={d.local_tag}"),
+            ("To", f"<{d.remote_uri}>;tag={d.remote_tag}"),
+            ("Call-ID", d.call_id),
+            ("CSeq", f"{d.cseq} {method}"),
+            ("Contact", f"<{d.local_contact}>"),
+            ("User-Agent", "sipclerk-lab"),
+        ]
+        if body:
+            headers.append(("Content-Type", ctype or "application/sdp"))
+        return SipMessage(f"{method} {d.remote_target} SIP/2.0", headers, body)
+
+    async def request(self, req: SipMessage, addr, timeout: float = 2.0) -> SipMessage | None:
+        """Send a non-INVITE request and wait for its final response (retransmits at T1, 2*T1, ...)."""
+        key = (req.call_id, req.cseq_number, req.cseq_method)
+        q: asyncio.Queue[SipMessage] = asyncio.Queue()
+        self._responses[key] = q
+        try:
+            end = asyncio.get_running_loop().time() + timeout
+            delay = T1
+            while True:
+                self.send(req, addr)
+                try:
+                    while True:
+                        resp = await asyncio.wait_for(q.get(), min(delay, max(0.01, end - asyncio.get_running_loop().time())))
+                        if resp.status_code >= 200:
+                            return resp
+                except asyncio.TimeoutError:
+                    pass
+                if asyncio.get_running_loop().time() >= end:
+                    return None
+                delay = min(delay * 2, 4.0)
+        finally:
+            self._responses.pop(key, None)
+
+    async def invite(self, to_uri: str, from_uri: str, sdp_body: str, *, timeout: float = 30.0,
+                     on_ringing: Callable[[], None] | None = None) -> InviteResult:
+        """Place a call. Waits up to `timeout` seconds for a final answer, then sends CANCEL."""
+        host_part, port = sm.uri_hostport(to_uri)
+        addr = (socket.gethostbyname(host_part), port)
+        local_host = self.local_host_for(addr)
+        call_id = sm.new_call_id(local_host)
+        tag = sm.new_tag()
+        contact = f"sip:{sm.uri_user(from_uri) or 'sipclerk'}@{local_host}:{self.port}"
+        branch = sm.new_branch()
+        headers = [
+            ("Via", f"SIP/2.0/UDP {local_host}:{self.port};rport;branch={branch}"),
+            ("Max-Forwards", "70"),
+            ("From", f"<{from_uri}>;tag={tag}"),
+            ("To", f"<{to_uri}>"),
+            ("Call-ID", call_id),
+            ("CSeq", "1 INVITE"),
+            ("Contact", f"<{contact}>"),
+            ("User-Agent", "sipclerk-lab"),
+            ("Content-Type", "application/sdp"),
+        ]
+        req = SipMessage(f"INVITE {to_uri} SIP/2.0", headers, sdp_body)
+        q: asyncio.Queue[SipMessage] = asyncio.Queue()
+        self._responses[(call_id, 1, "INVITE")] = q
+        loop = asyncio.get_running_loop()
+        end = loop.time() + timeout
+        delay = T1
+        got_provisional = False
+        try:
+            self.send(req, addr)
+            while True:
+                remaining = end - loop.time()
+                if remaining <= 0:
+                    await self._cancel(req, addr, q)
+                    return InviteResult(408, "Request Timeout")
+                try:
+                    resp = await asyncio.wait_for(q.get(), min(delay, remaining))
+                except asyncio.TimeoutError:
+                    if not got_provisional:
+                        self.send(req, addr)
+                        delay = min(delay * 2, 4.0)
+                    continue
+                if resp.status_code < 200:
+                    got_provisional = True
+                    if resp.status_code == 180 and on_ringing:
+                        on_ringing()
+                    continue
+                if resp.status_code >= 300:
+                    self._send_ack(req, resp, addr)
+                    return InviteResult(resp.status_code, resp.start_line.split(" ", 2)[2])
+                remote_tag = resp.tag_of("to")
+                d = Dialog(self, call_id, "uac", local_uri=from_uri, remote_uri=to_uri, local_tag=tag, remote_tag=remote_tag,
+                           remote_target=sm.contact_uri(resp.get("contact")) or to_uri, peer_addr=addr,
+                           local_contact=contact, state="confirmed", cseq=1)
+                self.dialogs[call_id] = d
+                self._send_ack(req, resp, addr, dialog=d)
+                self._absorb_2xx_retransmits(call_id, q, req, resp, addr, d)
+                return InviteResult(200, "OK", d, resp.body)
+        finally:
+            pass
+
+    def _send_ack(self, inv: SipMessage, resp: SipMessage, addr, dialog: Dialog | None = None) -> None:
+        if dialog:
+            target = dialog.remote_target
+            branch = sm.new_branch()  # ACK for a 2xx is its own transaction
+        else:
+            target = inv.request_uri
+            branch = inv.top_branch
+        local_host = self.local_host_for(addr)
+        headers = [
+            ("Via", f"SIP/2.0/UDP {local_host}:{self.port};rport;branch={branch}"),
+            ("Max-Forwards", "70"),
+            ("From", inv.get("from")),
+            ("To", resp.get("to")),
+            ("Call-ID", inv.call_id),
+            ("CSeq", f"{inv.cseq_number} ACK"),
+        ]
+        self.send(SipMessage(f"ACK {target} SIP/2.0", headers), addr)
+
+    def _absorb_2xx_retransmits(self, call_id, q, inv, resp, addr, d) -> None:
+        async def run() -> None:
+            end = asyncio.get_running_loop().time() + 10
+            while asyncio.get_running_loop().time() < end:
+                try:
+                    r = await asyncio.wait_for(q.get(), 1.0)
+                except asyncio.TimeoutError:
+                    continue
+                if r.status_code == 200:
+                    self._send_ack(inv, r, addr, dialog=d)  # the 200 was resent because our ACK was lost
+            self._responses.pop((call_id, 1, "INVITE"), None)
+
+        asyncio.get_running_loop().create_task(run())
+
+    async def _cancel(self, inv: SipMessage, addr, q: asyncio.Queue) -> None:
+        headers = [
+            ("Via", inv.get("via")),
+            ("Max-Forwards", "70"),
+            ("From", inv.get("from")),
+            ("To", inv.get("to")),
+            ("Call-ID", inv.call_id),
+            ("CSeq", "1 CANCEL"),
+        ]
+        self.send(SipMessage(f"CANCEL {inv.request_uri} SIP/2.0", headers), addr)
+        try:
+            while True:
+                r = await asyncio.wait_for(q.get(), 2.0)
+                if r.status_code >= 300:
+                    self._send_ack(inv, r, addr)
+                    break
+        except asyncio.TimeoutError:
+            pass
+        finally:
+            self._responses.pop((inv.call_id, 1, "INVITE"), None)

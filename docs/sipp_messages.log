@@ -1,0 +1,95 @@
+----------------------------------------------- 2026-10-25 18:18:35.982447
+UDP message sent (625 bytes):
+
+INVITE sip:+13055550102@192.168.65.254:5070 SIP/2.0
+Via: SIP/2.0/UDP 172.17.0.4:5060;branch=z9hG4bK-1-1-0
+From: sipp <sip:+17865550131@172.17.0.4:5060>;tag=1SIPpTag001
+To: <sip:+13055550102@192.168.65.254:5070>
+Call-ID: 1-1@172.17.0.4
+CSeq: 1 INVITE
+Contact: sip:sipp@172.17.0.4:5060
+Max-Forwards: 70
+Subject: sipclerk lab call from SIPp
+Content-Type: application/sdp
+Content-Length:   222
+
+v=0
+o=sipp 53655765 2353687637 IN IP4 172.17.0.4
+s=-
+c=IN IP4 172.17.0.4
+t=0 0
+m=audio 6000 RTP/AVP 8 0 101
+a=rtpmap:8 PCMA/8000
+a=rtpmap:0 PCMU/8000
+a=rtpmap:101 telephone-event/8000
+a=fmtp:101 0-16
+a=ptime:20
+
+----------------------------------------------- 2026-10-25 18:18:35.983973
+UDP message received [285] bytes :
+
+SIP/2.0 100 Trying
+Via: SIP/2.0/UDP 172.17.0.4:5060;branch=z9hG4bK-1-1-0;received=127.0.0.1
+From: sipp <sip:+17865550131@172.17.0.4:5060>;tag=1SIPpTag001
+To: <sip:+13055550102@192.168.65.254:5070>
+Call-ID: 1-1@172.17.0.4
+CSeq: 1 INVITE
+Server: sipclerk-lab
+Content-Length: 0
+
+
+----------------------------------------------- 2026-10-25 18:18:35.985266
+UDP message received [299] bytes :
+
+SIP/2.0 180 Ringing
+Via: SIP/2.0/UDP 172.17.0.4:5060;branch=z9hG4bK-1-1-0;received=127.0.0.1
+From: sipp <sip:+17865550131@172.17.0.4:5060>;tag=1SIPpTag001
+To: <sip:+13055550102@192.168.65.254:5070>;tag=b965b6a2
+Call-ID: 1-1@172.17.0.4
+CSeq: 1 INVITE
+Server: sipclerk-lab
+Content-Length: 0
+
+
+----------------------------------------------- 2026-10-25 18:18:35.985796
+UDP message received [589] bytes :
+
+SIP/2.0 200 OK
+Via: SIP/2.0/UDP 172.17.0.4:5060;branch=z9hG4bK-1-1-0;received=127.0.0.1
+From: sipp <sip:+17865550131@172.17.0.4:5060>;tag=1SIPpTag001
+To: <sip:+13055550102@192.168.65.254:5070>;tag=b965b6a2
+Call-ID: 1-1@172.17.0.4
+CSeq: 1 INVITE
+Contact: <sip:192.168.65.254:5070>
+Server: sipclerk-lab
+Content-Type: application/sdp
+Content-Length: 226
+
+v=0
+o=sipclerk 9079086 9079086 IN IP4 192.168.65.254
+s=sipclerk
+c=IN IP4 192.168.65.254
+t=0 0
+m=audio 53799 RTP/AVP 0 101
+a=rtpmap:0 PCMU/8000
+a=rtpmap:101 telephone-event/8000
+a=fmtp:101 0-16
+a=ptime:20
+a=sendrecv
+
+----------------------------------------------- 2026-10-25 18:18:35.986324
+UDP message sent (302 bytes):
+
+ACK sip:+13055550102@192.168.65.254:5070 SIP/2.0
+Via: SIP/2.0/UDP 172.17.0.4:5060;branch=z9hG4bK-1-1-4
+From: sipp <sip:+17865550131@172.17.0.4:5060>;tag=1SIPpTag001
+To: <sip:+13055550102@192.168.65.254:5070>;tag=b965b6a2
+Call-ID: 1-1@172.17.0.4
+CSeq: 1 ACK
+Max-Forwards: 70
+Content-Length: 0
+
+
+----------------------------------------------- 2026-10-25 18:18:51.000248
+UDP message sent (310 bytes):
+

@@ -1,0 +1,98 @@
+# Invented firm. Every name, number and rule below is made up for the lab.
+schema_version: 1
+tenant_id: ashgrovepell
+version: "2026.10.2"
+display_name: Ashgrove and Pell LLP
+did: "+14155550101"
+language: en
+voice: af_heart
+jurisdiction:
+  code: US-CA
+  recording: all_party_consent
+hours:
+  timezone: America/Los_Angeles
+  utc_offset_hours: -7
+  weekly:
+    mon: ["09:00", "17:00"]
+    tue: ["09:00", "17:00"]
+    wed: ["09:00", "17:00"]
+    thu: ["09:00", "17:00"]
+    fri: ["09:00", "17:00"]
+after_hours_message: "Our office is closed right now, so I will take your details and someone will call you back on the next business day."
+greeting: "Thank you for calling Ashgrove and Pell."
+disclosures:
+  - id: ai_notice
+    text: "You are speaking with an automated assistant, not a lawyer, and it cannot give legal advice."
+  - id: recording_notice
+    text: "This call may be recorded so the firm can review your details. Is that all right with you?"
+    ask_consent: true
+practice_areas:
+  - id: personal_injury
+    label: personal injury
+    keywords: [car accident, crash, collision, injured, injury, hurt, slip and fall, fell, dog bite, truck, hit by, whiplash, hospital]
+  - id: employment
+    label: employment law
+    keywords: [fired, laid off, terminated, boss, employer, workplace, harassment, wages, overtime, discrimination, retaliation, job]
+questions:
+  - id: full_name
+    type: name
+    prompt: "May I have your first and last name?"
+    confirm: true
+    max_retries: 2
+    timeout_s: 8
+  - id: callback_number
+    type: phone
+    prompt: "What is the best phone number to reach you? You can say it, or type it on your keypad and press pound."
+    confirm: true
+    allow_dtmf: true
+    timeout_s: 10
+  - id: existing_client
+    type: yesno
+    prompt: "Are you already a client of the firm?"
+    escalate_on: "yes"
+  - id: practice_area
+    type: enum
+    prompt: "In a sentence, what kind of matter is this?"
+    max_retries: 1
+    endpointing_s: 1.0
+  - id: incident_date
+    type: date
+    prompt: "Roughly when did this happen?"
+    max_age_days: 18250
+    reprompt: "A month and a year is enough, or you can say how long ago it was."
+  - id: description
+    type: text
+    prompt: "Please tell me briefly what happened."
+    min_words: 5
+qualification:
+  - id: within_three_years
+    field: incident_date
+    op: within_days
+    value: 1095
+    if_fails: needs_review
+    reason: "Incident is more than three years old; an attorney should check the time limits."
+  - id: area_supported
+    field: practice_area
+    op: in
+    value: [personal_injury, employment]
+    if_fails: decline
+    reason: "Practice area is not handled by this firm."
+transfer:
+  destination: "sip:desk@127.0.0.1:5091"
+  ring_timeout_s: 8
+  announce: "One moment while I connect you to a member of our team."
+  whisper: "Intake transfer for Ashgrove and Pell. {summary} Connecting the caller now."
+  unavailable: "I could not reach anyone just now. I have noted your details and someone will call you back."
+guard:
+  legal_advice_repeat_escalates: true
+  blocked_callers: ["+15550000001"]
+  out_of_scope_keywords: [criminal, dui, drunk driving, immigration, visa, divorce, custody, patent, trademark, bankruptcy]
+  out_of_scope_message: "Thank you for explaining. That is not an area this firm handles, and I am not able to advise where to go. A local bar association referral service can point you to the right kind of lawyer."
+closing: "Thank you. An attorney will review this and someone will contact you. Goodbye."
+retention_days: 30
+recording_enabled: true
+staff_roles: [intake_staff, attorney]
+recording_roles: [attorney]
+integrations:
+  case_management: true
+  call_console: true

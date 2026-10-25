@@ -1,0 +1,316 @@
+"""Deterministic readers for each intake field type.
+
+A speech recogniser hands back text. Whether that text is a valid name, number or date is decided
+here, in plain code with tests, never by a language model. The model is only a fallback for the
+fuzzy types (name, date, practice area), and its answer goes through the same validators.
+"""
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass
+from datetime import date, timedelta
+
+from sipclerk.tenants import PracticeArea, Question
+
+
+@dataclass
+class Parsed:
+    ok: bool
+    value: object = None
+    reason: str = ""  # machine-readable: too_short, need_last_name, not_a_date, ambiguous, ...
+    remainder: str = ""  # text left after a "no, it is ..." correction
+    skipped: bool = False
+    detail: str = ""
+
+
+FAIL = Parsed(False, reason="unparsed")
+
+DIGIT_WORDS = {"zero": "0", "oh": "0", "o": "0", "one": "1", "two": "2", "three": "3", "four": "4", "five": "5",
+               "six": "6", "seven": "7", "eight": "8", "nine": "9"}
+NUMBER_WORDS = {"a": 1, "an": 1, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8,
+                "nine": 9, "ten": 10, "eleven": 11, "twelve": 12, "couple": 2, "few": 3, "several": 4}
+MONTHS = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october",
+          "november", "december"]
+WEEKDAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+SKIP_WORDS = ("skip", "pass", "no thanks", "no thank you", "rather not", "i would rather not", "don't have", "do not have",
+              "prefer not", "not right now", "none")
+
+
+def _norm(text: str) -> str:
+    t = text.lower().replace("’", "'")
+    t = re.sub(r"[^a-z0-9'@.\-\s]", " ", t)
+    return re.sub(r"\s+", " ", t).strip()
+
+
+def _words(text: str) -> list[str]:
+    return [w.strip(".-") for w in _norm(text).split() if w.strip(".-")]
+
+
+# ------------------------------------------------------------------ yes / no
+
+YES = {"yes", "yeah", "yep", "yup", "sure", "correct", "right", "absolutely", "affirmative", "okay", "ok", "mhm", "uh-huh",
+       "definitely", "exactly", "indeed"}
+NO = {"no", "nope", "nah", "wrong", "incorrect", "negative", "not"}
+
+
+def parse_yesno(text: str) -> Parsed:
+    words = _words(text)
+    if not words:
+        return Parsed(False, reason="empty")
+    head = words[:5]
+    yes_i = next((i for i, w in enumerate(head) if w in YES or w == "yes"), None)
+    no_i = next((i for i, w in enumerate(head) if w in NO or w in ("isn't", "wasn't", "don't", "didn't")), None)
+    if "that's" in head and "right" in head and no_i is None:
+        yes_i = head.index("right")
+    if yes_i is not None and no_i is not None:
+        return Parsed(False, reason="ambiguous")
+    if yes_i is not None:
+        return Parsed(True, True, remainder=" ".join(words[yes_i + 1:]))
+    if no_i is not None:
+        rest = words[no_i + 1:]
+        while rest and rest[0] in ("it's", "its", "it", "is", "that's", "actually", "sorry", "not", "the", "name", "number"):
+            rest = rest[1:]
+        return Parsed(True, False, remainder=" ".join(rest))
+    return Parsed(False, reason="unclear")
+
+
+# ------------------------------------------------------------------ name
+
+NAME_LEAD = re.compile(r"^(?:(?:uh|um|well|yes|yeah|hi|hello|hey|sure|okay|ok)[,\s]+)*"
+                       r"(?:my (?:full )?name(?: is|'s)|this is|it is|it's|its|i am|i'm|name is|name's|call me|they call me)\s+", re.I)
+NAME_STOP = {"yes", "no", "the", "and", "but", "not", "what", "why", "how", "please", "sorry", "hello", "hi", "um", "uh",
+             "skip", "lawyer", "attorney", "case", "client", "person", "someone", "phone", "number", "accident", "injured",
+             "is", "was", "are", "were", "my", "i", "need", "want", "help", "have", "has", "had", "with", "for", "to", "at",
+             "a", "an", "it", "that", "this", "me", "we", "you", "bleeding", "hurt"}
+
+
+def parse_name(text: str) -> Parsed:
+    raw = re.sub(r"[^A-Za-z'\-\s]", " ", text.replace("’", "'"))
+    raw = NAME_LEAD.sub("", raw.strip())
+    tokens = [t.strip("-'") for t in raw.split() if t.strip("-'")]
+    if not tokens:
+        return Parsed(False, reason="empty")
+    if len(tokens) > 5 or any(t.lower() in NAME_STOP for t in tokens):
+        return Parsed(False, reason="not_a_name")
+    if re.search(r"\d", text) and not re.search(r"[A-Za-z]{2}", text):
+        return Parsed(False, reason="not_a_name")
+    name = " ".join(t[:1].upper() + t[1:].lower() if not re.match(r"^(mc|o')", t.lower()) else t[:1].upper() + t[1:2] + t[2:3].upper() + t[3:].lower()
+                    for t in tokens)
+    if len(tokens) < 2:
+        return Parsed(False, name, reason="need_last_name", detail=name)
+    return Parsed(True, name)
+
+
+# ------------------------------------------------------------------ phone
+
+
+def spoken_digits(text: str) -> str:
+    """Digits from speech: 'four one five double five oh one two' and '415-555-0123' both work."""
+    out: list[str] = []
+    words = [w.strip(".,") for w in _norm(text).replace("-", " ").split()]
+    words = [w for w in words if w]
+    i = 0
+    while i < len(words):
+        w = words[i]
+        if w in ("double", "triple") and i + 1 < len(words):
+            nxt = words[i + 1]
+            d = DIGIT_WORDS.get(nxt) or (nxt if nxt.isdigit() and len(nxt) == 1 else None)
+            if d:
+                out.append(d * (2 if w == "double" else 3))
+                i += 2
+                continue
+        if w in DIGIT_WORDS and not (w == "o" and len(words) > 1 and not any(x in DIGIT_WORDS or x.isdigit() for x in words)):
+            out.append(DIGIT_WORDS[w])
+        elif re.fullmatch(r"[0-9]+", w):
+            out.append(w)
+        i += 1
+    return "".join(out)
+
+
+def parse_phone(text: str) -> Parsed:
+    digits = spoken_digits(text)
+    return validate_phone_digits(digits)
+
+
+def validate_phone_digits(digits: str) -> Parsed:
+    if len(digits) == 11 and digits.startswith("1"):
+        digits = digits[1:]
+    if len(digits) < 10:
+        return Parsed(False, digits, reason="too_short", detail=str(len(digits)))  # value: the digits heard, so a caller can add the rest
+    if len(digits) > 10:
+        return Parsed(False, digits, reason="too_long", detail=str(len(digits)))
+    if digits[0] in "01" or digits[3] in "01":
+        return Parsed(False, reason="not_a_phone_number", detail="area or exchange code cannot start with 0 or 1")
+    return Parsed(True, "+1" + digits)
+
+
+# ------------------------------------------------------------------ email
+
+EMAIL_RE = re.compile(r"^[a-z0-9._%+\-]+@[a-z0-9\-]+(\.[a-z0-9\-]+)*\.[a-z]{2,}$")
+
+
+def is_skip(text: str) -> bool:
+    n = _norm(text)
+    return any(n == s or n.startswith(s + " ") or s in n.split(". ")[0] for s in SKIP_WORDS)
+
+
+def parse_email(text: str) -> Parsed:
+    n = _norm(text)
+    n = re.sub(r"\b(?:my email is|it's|it is|email is)\b", "", n).strip()
+    n = n.replace(" at ", "@").replace(" dot ", ".").replace(" underscore ", "_").replace(" dash ", "-").replace(" plus ", "+")
+    n = re.sub(r"\s+", "", n).strip(".")
+    if EMAIL_RE.match(n):
+        return Parsed(True, n)
+    return Parsed(False, reason="not_an_email")
+
+
+# ------------------------------------------------------------------ date
+
+
+def _num(token: str) -> int | None:
+    if token.isdigit():
+        return int(token)
+    return NUMBER_WORDS.get(token)
+
+
+def _add_months(d: date, months: int) -> date:
+    y, m = divmod(d.year * 12 + d.month - 1 - months, 12)
+    day = min(d.day, [31, 29 if y % 4 == 0 and (y % 100 != 0 or y % 400 == 0) else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][m])
+    return date(y, m + 1, day)
+
+
+def parse_date(text: str, today: date, max_age_days: int | None = None) -> Parsed:
+    n = _norm(text)
+    n = re.sub(r"(\d+)(st|nd|rd|th)\b", r"\1", n)
+    found: date | None = None
+    if re.search(r"\b(?:tomorrow|next (?:week|month|year|monday|tuesday|wednesday|thursday|friday|saturday|sunday))\b", n):
+        return Parsed(False, reason="in_the_future", detail="a date that has not happened yet")
+    if re.search(r"\byesterday\b", n):
+        found = today - timedelta(days=1)
+    elif re.search(r"\btoday\b|\bthis morning\b|\btonight\b", n):
+        found = today
+    elif m := re.search(r"\b(\w+)(?: of)? (day|days|week|weeks|month|months|year|years) ago\b", n):
+        k = _num(m.group(1))
+        if k is not None:
+            unit = m.group(2).rstrip("s")
+            found = {"day": today - timedelta(days=k), "week": today - timedelta(weeks=k),
+                     "month": _add_months(today, k), "year": _add_months(today, 12 * k)}[unit]
+    elif m := re.search(r"\blast (week|month|year)\b", n):
+        found = {"week": today - timedelta(weeks=1), "month": _add_months(today, 1), "year": _add_months(today, 12)}[m.group(1)]
+    elif m := re.search(r"\blast (" + "|".join(WEEKDAYS) + r")\b", n):
+        back = (today.weekday() - WEEKDAYS.index(m.group(1))) % 7 or 7
+        found = today - timedelta(days=back)
+    else:
+        month = next((i + 1 for i, name in enumerate(MONTHS) if re.search(rf"\b{name}\b", n)), None)
+        year_m = re.search(r"\b(19\d\d|20\d\d)\b", n)
+        day_m = re.search(r"\b([0-3]?\d)\b(?!\s*(?:19|20)\d\d$)", re.sub(r"\b(19|20)\d\d\b", "", n))
+        year = int(year_m.group(1)) if year_m else None
+        if month:
+            day = int(day_m.group(1)) if day_m and 1 <= int(day_m.group(1)) <= 31 else 1
+            if year is None:  # no year said: the most recent such month that is not in the future
+                year = today.year if date(today.year, month, 1) <= today else today.year - 1
+            try:
+                found = date(year, month, day)
+            except ValueError:
+                return Parsed(False, reason="not_a_date")
+        elif year:
+            found = date(year, 6, 30)
+    if found is None:
+        return Parsed(False, reason="not_a_date")
+    if found > today:
+        return Parsed(False, reason="in_the_future", detail=found.isoformat())
+    if max_age_days is not None and (today - found).days > max_age_days:
+        return Parsed(False, reason="too_old", detail=found.isoformat())
+    return Parsed(True, found.isoformat())
+
+
+# ------------------------------------------------------------------ enum and free text
+
+
+def _hits(text: str, keywords: list[str]) -> int:
+    n = " " + _norm(text) + " "
+    return sum(1 for k in keywords if re.search(rf"(?<![a-z]){re.escape(k.lower())}(?![a-z])", n))
+
+
+def parse_area(text: str, areas: list[PracticeArea]) -> Parsed:
+    scored = sorted(((_hits(text, a.keywords), a.id) for a in areas), reverse=True)
+    if not scored or scored[0][0] == 0:
+        return Parsed(False, reason="no_match")
+    if len(scored) > 1 and scored[0][0] == scored[1][0]:
+        return Parsed(False, reason="ambiguous", detail=",".join(i for s, i in scored if s == scored[0][0]))
+    return Parsed(True, scored[0][1])
+
+
+def parse_option(text: str, options: list[str]) -> Parsed:
+    n = _norm(text)
+    for o in options:
+        if re.search(rf"(?<![a-z]){re.escape(o.lower())}(?![a-z])", n):
+            return Parsed(True, o)
+    return Parsed(False, reason="no_match")
+
+
+FILLER_LEAD = re.compile(r"^(?:(?:uh|um|so|well|okay|ok|yeah|yes|hi)[,\s]+)+", re.I)
+
+
+def parse_text(text: str, min_words: int) -> Parsed:
+    t = FILLER_LEAD.sub("", text.strip())
+    t = re.sub(r"\s+", " ", t)[:600]
+    words = [w for w in re.split(r"\s+", t) if re.search(r"[A-Za-z0-9]", w)]
+    if len(words) < min_words:
+        return Parsed(False, reason="too_short", detail=str(len(words)))
+    return Parsed(True, t)
+
+
+# ------------------------------------------------------------------ dispatcher
+
+
+def parse_for(question: Question, text: str, *, today: date, areas: list[PracticeArea]) -> Parsed:
+    t = question.type
+    if not question.required and is_skip(text):
+        return Parsed(True, None, skipped=True)
+    if t == "name":
+        return parse_name(text)
+    if t == "phone":
+        return parse_phone(text)
+    if t == "email":
+        return parse_email(text)
+    if t == "date":
+        return parse_date(text, today, question.max_age_days)
+    if t == "yesno":
+        return parse_yesno(text)
+    if t == "enum":
+        return parse_area(text, areas) if question.id == "practice_area" else parse_option(text, question.options)
+    return parse_text(text, question.min_words)
+
+
+def speak_digits(e164: str) -> str:
+    """'+14155550123' as 'four one five, five five five, zero one two three' for a read-back."""
+    d = e164[-10:]
+    names = {v: k for k, v in DIGIT_WORDS.items() if k not in ("oh", "o")}
+    grp = [d[:3], d[3:6], d[6:]]
+    return ", ".join(" ".join(names[c] for c in g) for g in grp)
+
+
+def speak_partial(digits: str) -> str:
+    """Digits heard so far, in threes, for 'I have four one five so far'."""
+    names = {v: k for k, v in DIGIT_WORDS.items() if k not in ("oh", "o")}
+    return ", ".join(" ".join(names[c] for c in digits[i:i + 3]) for i in range(0, len(digits), 3))
+
+
+def readback(question: Question, value: object) -> str:
+    if question.type == "phone":
+        return speak_digits(str(value))
+    if question.type == "date":
+        y, m, d = str(value).split("-")
+        return f"{MONTHS[int(m) - 1].capitalize()} {int(d)}, {y}"
+    if question.type == "email":
+        return str(value).replace("@", " at ").replace(".", " dot ")
+    return str(value)
+
+
+def mask_for_transcript(text: str) -> str:
+    """Hide digit runs, emails and spoken digit strings before text leaves for another system."""
+    t = re.sub(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(?:\.[A-Za-z0-9\-]+)+", "[email]", text)
+    t = re.sub(r"\+?\d[\d\-\s().]{6,}\d", "[number]", t)
+    spoken = r"(?:(?:zero|oh|one|two|three|four|five|six|seven|eight|nine)[\s,.\-]+){6,}(?:zero|oh|one|two|three|four|five|six|seven|eight|nine)"
+    return re.sub(spoken, "[number]", t, flags=re.I)

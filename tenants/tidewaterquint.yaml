@@ -1,0 +1,103 @@
+# Invented firm. Every name, number and rule below is made up for the lab.
+schema_version: 1
+tenant_id: tidewaterquint
+version: "2026.10.4"
+display_name: Tidewater Quint Law
+did: "+13055550102"
+language: en
+voice: am_michael
+jurisdiction:
+  code: US-FL
+  recording: notice
+hours:
+  timezone: America/New_York
+  utc_offset_hours: -4
+  weekly:
+    mon: ["08:00", "18:00"]
+    tue: ["08:00", "18:00"]
+    wed: ["08:00", "18:00"]
+    thu: ["08:00", "18:00"]
+    fri: ["08:00", "18:00"]
+    sat: ["09:00", "13:00"]
+after_hours_message: "The office is closed at the moment. I will collect your details and the team will call you when we open."
+greeting: "Tidewater Quint Law, good day."
+disclosures:
+  - id: ai_notice
+    text: "I am an automated assistant and I cannot give legal advice."
+  - id: recording_notice
+    text: "This call is recorded for the firm's records."
+practice_areas:
+  - id: family_law
+    label: family law
+    keywords: [divorce, custody, child support, alimony, separation, visitation, adoption, spouse, paternity]
+  - id: immigration
+    label: immigration
+    keywords: [visa, green card, citizenship, deportation, asylum, immigration, work permit, naturalization]
+  - id: estate_planning
+    label: estate planning
+    keywords: [will, trust, estate, probate, inheritance, power of attorney, guardianship, beneficiary]
+questions:
+  - id: full_name
+    type: name
+    prompt: "Who am I speaking with? Please give me your first and last name."
+    confirm: true
+    timeout_s: 8
+  - id: callback_number
+    type: phone
+    prompt: "What number should the team call you back on? You can use your keypad and finish with pound."
+    confirm: true
+    allow_dtmf: true
+    timeout_s: 10
+  - id: email
+    type: email
+    prompt: "If you would like a confirmation by email, give me an address, or say skip."
+    required: false
+    max_retries: 1
+    timeout_s: 10
+  - id: practice_area
+    type: enum
+    prompt: "What is this about? A short sentence is fine."
+    max_retries: 1
+    endpointing_s: 1.0
+  - id: state
+    type: enum
+    prompt: "Which state do you live in?"
+    options: [Florida, Georgia, Alabama, California, Texas, New York]
+  - id: urgent_deadline
+    type: yesno
+    prompt: "Is there a court date or a filing deadline in the next two weeks?"
+  - id: description
+    type: text
+    prompt: "Tell me a little about the situation."
+    min_words: 4
+qualification:
+  - id: florida_only
+    field: state
+    op: equals
+    value: Florida
+    if_fails: decline
+    reason: "Caller lives outside Florida; the firm is not licensed there."
+  - id: no_deadline_pressure
+    field: urgent_deadline
+    op: is_false
+    if_fails: priority
+    reason: "Caller reports a court date or deadline inside two weeks."
+transfer:
+  destination: "sip:frontdesk@127.0.0.1:5092"
+  ring_timeout_s: 8
+  announce: "Please hold while I put you through to the front desk."
+  whisper: "Transfer from the Tidewater Quint intake line. {summary}"
+  unavailable: "Nobody is free at the front desk right now. I have your details and we will call you back."
+guard:
+  legal_advice_repeat_escalates: false
+  blocked_callers: []
+  out_of_scope_keywords: [criminal, dui, personal injury, car accident, bankruptcy, patent, trademark, employment]
+  out_of_scope_message: "Thank you for telling me. The firm does not take that kind of matter, and I cannot advise on where to turn. Your county bar association can refer you to the right lawyer."
+closing: "Thanks for calling. The team will review your details and be in touch. Goodbye."
+retention_days: 90
+recording_enabled: true
+staff_roles: [front_desk, attorney]
+recording_roles: [attorney]
+integrations:
+  case_management: true
+  call_console: true

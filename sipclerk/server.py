@@ -1,0 +1,144 @@
+"""The inbound line: SIP INVITEs are routed to a tenant by the dialled number and answered by a CallSession."""
+from __future__ import annotations
+
+import asyncio
+import logging
+import os
+import secrets
+from collections.abc import Callable
+from datetime import datetime
+from pathlib import Path
+
+from sipclerk import audio, guard
+from sipclerk.call import CallResult, CallSession, Faults
+from sipclerk.delivery import Outbox, Target
+from sipclerk.sip import message as sm
+from sipclerk.sip.rtp import RtpSession
+from sipclerk.sip.stack import IncomingInvite, SipStack
+from sipclerk.store import TenantStore
+from sipclerk.tenants import TenantRegistry
+from sipclerk.voice.llm import Llm
+from sipclerk.voice.models import Models
+
+log = logging.getLogger("sipclerk.server")
+PREFERRED_CODECS = [audio.PCMU, audio.PCMA]
+
+
+class ClerkServer:
+    def __init__(self, *, registry: TenantRegistry, models: Models, store: TenantStore, outbox: Outbox, host: str = "0.0.0.0",
+                 port: int = 5060, advertise_host: str | None = None, rtp_host: str = "0.0.0.0", max_calls: int = 8,
+                 now_fn: Callable[[], datetime] = datetime.utcnow, llm_factory: Callable[[], Llm] = Llm,
+                 faults: Faults | None = None, on_finished: Callable[[CallResult], None] | None = None):
+        self.registry = registry
+        self.models = models
+        self.store = store
+        self.outbox = outbox
+        self.stack = SipStack(host, port, self.on_invite, advertise_host)
+        self.rtp_host = rtp_host
+        self.max_calls = max_calls
+        self.now_fn = now_fn
+        self.llm_factory = llm_factory
+        self.faults = faults or Faults()
+        self.on_finished = on_finished
+        self.sessions: dict[str, CallSession] = {}
+        self.results: list[CallResult] = []
+        self.counters = {"answered": 0, "wrong_number": 0, "blocked_caller": 0, "duplicate_call": 0, "busy": 0, "no_codec": 0,
+                         "no_offer": 0}
+        self._stop = asyncio.Event()
+        self._worker: asyncio.Task | None = None
+
+    @property
+    def port(self) -> int:
+        return self.stack.port
+
+    async def start(self) -> None:
+        await self.stack.start()
+        self._worker = asyncio.get_running_loop().create_task(self.outbox.run(self._stop))
+
+    async def stop(self) -> None:
+        for s in list(self.sessions.values()):
+            s.finished.set()
+        await asyncio.sleep(0.05)
+        self._stop.set()
+        if self._worker:
+            await self._worker
+        await self.stack.stop()
+
+    async def on_invite(self, inv: IncomingInvite) -> None:
+        tenant = self.registry.by_did(inv.did)
+        if tenant is None:  # a wrong number: nothing is loaded and nothing is recorded
+            self.counters["wrong_number"] += 1
+            inv.reject(404, "Not Found")
+            return
+        v = guard.check_caller(inv.caller, tenant.config)
+        if v.action == "blocked_caller":
+            self.counters["blocked_caller"] += 1
+            inv.reject(603, "Decline")
+            return
+        if any(s.caller == inv.caller and s.cfg.tenant_id == tenant.config.tenant_id for s in self.sessions.values()):
+            self.counters["duplicate_call"] += 1  # the same caller on the same line already has a call open
+            inv.reject(486, "Busy Here")
+            return
+        if len(self.sessions) >= self.max_calls:
+            self.counters["busy"] += 1
+            inv.reject(503, "Service Unavailable")
+            return
+        if not inv.offer.strip():  # a late-offer INVITE (no SDP) is not supported
+            self.counters["no_offer"] += 1
+            inv.reject(488, "Not Acceptable Here")
+            return
+        try:
+            offer = sm.parse_sdp(inv.offer)
+        except sm.SipParseError:
+            inv.reject(400, "Bad SDP")
+            return
+        pick = sm.negotiate(offer, PREFERRED_CODECS)
+        if pick is None:
+            self.counters["no_codec"] += 1
+            inv.reject(488, "Not Acceptable Here")
+            return
+        codec, _offered_pt = pick
+        rtp = await RtpSession.open(self.rtp_host, 0, codec, offer.dtmf_pt)
+        rtp.set_remote(offer.host, offer.port)  # replaced by the first packet's source if the caller is behind NAT
+        inv.provisional(180, "Ringing")
+        host = self.stack.advertise_host or (inv.dialled_ip if self.stack.host in ("0.0.0.0", "") and inv.dialled_ip else self.stack.local_host_for(inv.addr))
+        dialog = await inv.answer(sm.build_sdp(host, rtp.local_port, [codec], offer.dtmf_pt), local_host=host)
+        try:
+            await asyncio.wait_for(inv.acked.wait(), 5)
+        except asyncio.TimeoutError:
+            await rtp.close()
+            return
+        rtp.start()
+        call_id = secrets.token_hex(6)
+        llm = self.llm_factory()
+        llm.fail = llm.fail or self.faults.llm_fail
+        session = CallSession(server=self, tenant=tenant, dialog=dialog, rtp=rtp, codec=codec, caller=inv.caller, call_id=call_id,
+                              now_utc=self.now_fn(), models=self.models, llm=llm, stack=self.stack, faults=self.faults)
+        self.sessions[call_id] = session
+        self.counters["answered"] += 1
+        asyncio.get_running_loop().create_task(self._run(call_id, session))
+
+    async def _run(self, call_id: str, session: CallSession) -> None:
+        try:
+            result = await session.run()
+            self.results.append(result)
+            if self.on_finished:
+                self.on_finished(result)
+        except Exception:
+            log.exception("call %s failed", call_id)
+        finally:
+            self.sessions.pop(call_id, None)
+
+
+def master_key_from_env() -> bytes:
+    """The at-rest master key. A lab key is generated into .secrets once and reused; production would use a KMS."""
+    env = os.environ.get("SIPCLERK_MASTER_KEY")
+    if env:
+        return bytes.fromhex(env)
+    path = Path(__file__).resolve().parent.parent / ".secrets" / "master.key"
+    if path.exists():
+        return bytes.fromhex(path.read_text(encoding="utf-8").strip())
+    path.parent.mkdir(exist_ok=True)
+    key = secrets.token_bytes(32)
+    path.write_text(key.hex(), encoding="utf-8")
+    return key

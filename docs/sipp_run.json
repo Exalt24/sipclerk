@@ -1,0 +1,314 @@
+{
+  "sipp_exit": 0,
+  "sipp_seconds": 88.0,
+  "sipp_stdout_tail": "26-10-25\t18:20:03.307475\t1792952403.307475         \n  Current Time           | 2026-10-25\t18:20:03.307561\t1792952403.307561         \n-------------------------+---------------------------+--------------------------\n  Counter Name           | Periodic value            | Cumulative value\n-------------------------+---------------------------+--------------------------\n  Elapsed Time           | 00:00:00:000000           | 00:00:00:000000          \n  Call Rate              |    0.000 cps              |    0.011 cps             \n-------------------------+---------------------------+--------------------------\n  Incoming calls created |        0                  |        0                 \n  Outgoing calls created |        0                  |        1                 \n  Total Calls created    |                           |        1                 \n  Current Calls          |        0                  |                          \n-------------------------+---------------------------+--------------------------\n  Successful call        |        0                  |        1                 \n  Failed call            |        0                  |        0                 \n-------------------------+---------------------------+--------------------------\n  Response Time 1        | 00:00:00:000000           | 00:00:00:000000          \n  Call Length            | 00:00:00:000000           | 00:00:00:000000          \n------------------------------ Test Terminated --------------------------------\n",
+  "server_sip_log": [
+    [
+      "in",
+      "INVITE sip:+13055550102@192.168.65.254:5070 SIP/2.0",
+      1792952315.9836154
+    ],
+    [
+      "out",
+      "SIP/2.0 100 Trying",
+      1792952315.9839633
+    ],
+    [
+      "out",
+      "SIP/2.0 180 Ringing",
+      1792952315.9844065
+    ],
+    [
+      "out",
+      "SIP/2.0 200 OK",
+      1792952315.9846184
+    ],
+    [
+      "in",
+      "ACK sip:+13055550102@192.168.65.254:5070 SIP/2.0",
+      1792952315.987111
+    ],
+    [
+      "in",
+      "OPTIONS sip:+13055550102@192.168.65.254:5070 SIP/2.0",
+      1792952331.0003624
+    ],
+    [
+      "out",
+      "SIP/2.0 200 OK",
+      1792952331.0003932
+    ],
+    [
+      "in",
+      "OPTIONS sip:+13055550102@192.168.65.254:5070 SIP/2.0",
+      1792952346.0022147
+    ],
+    [
+      "out",
+      "SIP/2.0 200 OK",
+      1792952346.0022504
+    ],
+    [
+      "in",
+      "OPTIONS sip:+13055550102@192.168.65.254:5070 SIP/2.0",
+      1792952361.0013897
+    ],
+    [
+      "out",
+      "SIP/2.0 200 OK",
+      1792952361.0014167
+    ],
+    [
+      "in",
+      "OPTIONS sip:+13055550102@192.168.65.254:5070 SIP/2.0",
+      1792952376.0008943
+    ],
+    [
+      "out",
+      "SIP/2.0 200 OK",
+      1792952376.000922
+    ],
+    [
+      "in",
+      "OPTIONS sip:+13055550102@192.168.65.254:5070 SIP/2.0",
+      1792952391.0037582
+    ],
+    [
+      "out",
+      "SIP/2.0 200 OK",
+      1792952391.003785
+    ],
+    [
+      "out",
+      "BYE sip:sipp@172.17.0.4:5060 SIP/2.0",
+      1792952403.302786
+    ],
+    [
+      "in",
+      "SIP/2.0 200 OK",
+      1792952403.3040116
+    ]
+  ],
+  "server_counters": {
+    "answered": 1,
+    "wrong_number": 0,
+    "blocked_caller": 0,
+    "duplicate_call": 0,
+    "busy": 0,
+    "no_codec": 0,
+    "no_offer": 0
+  },
+  "tenant_id": "tidewaterquint",
+  "config_version": "2026.10.4",
+  "config_hash": "75569928f389c50e1066150603fe443a0dde7f26053badf3b59176e08ede30ea",
+  "codec": "PCMU",
+  "rtp": {
+    "codec": "PCMU",
+    "packets_in": 4367,
+    "packets_out": 4365,
+    "bytes_in": 679844,
+    "remote": [
+      "127.0.0.1",
+      53800
+    ]
+  },
+  "outcome": "intake_priority",
+  "ended_by": "agent:complete",
+  "duration_s": 87.3,
+  "fields": {
+    "full_name": "Dana Whitfield",
+    "callback_number": "+17865550147",
+    "email": null,
+    "practice_area": "family_law",
+    "state": "Florida",
+    "urgent_deadline": true,
+    "description": "We are separating, and the hearing is about the custody schedule for our two children."
+  },
+  "field_sources": {
+    "full_name": "spoken",
+    "callback_number": "keypad",
+    "email": "",
+    "practice_area": "spoken",
+    "state": "spoken",
+    "urgent_deadline": "spoken",
+    "description": "spoken"
+  },
+  "transcript": [
+    {
+      "speaker": "AGENT",
+      "text": "Tidewater Quint Law, good day.",
+      "t": 0.07
+    },
+    {
+      "speaker": "AGENT",
+      "text": "I am an automated assistant and I cannot give legal advice.",
+      "t": 0.07
+    },
+    {
+      "speaker": "AGENT",
+      "text": "This call is recorded for the firm's records.",
+      "t": 0.07
+    },
+    {
+      "speaker": "AGENT",
+      "text": "Who am I speaking with? Please give me your first and last name.",
+      "t": 0.07
+    },
+    {
+      "speaker": "CALLER",
+      "text": "Dana Whitfield",
+      "t": 15.68
+    },
+    {
+      "speaker": "AGENT",
+      "text": "I have Dana Whitfield. Is that right?",
+      "t": 15.68
+    },
+    {
+      "speaker": "CALLER",
+      "text": "Yes, that is correct.",
+      "t": 21.45
+    },
+    {
+      "speaker": "AGENT",
+      "text": "What number should the team call you back on? You can use your keypad and finish with pound.",
+      "t": 21.45
+    },
+    {
+      "speaker": "AGENT",
+      "text": "I have seven eight six, five five five, zero one four seven. Is that right?",
+      "t": 29.42
+    },
+    {
+      "speaker": "CALLER",
+      "text": "Yes, that is correct.",
+      "t": 39.03
+    },
+    {
+      "speaker": "AGENT",
+      "text": "If you would like a confirmation by email, give me an address, or say skip.",
+      "t": 39.03
+    },
+    {
+      "speaker": "CALLER",
+      "text": "rather not.",
+      "t": 46.26
+    },
+    {
+      "speaker": "AGENT",
+      "text": "What is this about? A short sentence is fine.",
+      "t": 46.26
+    },
+    {
+      "speaker": "CALLER",
+      "text": "My husband and I want a divorce and we need to sort out custody.",
+      "t": 55.16
+    },
+    {
+      "speaker": "AGENT",
+      "text": "Which state do you live in?",
+      "t": 55.16
+    },
+    {
+      "speaker": "CALLER",
+      "text": "We live in Florida.",
+      "t": 59.17
+    },
+    {
+      "speaker": "AGENT",
+      "text": "Is there a court date or a filing deadline in the next two weeks?",
+      "t": 59.17
+    },
+    {
+      "speaker": "CALLER",
+      "text": "Yes, there is a hearing next week.",
+      "t": 66.3
+    },
+    {
+      "speaker": "AGENT",
+      "text": "Tell me a little about the situation.",
+      "t": 66.3
+    },
+    {
+      "speaker": "CALLER",
+      "text": "We are separating, and the hearing is about the custody schedule for our two children.",
+      "t": 75.11
+    },
+    {
+      "speaker": "AGENT",
+      "text": "I am so sorry to hear about your separation and the stress regarding your children's custody.",
+      "t": 75.41
+    },
+    {
+      "speaker": "AGENT",
+      "text": "Thanks for calling. The team will review your details and be in touch. Goodbye.",
+      "t": 75.41
+    }
+  ],
+  "usage": {
+    "llm": {
+      "calls": 1,
+      "failures": 0,
+      "prompt_tokens": 85,
+      "completion_tokens": 19,
+      "seconds": 0.3
+    },
+    "stt_audio_s": 1.29,
+    "stt_calls": 8,
+    "stt_dropped": 0,
+    "rx_catch_up_frames": 12,
+    "tts_audio_s": 53.29,
+    "caller_audio_s": 87.4,
+    "agent_audio_s": 53.3
+  },
+  "events": [
+    [
+      "dtmf",
+      ""
+    ],
+    [
+      "dtmf",
+      ""
+    ],
+    [
+      "dtmf",
+      ""
+    ],
+    [
+      "dtmf",
+      ""
+    ],
+    [
+      "dtmf",
+      ""
+    ],
+    [
+      "dtmf",
+      ""
+    ],
+    [
+      "dtmf",
+      ""
+    ],
+    [
+      "dtmf",
+      ""
+    ],
+    [
+      "dtmf",
+      ""
+    ],
+    [
+      "dtmf",
+      ""
+    ],
+    [
+      "dtmf",
+      ""
+    ],
+    [
+      "skipped",
+      ""
+    ]
+  ]
+}

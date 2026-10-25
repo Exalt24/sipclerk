@@ -1,0 +1,31 @@
+Integration run, 2026-10-26: one call through the line, delivered over real HTTP to the two receivers.
+
+Receivers: clio-matter-bridge verification code through tools/bridge_receiver.mjs (port 9301); clinic-call-console API built from its repository and run from a scratch copy (port 18080).
+
+Outbox state after the call (scripts/replay.py normal_intake --deliver):
+  bridge   delivered  attempts=1 last=200 {"outcome":"accepted","id":"etag:intake.created:114fb502f5d2:2e3d79dafe15679e","
+  console  delivered  attempts=1 last=201 {"id":"25728481-b709-3600-95d1-ec1522fac471","duplicate":false,"phiCount":2}
+
+The call as a reviewer sees it in the console (scripts/console_check.py):
+  38 calls listed, 2 from this line
+  {"agent": "Ashgrove and Pell LLP intake", "callerLabel": "Caller \u2022\u2022\u2022 0111", "reason": "OTHER", "outcome": "INFO_GIVEN", "phiCount": 2}
+    AGENT  Thank you for calling Ashgrove and Pell.
+    AGENT  You are speaking with an automated assistant, not a lawyer, and it cannot give legal advice.
+    AGENT  This call may be recorded so the firm can review your details. Is that all right with you?
+    CALLER Yes, that is fine.
+    AGENT  May I have your first and last name?
+    CALLER My name is [NAME].
+    AGENT  I have [NAME]. Is that right?
+    CALLER Yes, that is right.
+    AGENT  What is the best phone number to reach you? You can say it, or type it on your keypad and press pound.
+    CALLER [number]
+
+The console's contract (scripts/console_contract.py):
+  ok  signed delivery is created: 201 {"id":"3a03ca33-3dab-3c34-aa08-8b9ab16081a6","duplicate":false,"phiCount":1}
+  ok  the same call again is a duplicate: 200 {"id":"3a03ca33-3dab-3c34-aa08-8b9ab16081a6","duplicate":true,"phiCount":1}
+  ok  a forged signature is refused: 401 {"detail":"Invalid webhook signature","instance":"/api/ingest/calls","status":401,"title":
+  ok  a stale timestamp is refused: 401 {"detail":"Invalid webhook signature","instance":"/api/ingest/calls","status":401,"title":
+  ok  no signature is refused: 401 {"detail":"Invalid webhook signature","instance":"/api/ingest/calls","status":401,"title":
+
+Bridge receiver log:
+  {"at":"2026-10-25T18:25:22.597Z","status":200,"result":{"outcome":"accepted","id":"etag:intake.created:114fb502f5d2:2e3d79dafe15679e","dispatched":true,"event":"intake.created","result":{"stored_intak

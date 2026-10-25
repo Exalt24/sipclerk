@@ -1,0 +1,542 @@
+{
+  "$defs": {
+    "Disclosure": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "text": {
+          "minLength": 10,
+          "title": "Text",
+          "type": "string"
+        },
+        "ask_consent": {
+          "default": false,
+          "title": "Ask Consent",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "text"
+      ],
+      "title": "Disclosure",
+      "type": "object"
+    },
+    "Guard": {
+      "additionalProperties": false,
+      "properties": {
+        "legal_advice_repeat_escalates": {
+          "default": true,
+          "title": "Legal Advice Repeat Escalates",
+          "type": "boolean"
+        },
+        "blocked_callers": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Blocked Callers",
+          "type": "array"
+        },
+        "out_of_scope_keywords": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Out Of Scope Keywords",
+          "type": "array"
+        },
+        "out_of_scope_message": {
+          "minLength": 10,
+          "title": "Out Of Scope Message",
+          "type": "string"
+        }
+      },
+      "required": [
+        "out_of_scope_message"
+      ],
+      "title": "Guard",
+      "type": "object"
+    },
+    "Hours": {
+      "additionalProperties": false,
+      "properties": {
+        "timezone": {
+          "default": "UTC",
+          "title": "Timezone",
+          "type": "string"
+        },
+        "utc_offset_hours": {
+          "default": 0.0,
+          "title": "Utc Offset Hours",
+          "type": "number"
+        },
+        "weekly": {
+          "additionalProperties": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "type": "array"
+          },
+          "title": "Weekly",
+          "type": "object"
+        }
+      },
+      "required": [
+        "weekly"
+      ],
+      "title": "Hours",
+      "type": "object"
+    },
+    "Integrations": {
+      "additionalProperties": false,
+      "properties": {
+        "case_management": {
+          "default": true,
+          "title": "Case Management",
+          "type": "boolean"
+        },
+        "call_console": {
+          "default": true,
+          "title": "Call Console",
+          "type": "boolean"
+        }
+      },
+      "title": "Integrations",
+      "type": "object"
+    },
+    "Jurisdiction": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "title": "Code",
+          "type": "string"
+        },
+        "recording": {
+          "default": "notice",
+          "enum": [
+            "notice",
+            "all_party_consent"
+          ],
+          "title": "Recording",
+          "type": "string"
+        }
+      },
+      "required": [
+        "code"
+      ],
+      "title": "Jurisdiction",
+      "type": "object"
+    },
+    "PracticeArea": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "keywords": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Keywords",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "keywords"
+      ],
+      "title": "PracticeArea",
+      "type": "object"
+    },
+    "Question": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "name",
+            "phone",
+            "email",
+            "date",
+            "enum",
+            "yesno",
+            "text"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "prompt": {
+          "minLength": 5,
+          "title": "Prompt",
+          "type": "string"
+        },
+        "required": {
+          "default": true,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "confirm": {
+          "default": false,
+          "title": "Confirm",
+          "type": "boolean"
+        },
+        "max_retries": {
+          "default": 2,
+          "maximum": 5,
+          "minimum": 0,
+          "title": "Max Retries",
+          "type": "integer"
+        },
+        "timeout_s": {
+          "default": 8.0,
+          "exclusiveMinimum": 0,
+          "title": "Timeout S",
+          "type": "number"
+        },
+        "options": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Options",
+          "type": "array"
+        },
+        "min_words": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Min Words",
+          "type": "integer"
+        },
+        "max_age_days": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Age Days"
+        },
+        "allow_dtmf": {
+          "default": false,
+          "title": "Allow Dtmf",
+          "type": "boolean"
+        },
+        "reprompt": {
+          "default": "",
+          "title": "Reprompt",
+          "type": "string"
+        },
+        "escalate_on": {
+          "anyOf": [
+            {
+              "enum": [
+                "yes",
+                "no"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Escalate On"
+        },
+        "endpointing_s": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0.2,
+              "maximum": 3.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Endpointing S"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "prompt"
+      ],
+      "title": "Question",
+      "type": "object"
+    },
+    "Rule": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "field": {
+          "title": "Field",
+          "type": "string"
+        },
+        "op": {
+          "enum": [
+            "within_days",
+            "in",
+            "not_in",
+            "equals",
+            "is_true",
+            "is_false"
+          ],
+          "title": "Op",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        },
+        "if_fails": {
+          "default": "needs_review",
+          "enum": [
+            "needs_review",
+            "decline",
+            "priority"
+          ],
+          "title": "If Fails",
+          "type": "string"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "field",
+        "op",
+        "reason"
+      ],
+      "title": "Rule",
+      "type": "object"
+    },
+    "Transfer": {
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "default": true,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "destination": {
+          "title": "Destination",
+          "type": "string"
+        },
+        "ring_timeout_s": {
+          "default": 15.0,
+          "exclusiveMinimum": 0,
+          "title": "Ring Timeout S",
+          "type": "number"
+        },
+        "announce": {
+          "minLength": 5,
+          "title": "Announce",
+          "type": "string"
+        },
+        "whisper": {
+          "minLength": 5,
+          "title": "Whisper",
+          "type": "string"
+        },
+        "unavailable": {
+          "minLength": 5,
+          "title": "Unavailable",
+          "type": "string"
+        }
+      },
+      "required": [
+        "destination",
+        "announce",
+        "whisper",
+        "unavailable"
+      ],
+      "title": "Transfer",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "tenant_id": {
+      "pattern": "^[a-z][a-z0-9_]{2,30}$",
+      "title": "Tenant Id",
+      "type": "string"
+    },
+    "version": {
+      "title": "Version",
+      "type": "string"
+    },
+    "display_name": {
+      "title": "Display Name",
+      "type": "string"
+    },
+    "did": {
+      "title": "Did",
+      "type": "string"
+    },
+    "language": {
+      "default": "en",
+      "pattern": "^[a-z]{2}$",
+      "title": "Language",
+      "type": "string"
+    },
+    "voice": {
+      "default": "af_heart",
+      "title": "Voice",
+      "type": "string"
+    },
+    "jurisdiction": {
+      "$ref": "#/$defs/Jurisdiction"
+    },
+    "hours": {
+      "$ref": "#/$defs/Hours"
+    },
+    "after_hours_message": {
+      "minLength": 10,
+      "title": "After Hours Message",
+      "type": "string"
+    },
+    "disclosures": {
+      "items": {
+        "$ref": "#/$defs/Disclosure"
+      },
+      "minItems": 1,
+      "title": "Disclosures",
+      "type": "array"
+    },
+    "greeting": {
+      "minLength": 10,
+      "title": "Greeting",
+      "type": "string"
+    },
+    "practice_areas": {
+      "items": {
+        "$ref": "#/$defs/PracticeArea"
+      },
+      "minItems": 1,
+      "title": "Practice Areas",
+      "type": "array"
+    },
+    "questions": {
+      "items": {
+        "$ref": "#/$defs/Question"
+      },
+      "minItems": 1,
+      "title": "Questions",
+      "type": "array"
+    },
+    "qualification": {
+      "items": {
+        "$ref": "#/$defs/Rule"
+      },
+      "title": "Qualification",
+      "type": "array"
+    },
+    "transfer": {
+      "$ref": "#/$defs/Transfer"
+    },
+    "guard": {
+      "$ref": "#/$defs/Guard"
+    },
+    "closing": {
+      "minLength": 10,
+      "title": "Closing",
+      "type": "string"
+    },
+    "retention_days": {
+      "default": 30,
+      "maximum": 3650,
+      "minimum": 1,
+      "title": "Retention Days",
+      "type": "integer"
+    },
+    "recording_enabled": {
+      "default": true,
+      "title": "Recording Enabled",
+      "type": "boolean"
+    },
+    "staff_roles": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Staff Roles",
+      "type": "array"
+    },
+    "recording_roles": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Recording Roles",
+      "type": "array"
+    },
+    "integrations": {
+      "$ref": "#/$defs/Integrations"
+    }
+  },
+  "required": [
+    "schema_version",
+    "tenant_id",
+    "version",
+    "display_name",
+    "did",
+    "jurisdiction",
+    "hours",
+    "after_hours_message",
+    "disclosures",
+    "greeting",
+    "practice_areas",
+    "questions",
+    "transfer",
+    "guard",
+    "closing"
+  ],
+  "title": "TenantConfig",
+  "type": "object"
+}
