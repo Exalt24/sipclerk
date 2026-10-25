@@ -135,3 +135,26 @@ def test_an_injury_story_with_an_er_visit_completes_the_intake_instead_of_hangin
 def test_a_real_emergency_in_the_middle_of_an_intake_still_gets_the_911_line_and_a_person(ashgrove):
     m, out = drive(ashgrove, [*INTAKE, "my husband is bleeding badly right now"])
     assert any("911" in a.text for a in out if isinstance(a, Say)) and isinstance(out[-1], StartTransfer) and out[-1].reason == "emergency"
+
+
+OLD_EMERGENCY = [r"\b911\b", r"\bemergency\b", r"\bin (?:immediate )?danger\b", r"\b(?:is|are) (?:badly |seriously )?(?:hurt|bleeding|dying|unconscious)\b",
+                 r"\b(?:unconscious|overdos\w*|bleeding (?:badly|heavily|out))\b", r"\bsuicid\w*|\bkill myself\b", r"\bnot breathing\b",
+                 r"\bbeing (?:attacked|followed|threatened)\b"]
+WORDS = ["I", "he", "she", "was", "is", "are", "am", "I'm", "he's", "were", "had", "been", "call", "called", "calling", "911", "emergency", "room", "unconscious",
+         "bleeding", "badly", "heavily", "not", "breathing", "in", "danger", "immediate", "being", "followed", "attacked", "overdosed", "suicide", "after", "when", "ago",
+         "the", "a", "crash", "hospital", "and", "but", ".", "now", "just", "please", "help", "dial", "my", "husband", "mother", "kill", "myself", "last", "year"]
+
+
+def test_class_the_rule_only_ever_fires_on_fewer_inputs_than_before(ashgrove):
+    """The new rule can miss what the old one caught (that is what the narrative tests are for) but must never fire where the old one stayed silent."""
+    import random
+    import re
+
+    rnd = random.Random(12)
+    fired = 0
+    for _ in range(6000):
+        text = " ".join(rnd.choice(WORDS) for _ in range(rnd.randint(1, 9)))
+        if guard.check_input(text, ashgrove.config).action == "emergency":
+            fired += 1
+            assert any(re.search(p, guard._norm(text)) for p in OLD_EMERGENCY), text
+    assert fired > 200  # the sample really does contain emergencies
