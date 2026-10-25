@@ -3,7 +3,7 @@ type: reference
 updated: 2026-10-26
 ---
 
-*Everything here was run on one Windows 11 PC on 2026-10-26: an RTX 5070 Ti shared with other work, Python 3.13.14, Pipecat 1.6.0, faster-whisper `small.en` on the GPU (float16), Kokoro through onnxruntime on the CPU, Ollama with `qwen3.5:4b`, and SIPp 3.6.1 from the Debian `sip-tester` package in Docker. Firms, callers, numbers and voices are invented. Each claim names the command that produced it.*
+*Everything here was run on one Windows 11 PC on 2026-10-25 and 2026-10-26 (the spoken suite, its latency figures and the SIPp run were measured before the review round's fixes; the unit suite, the guards and the probes after them): an RTX 5070 Ti shared with other work, Python 3.13.14, Pipecat 1.6.0, faster-whisper `small.en` on the GPU (float16), Kokoro through onnxruntime on the CPU, Ollama with `qwen3.5:4b`, and SIPp 3.6.1 from the Debian `sip-tester` package in Docker. Firms, callers, numbers and voices are invented. Each claim names the command that produced it.*
 
 ## 1. A real INVITE reaches the agent
 
@@ -28,7 +28,7 @@ What the line saw ([`docs/sipp_run.json`](docs/sipp_run.json), full messages in 
 | 15 to 75 | in | `OPTIONS` every 15 s from SIPp, answered `200` (keeps Docker Desktop's UDP mapping open, see below) |
 | 87.32 | out | `BYE` from the line when the intake finished, answered `200` |
 
-The call: 4,367 RTP packets in and 4,365 out (679,844 bytes of G.711 and events received), 11 keypad events (ten digits and the pound) made the phone number (`callback_number` came from the keypad, not from speech), the other seven answers were spoken, the outcome was `intake_priority`, and the record carries tenant `tidewaterquint`, config version `2026.10.4` and config hash `75569928f389...`.
+The call: 4,367 RTP packets in and 4,365 out (679,844 bytes of G.711 and events received), 11 keypad events (ten digits and the pound) made the phone number (`callback_number` came from the keypad, not from speech), five fields were spoken (name, practice area, state, urgent deadline, description) and email was skipped, the outcome was `intake_priority`, and the record carries tenant `tidewaterquint`, config version `2026.10.4` and config hash `75569928f389...`.
 
 **Where the audio goes.** G.711 on the wire is 160 bytes per 20 ms packet, 64 kbit/s, SNR after a round trip about 37 dB for both codecs; decoded to 8 kHz linear; upsampled to 16 kHz in 20 ms frames for the voice activity detector and Whisper (relative error against a whole-signal resample 0.0000, 2 ms delay); Kokoro's 24 kHz output is resampled 3 to 1 to 8 kHz and encoded back. [`docs/codec_proof.txt`](docs/codec_proof.txt) is the output of `python scripts/codec_proof.py`.
 
@@ -121,7 +121,7 @@ Tokens and seconds, not dollars: nothing here is billed.
 
 ## 4. The mutation check
 
-177 deliberate breaks, one at a time (156 in the unit layer, 21 through the real line with stand-in models), run in a temporary copy of the repository so the working tree is never edited. A mutant counts as killed only when pytest ran and a test failed; a crash or a collection error does not count. The report with the test that killed each one is [`docs/mutation_report.json`](docs/mutation_report.json). Rows in `scripts/mutants_derived.py` (62 of them) take their edit from the code's syntax tree with `Operations/tools/mutate_ast.py` (a function, a kind of change and a snippet of the code at that site), so rewording a line moves the site instead of leaving a typed old text that matches nowhere.
+177 deliberate breaks, one at a time (156 in the unit layer, 21 through the real line with stand-in models), run in a temporary copy of the repository so the working tree is never edited. A mutant counts as killed only when pytest ran and a test failed; a crash or a collection error does not count. The report with the test that killed each one is [`docs/mutation_report.json`](docs/mutation_report.json). Rows in `scripts/mutants_derived.py` (62 of them) take their edit from the code's syntax tree with `scripts/mutate_ast.py` (a function, a kind of change and a snippet of the code at that site), so rewording a line moves the site instead of leaving a typed old text that matches nowhere.
 
 Every guard rule, every branch of the state machine that decides something, every field parser check, every tenant, storage and delivery rule, and the barge-in, silence, keypad, recording, transfer and routing paths in the pipeline each have a mutant. The check found seven test gaps while it was being built, each now closed: an unclear recording answer (the test sent "I don't know", which the parser reads as a no), an unsupported practice area never driven through the machine, the callback task of a failed transfer never asserted, duplicate RTP packets, a recording gate that a second gate hid (found by timing how much of the greeting was in the recording), a failed transcription that the test did not require an answer to, and the refusal of a call with no common codec. One mutant was written and dropped as equivalent (`scripts/mutants_found.py` says why), and a branch that could not be reached was deleted instead of tested.
 
@@ -157,7 +157,7 @@ A reviewer who read the files instead of the code, and ran probes against a copy
 | Dialled number | `s@host` with the number in To, ten digits and `tel:` all failed, `tel:` with no answer at all | each answered and routed to the right firm |
 | Route set | no Record-Route in the 200, BYE without Route | echoed in order, BYE carries them |
 | Anonymous callers | the second got 486 Busy Here | both answered |
-| Emergency rule | `taken to the emergency room` got the 911 line and a transfer | the intake completes; `he is bleeding` and 17 other live phrasings still escalate |
+| Emergency rule | `taken to the emergency room` got the 911 line and a transfer | the intake completes; `he is bleeding` and 18 other live phrasings still escalate |
 
 Left alone on purpose, with the reason: a torn last line of the audit file (needs a crash during an append), a new SSRC with a random sequence number, a redial 0.3 s after a dropped call, a 30 ms packet time, date guesses without a read back, and the group of DTMF, SDP and memory items, each scored low by the review; and every limit in the README.
 

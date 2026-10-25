@@ -81,7 +81,7 @@ def test_a_danger_happening_now_still_is(ashgrove, text):
 
 
 def test_the_two_sets_are_the_size_the_class_test_promised():
-    assert len(NARRATIVE) == 30 and len(LIVE) >= 15 and not set(NARRATIVE) & set(LIVE)
+    assert len(NARRATIVE) == 30 and len(LIVE) == 19 and not set(NARRATIVE) & set(LIVE)
 
 
 SUBJECTS_PAST = ["I was", "he was", "she was", "they were", "my husband was", "the passenger was"]

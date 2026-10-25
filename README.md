@@ -14,7 +14,7 @@ A voice intake line for invented law firms: a real SIP call comes in, the dialle
 
 ## What it is
 
-An agent that answers inbound calls for a law firm. Each call loads that firm's configuration by the number that was dialled, collects and confirms the details the firm needs, applies the firm's rules without giving legal advice, and hands the caller to a person when a rule says so. The record, transcript, summary and recording are stored per firm behind controlled access, and the finished intake is sent to a case-management receiver and a call console.
+An agent that answers inbound calls for a law firm. Each call loads that firm's configuration by the number that was dialled, collects and confirms the details the firm needs, applies the firm's rules without giving legal advice, and hands the caller to a person when a rule says so. The record, transcript, summary and recording are stored per firm, encrypted, with roles and an audit line per read (no screen in this lab reads them), and the finished intake is sent to a case-management receiver and a call console.
 
 It exists to show the three parts that are usually hand-waved: the telephony (a real INVITE, a negotiated codec, keypad digits, a transfer), the rules that must not depend on a prompt (a state machine and a guard in code, each broken on purpose to prove a test notices), and the tests that replay spoken calls and fail on a regression.
 
@@ -48,7 +48,7 @@ First audio after the caller stops talking, measured at the caller's side from t
 | Agent side, from the detector's end of speech to the first audio, no model in the turn | 125 | 151 ms | 267 ms |
 | Agent side, the language model in the turn (the closing acknowledgement) | 14 | 572 ms | 1019 ms |
 
-Most of the median is the silence that ends a turn (0.5 s for a yes or a name, 1.0 s for a number, 1.2 s for a story), not compute: Whisper transcribes an utterance in about 155 ms, and the agent side adds about 151 ms. Fixed prompts are rendered once and cached. A read-back of a name or a number is rendered the first time and cached after that, so in this suite, where every caller repeats the same invented name and number, nearly every turn started from a cached sentence. A real caller's read-back would be rendered first: Kokoro took 0.3 to 0.6 s for one sentence on this CPU when timed alone (2026-10-25), and that is added to such a turn.
+Most of the median is the silence that ends a turn (0.5 s for a yes or a name, 1.0 s for a number, 1.2 s for a story), not compute: Whisper transcribes an utterance in about 155 ms, and the agent side adds about 151 ms. Fixed prompts are rendered once and cached. A read-back of a name or a number is rendered the first time and cached after that, so in this suite, where every caller repeats the same invented name and number, the speech cache answered 370 sentences and missed 120 in the suite, and no turn is measured on a sentence rendered on the spot. A real caller's read-back is rendered first and adds to that turn; its render time was not kept, so none is claimed.
 
 Per completed intake call, from the call records (mean over 13 calls): 80.4 s on the line, 1.08 language model call using 82.62 prompt and 14.23 completion tokens in 0.28 s, 9.46 transcriptions, 45.54 s of synthesised speech. These are tokens and seconds, not a price: nothing here is billed, and a hosted provider would turn the same numbers into a different bill.
 
@@ -68,13 +68,13 @@ The SIP leg, from [`docs/sipp_run.json`](docs/sipp_run.json): SIPp offered PCMA,
 
 ## Run it
 
-Needs Python 3.13, Docker for the SIPp caller, and [Ollama](https://ollama.com) with `qwen3.5:4b` (`ollama pull qwen3.5:4b`). A GPU is optional: without CUDA, Whisper falls back to int8 on the CPU.
+Needs Python 3.13, Docker Desktop for the SIPp caller (seen on Windows only), and [Ollama](https://ollama.com) with `qwen3.5:4b` (`ollama pull qwen3.5:4b`). Timings are on an RTX 5070 Ti, Whisper in float16; the int8 CPU fallback was not run.
 
 ```
 pip install -r requirements-voice.txt
 python scripts/fetch_models.py                      # Kokoro and Whisper into ./models
 python scripts/replay.py normal_intake              # one spoken call through the line, printed
-python scripts/replay.py --list                     # every scenario
+python scripts/replay.py --list                     # 21: the suite's 20 and sipp_reference
 ```
 
 The SIPp call (builds a container, plays the recorded caller as G.711 RTP and keypad events):
@@ -98,7 +98,7 @@ python scripts/sipp_demo.py --out docs/sipp_run.json
 
 The scenarios: a normal intake, the second firm, barge-in, a long silence, endless silence, a noisy line (white noise at 15 dB), a caller correction, invalid answers, an unsupported practice area, a request for legal advice (once, then repeated), an existing client, a busy desk phone, a desk phone that rings out, keypad digits, zero for a person, speech to text timing out, the language model down, the webhook receiver failing three times, and an after-hours call.
 
-Rows in `scripts/mutants_derived.py` take their edit from the syntax tree (a function, a kind of change, a snippet of code), not from typed text, so rewording a line cannot break them. The mutation check found seven test gaps while it was being built (an unclear recording answer that the test turned into a no, an unsupported area never driven through the machine, a failed-transfer task nobody asserted, duplicate RTP packets, and later a recording gate hidden by a second gate, a failed transcription that the test did not require an answer to, and a refusal for a call with no common codec). One mutant was dropped as equivalent; the file says why.
+Rows in `scripts/mutants_derived.py` take their edit from the syntax tree (a function, a kind of change, a snippet of code), not from typed text, so rewording a line cannot break them. The mutation check found seven test gaps while it was being built, listed in [`docs/PROOF.md`](docs/PROOF.md); one mutant was dropped as equivalent and the file says why.
 
 ## Limits
 
@@ -110,6 +110,7 @@ Rows in `scripts/mutants_derived.py` take their edit from the syntax tree (a fun
 - **Latency is this machine's.** A GPU shared with other work, one event loop for the line and the test caller, and a language model of 4 billion parameters. Nothing here says what a production deployment would measure.
 - **Case management is not Clio.** No Clio record is written: the stored Clio developer trial token answers 401 (the trial ended in August 2026). The intake goes to the verification code of `clio-matter-bridge` as a Clio-shaped delivery, and to a local `clinic-call-console` API as its documented call ingest. That console's reasons are clinic ones, so every intake maps to `OTHER`.
 - **No conflict check, no booking, no calendar.** A caller who says they are an existing client is handed to a person; nothing checks a conflict list.
+- **No staff screen, two calls at once.** Nothing reads a stored record back (`TenantStore.read` has no caller, as `tests/test_wiring.py` says), and two simultaneous calls were run, not twenty.
 - **A speech stand-in is not a person.** The call was recorded with synthetic voices on both ends.
 
 ## Layout
@@ -122,6 +123,8 @@ sipclerk/guard.py    the guard, before and after the model
 sipclerk/tenants.py  tenant files, schema, hash, lookup by dialled number
 sipclerk/store.py    encrypted per-tenant storage, roles, audit chain, retention
 sipclerk/delivery.py signed deliveries with an outbox
+sipclerk/server.py   the listener, retention and outbox loops
+sipclerk/call.py     one call from INVITE to hang-up, the transfer leg
 tenants/             the two invented firms and the JSON schema
 voice_scripts/       the spoken scenarios and the rendered WAV clips
 scripts/             replay, mutation check, SIPp media, integration checks, requeue of dead deliveries

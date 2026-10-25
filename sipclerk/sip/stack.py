@@ -5,7 +5,7 @@ Implemented: INVITE (as server and as client), 100/180/2xx/4xx-6xx, ACK, BYE, CA
 to a repeated INVITE, and 2xx retransmission until the ACK arrives.
 
 Not implemented, on purpose: TCP and TLS, registration, digest authentication, SRTP, forking, session
-timers, REFER (the warm transfer here is a bridged second call, see sipclerk.sip.transfer).
+timers, REFER (the warm transfer here is a bridged second call, see sipclerk.sip.phone and sipclerk.call).
 """
 from __future__ import annotations
 
