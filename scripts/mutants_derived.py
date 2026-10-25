@@ -165,5 +165,6 @@ PIPELINE_DERIVED: list[DerivedMutant] = [
     PD("pipe-anonymous-callers", SV, "_already_on_this_line", "negate the condition", "caller_is_withheld", "a second anonymous caller is turned away as a duplicate", "anonymous"),
     PD("pipe-caller-hangs-up-during-the-transfer", CA, "_watch_caller_bye", "Is -> IsNot", "self.bridged_at is None", "a caller who hangs up while the desk phone rings or hears the whisper does not end the call",
        "desk_invite_and_still or hangs_up_the_desk"),
-    PD("pipe-dialled-shapes", TN, "resolve", "negate the condition", "fullmatch", "a call dialled as ten digits is turned away", "line_answers_each_shape"),
+    D("pipe-dialled-shapes", TN, "resolve", "negate the condition", "fullmatch", "a call dialled as ten digits is turned away",
+      ["tests/test_dialled_number.py", "-k", "line_answers_each_shape"], layer="pipeline"),
 ]
