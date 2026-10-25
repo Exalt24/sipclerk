@@ -15,7 +15,7 @@ An inbound intake line for invented law firms, reached over real SIP, with the i
 
 ## Collision evidence (2026-10-25)
 
-`python Operations/tools/brand_name_check.py lineclerk docketline firmdesk-voice sipclerk callclerk`
+Checked with a name-collision script over five candidate names on that date (lineclerk, docketline, firmdesk-voice, sipclerk, callclerk).
 
 | Name | .com | github | npm, pypi, crates | app store |
 |---|---|---|---|---|
