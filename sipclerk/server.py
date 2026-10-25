@@ -22,13 +22,17 @@ from sipclerk.voice.models import Models
 
 log = logging.getLogger("sipclerk.server")
 PREFERRED_CODECS = [audio.PCMU, audio.PCMA]
+RETENTION_EVERY_S = 3600.0  # how often the line applies each firm's retention_days: at start, then every hour
 
 
 class ClerkServer:
     def __init__(self, *, registry: TenantRegistry, models: Models, store: TenantStore, outbox: Outbox, host: str = "0.0.0.0",
                  port: int = 5060, advertise_host: str | None = None, rtp_host: str = "0.0.0.0", max_calls: int = 8,
                  now_fn: Callable[[], datetime] = datetime.utcnow, llm_factory: Callable[[], Llm] = Llm,
-                 faults: Faults | None = None, on_finished: Callable[[CallResult], None] | None = None):
+                 faults: Faults | None = None, on_finished: Callable[[CallResult], None] | None = None,
+                 retention_every_s: float = RETENTION_EVERY_S):
+        if retention_every_s <= 0:
+            raise ValueError("retention_every_s must be above zero")
         self.registry = registry
         self.models = models
         self.store = store
@@ -44,8 +48,11 @@ class ClerkServer:
         self.results: list[CallResult] = []
         self.counters = {"answered": 0, "wrong_number": 0, "blocked_caller": 0, "duplicate_call": 0, "busy": 0, "no_codec": 0,
                          "no_offer": 0}
+        self.retention_every_s = retention_every_s
+        self.retention = {"passes": 0, "failures": 0, "calls_purged": 0, "folders_skipped": 0, "last_ok_at": None, "audit_broken": []}
         self._stop = asyncio.Event()
         self._worker: asyncio.Task | None = None
+        self._retention_task: asyncio.Task | None = None
 
     @property
     def port(self) -> int:
@@ -53,7 +60,10 @@ class ClerkServer:
 
     async def start(self) -> None:
         await self.stack.start()
-        self._worker = asyncio.get_running_loop().create_task(self.outbox.run(self._stop))
+        self.run_retention_pass()  # a line that was down for a month must not keep expired calls until the first interval
+        loop = asyncio.get_running_loop()
+        self._worker = loop.create_task(self.outbox.run(self._stop))
+        self._retention_task = loop.create_task(self._retention_loop())
 
     async def stop(self) -> None:
         for s in list(self.sessions.values()):
@@ -62,7 +72,46 @@ class ClerkServer:
         self._stop.set()
         if self._worker:
             await self._worker
+        if self._retention_task:
+            await self._retention_task
         await self.stack.stop()
+
+    # ---- retention
+
+    def run_retention_pass(self) -> bool:
+        """Delete every call older than its firm's retention_days, then check each firm's audit chain. A failing pass is logged and
+        counted, never raised: the next interval tries again."""
+        try:
+            purged = self.store.purge(self.now_fn())
+        except Exception:
+            self.retention["failures"] += 1
+            log.exception("retention pass failed; it will be tried again in %.0f s", self.retention_every_s)
+            return False
+        self.retention["passes"] += 1
+        self.retention["last_ok_at"] = self.now_fn().isoformat()
+        self.retention["calls_purged"] += len(purged)
+        self.retention["folders_skipped"] = len(purged.skipped)
+        if purged or purged.skipped:
+            log.info("retention: deleted %d call(s), skipped %d folder(s) it could not read", len(purged), len(purged.skipped))
+        self.retention["audit_broken"] = [t.config.tenant_id for t in self.registry.all if not self._audit_verifies(t.config.tenant_id)]
+        if self.retention["audit_broken"]:
+            log.error("retention: the audit chain of %s does not verify", ", ".join(self.retention["audit_broken"]))
+        return True
+
+    def _audit_verifies(self, tenant_id: str) -> bool:
+        try:
+            return self.store.verify_audit(tenant_id)
+        except Exception:  # a line that is not even JSON is a broken chain
+            return False
+
+    async def _retention_loop(self) -> None:
+        while not self._stop.is_set():
+            try:
+                await asyncio.wait_for(self._stop.wait(), self.retention_every_s)
+                return
+            except asyncio.TimeoutError:
+                pass
+            self.run_retention_pass()
 
     async def on_invite(self, inv: IncomingInvite) -> None:
         tenant = self.registry.by_did(inv.did)
