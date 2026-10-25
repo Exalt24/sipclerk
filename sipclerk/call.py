@@ -73,6 +73,8 @@ class CallSession:
         self._rec_in: list[bytes] = []
         self._rec_out: list[bytes] = []
         self.staff: tuple[Dialog, RtpSession] | None = None
+        self._transfer_task: asyncio.Task | None = None
+        self._leg_rtp: RtpSession | None = None  # the desk leg's media socket from the moment it is opened
         self.transfer_info: dict = {}
         self.bridged_at: float | None = None
         self.submitted_key: str | None = None
@@ -114,10 +116,46 @@ class CallSession:
         self.finished.set()
 
     async def _transfer(self, reason: str) -> tuple[bool, str]:
-        t = self.cfg.transfer
+        """The desk leg runs as its own task, so ending the call can cancel it wherever it is: ringing, being whispered to or bridged."""
+        self._transfer_task = asyncio.get_running_loop().create_task(self._run_transfer(reason))
+        return await self._transfer_task
+
+    async def _end_transfer(self) -> None:
+        """The call is over. CANCEL a desk INVITE that has not been answered, BYE one that has, stop the whisper and the bridge, and close the
+        desk leg's media socket and tasks. Safe to call at any point and more than once."""
+        task = self._transfer_task
+        if task is not None and not task.done():
+            task.cancel()
+            await asyncio.wait({task}, timeout=5)  # the task's own cleanup sends the CANCEL or BYE
+        await self._drop_leg()
+
+    async def _drop_leg(self) -> None:
+        self.rtp.bridge_to = None
+        if self._leg_rtp is not None:
+            self._leg_rtp.bridge_to = None
+        if self.staff is not None:
+            d_staff, _ = self.staff
+            if not d_staff.terminated.is_set():
+                await d_staff.bye(timeout=1.0)
+        if self._leg_rtp is not None:
+            await self._leg_rtp.close()
+
+    async def _run_transfer(self, reason: str) -> tuple[bool, str]:
         info = self.transfer_info = {"attempted": True, "reason": reason, "destination_alias": f"{self.cfg.tenant_id}:desk"}
+        try:
+            return await self._place_transfer(reason, info)
+        except asyncio.CancelledError:
+            info.update(result="cancelled", detail="the call ended during the transfer")
+            await self._drop_leg()
+            raise
+        except Exception:
+            await self._drop_leg()
+            raise
+
+    async def _place_transfer(self, reason: str, info: dict) -> tuple[bool, str]:
+        t = self.cfg.transfer
         t0 = time.monotonic()
-        rtp2 = await RtpSession.open("0.0.0.0", 0, audio.PCMU, 101)
+        rtp2 = self._leg_rtp = await RtpSession.open("0.0.0.0", 0, audio.PCMU, 101)
         host, port = sm.uri_hostport(t.destination)
         adv = self.stack.local_host_for((host, port))
         stop = asyncio.Event()
@@ -207,6 +245,7 @@ class CallSession:
             log.info("call %s finished (ended_by=%s)", self.call_id, self.ended_by)
         finally:
             watcher.cancel()
+            await self._end_transfer()  # the desk leg first: a phone that is still ringing must stop ringing
             try:
                 await self.task.cancel()
             except Exception:
@@ -216,13 +255,12 @@ class CallSession:
             except Exception:
                 run.cancel()
             await self.rtp.close()
-            if self.staff:
-                await self.staff[1].close()
+            await self._drop_leg()
         return await self._finalize()
 
     async def _watch_caller_bye(self) -> None:
         await self.dialog.terminated.wait()
-        if self.staff is None:  # when bridged, _watch_bridge owns the hang-up
+        if self.bridged_at is None:  # once the two legs are bridged, _watch_bridge owns the hang-up; before that the call simply ends
             self.ended_by = self.ended_by or "caller"
             self.finished.set()
 

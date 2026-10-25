@@ -285,3 +285,53 @@ async def test_a_full_intake_with_stand_in_models_is_saved_and_queued_to_both_re
         logged = " ".join(rec.getMessage() for rec in caplog.records)
         assert not [p.decode() for p in planted if p.decode() in logged], "caller words reached a log line"
         assert "chars" in logged  # the log still says that it heard something, only not what
+
+
+# ----------------------------------------------------------------------------------------------- a transfer that the caller abandons
+
+
+async def _press_zero(r, caller):
+    call, _ = await place(r, TIDE, caller)
+    await agent_done(call)
+    await call.dtmf("0")
+    return call, r.staff["tidewaterquint"]
+
+
+async def test_the_caller_hanging_up_while_the_desk_phone_rings_cancels_the_desk_invite_and_still_leaves_a_callback():
+    async with rig([]) as r:
+        r.staff["tidewaterquint"].answer_delay = 3.0
+        call, staff = await _press_zero(r, "+17865550170")
+        end = time.monotonic() + 10
+        while not staff.invites and time.monotonic() < end:
+            await asyncio.sleep(0.05)
+        assert staff.invites, "the desk phone never rang"
+        await asyncio.sleep(0.5)
+        await call.hangup()
+        res = await finished(r, "+17865550170")
+        assert staff.invites[-1].cancelled.is_set(), "the line never cancelled the desk INVITE"
+        await asyncio.sleep(3.3)  # past the moment the desk phone would have picked up
+        assert staff.calls == [], "the desk phone answered a call that was already over"
+        rec = res.record
+        assert rec["outcome"] == "caller_hung_up" and rec["transfer"]["result"] == "cancelled" and any(t["kind"] == "callback" for t in rec["tasks"])
+        assert not r.server.sessions
+
+
+async def test_the_caller_hanging_up_during_the_whisper_hangs_up_the_desk_phone_and_stops_the_media():
+    async with rig([]) as r:
+        call, staff = await _press_zero(r, "+17865550171")
+        end = time.monotonic() + 15
+        while not (staff.calls and len(staff.calls[-1].frames) > 10) and time.monotonic() < end:
+            await asyncio.sleep(0.05)
+        desk = staff.calls[-1]
+        assert not desk.dialog.terminated.is_set()
+        t_hangup = time.monotonic()
+        await call.hangup()
+        end = t_hangup + 4
+        while not desk.dialog.terminated.is_set() and time.monotonic() < end:
+            await asyncio.sleep(0.02)
+        assert desk.dialog.terminated.is_set() and time.monotonic() - t_hangup < 1.0, "the desk phone kept hearing the whisper of a call that was over"
+        res = await finished(r, "+17865550171")
+        before = desk.rtp.packets_in
+        await asyncio.sleep(1.0)
+        assert desk.rtp.packets_in == before, "RTP kept flowing to the desk phone after the call ended"
+        assert res.record["outcome"] in ("caller_hung_up", "transferred") and not r.server.sessions

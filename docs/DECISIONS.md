@@ -39,7 +39,7 @@ Before the model: emergencies, existing clients, a request for a person, a reque
 
 ## Warm transfer is a bridged second call
 
-The agent places an INVITE to the tenant's desk phone, speaks a short whisper to staff only, then relays RTP between the two legs, transcoding between PCMU and PCMA when the legs differ. The caller hears a soft ringback while it rings. A busy or unanswered desk phone leaves a callback task and an honest line, never dead air. REFER (handing the caller to the desk phone and leaving) is not implemented.
+The agent places an INVITE to the tenant's desk phone, speaks a short whisper to staff only, then relays RTP between the two legs, transcoding between PCMU and PCMA when the legs differ. The caller hears a soft ringback while it rings. A busy or unanswered desk phone leaves a callback task and an honest line, never dead air. The desk leg runs as its own task, so the end of the call (the caller's BYE, the desk phone's, a shutdown) cancels it wherever it is: a CANCEL for an INVITE that is still ringing (and an ACK then a BYE for an answer that crosses the CANCEL), a BYE for an answered desk call that is still being whispered to, the whisper and the bridge stopped, the desk leg's media socket and tasks closed, and the callback task still left for the caller. The first version never cancelled the desk INVITE, so a receptionist could answer a call that was already over and hear the whisper while the line kept sending RTP to her phone, and one socket and one task leaked per such call. REFER (handing the caller to the desk phone and leaving) is not implemented.
 
 ## Storage, access and the audit line
 

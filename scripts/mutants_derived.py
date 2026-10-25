@@ -69,8 +69,10 @@ def D(id: str, file: str, function: str, kind_re: str, snippet: str, desc: str, 
 STORE = ["tests/test_store.py"]
 RETENTION = ["tests/test_retention.py", "tests/test_store.py", "tests/test_wiring.py"]
 OUTBOX = ["tests/test_outbox_at_rest.py", "tests/test_delivery.py"]
+LEG = ["tests/test_transfer_leg.py", "tests/test_sip_stack.py"]
 WINDOW = ["tests/test_delivery_window.py", "tests/test_delivery.py"]
 ST, SV, DE = "sipclerk/store.py", "sipclerk/server.py", "sipclerk/delivery.py"
+CA, SK = "sipclerk/call.py", "sipclerk/sip/stack.py"
 
 DERIVED_MUTANTS: list[DerivedMutant] = [
     # ---- retention: the purge itself (these two replace the typed rows store-retention and store-purge-audit)
@@ -103,4 +105,11 @@ DERIVED_MUTANTS: list[DerivedMutant] = [
     D("delivery-requeue-request-consumed", DE, "_apply_requeue_request", "delete the call statement", "marker.unlink", "a requeue request is applied on every pass for ever", WINDOW),
     D("server-dead-reminder", SV, "run_retention_pass", "negate the condition", "self.outbox.dead", "the hourly pass says nothing about dead deliveries", WINDOW),
     D("script-requeue-now-or-ask", "scripts/requeue_dead.py", "main", "negate the condition", "a.now", "the script edits a running line's file instead of asking the line", WINDOW),
+    # ---- a transfer leg never outlives the call that started it (F4)
+    D("call-end-transfer-cancels", CA, "_end_transfer", "delete the call statement", "task.cancel()", "ending the call leaves the desk leg running", LEG),
+    D("call-drop-leg-hangs-up-the-desk", CA, "_drop_leg", "negate the condition", "d_staff.terminated.is_set()", "an answered desk call is not hung up when the call ends", LEG),
+    D("call-caller-bye-ends-an-unbridged-call", CA, "_watch_caller_bye", "Is -> IsNot", "self.bridged_at is None", "a caller's BYE before the bridge does not end the call", LEG),
+    D("stack-cancel-is-sent", SK, "_cancel", "delete the call statement", "CANCEL", "an INVITE nobody wants any more is never cancelled", LEG),
+    D("stack-cancel-crossing-2xx", SK, "_cancel", "negate the condition", "make_dialog is not None", "an answer that crosses the CANCEL is left up", LEG),
+    D("stack-invite-task-ends-with-the-dialog", SK, "run", "and <-> or", "d.terminated", "the 2xx retransmit task outlives its dialog", LEG),
 ]

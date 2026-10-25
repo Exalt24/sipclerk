@@ -379,12 +379,19 @@ class SipStack(asyncio.DatagramProtocol):
         end = loop.time() + timeout
         delay = T1
         got_provisional = False
+
+        def make_dialog(resp: SipMessage) -> Dialog:
+            d = Dialog(self, call_id, "uac", local_uri=from_uri, remote_uri=to_uri, local_tag=tag, remote_tag=resp.tag_of("to"),
+                       remote_target=sm.contact_uri(resp.get("contact")) or to_uri, peer_addr=addr, local_contact=contact, state="confirmed", cseq=1)
+            self.dialogs[call_id] = d
+            return d
+
         try:
             self.send(req, addr)
             while True:
                 remaining = end - loop.time()
                 if remaining <= 0:
-                    await self._cancel(req, addr, q)
+                    await self._cancel(req, addr, q, make_dialog)
                     return InviteResult(408, "Request Timeout")
                 try:
                     resp = await asyncio.wait_for(q.get(), min(delay, remaining))
@@ -401,16 +408,13 @@ class SipStack(asyncio.DatagramProtocol):
                 if resp.status_code >= 300:
                     self._send_ack(req, resp, addr)
                     return InviteResult(resp.status_code, resp.start_line.split(" ", 2)[2])
-                remote_tag = resp.tag_of("to")
-                d = Dialog(self, call_id, "uac", local_uri=from_uri, remote_uri=to_uri, local_tag=tag, remote_tag=remote_tag,
-                           remote_target=sm.contact_uri(resp.get("contact")) or to_uri, peer_addr=addr,
-                           local_contact=contact, state="confirmed", cseq=1)
-                self.dialogs[call_id] = d
+                d = make_dialog(resp)
                 self._send_ack(req, resp, addr, dialog=d)
                 self._absorb_2xx_retransmits(call_id, q, req, resp, addr, d)
                 return InviteResult(200, "OK", d, resp.body)
-        finally:
-            pass
+        except asyncio.CancelledError:  # whoever placed this call no longer wants it: CANCEL it, or hang up if it was answered as we cancelled
+            await self._cancel(req, addr, q, make_dialog)
+            raise
 
     def _send_ack(self, inv: SipMessage, resp: SipMessage, addr, dialog: Dialog | None = None) -> None:
         if dialog:
@@ -432,19 +436,23 @@ class SipStack(asyncio.DatagramProtocol):
 
     def _absorb_2xx_retransmits(self, call_id, q, inv, resp, addr, d) -> None:
         async def run() -> None:
-            end = asyncio.get_running_loop().time() + 10
-            while asyncio.get_running_loop().time() < end:
-                try:
-                    r = await asyncio.wait_for(q.get(), 1.0)
-                except asyncio.TimeoutError:
-                    continue
-                if r.status_code == 200:
-                    self._send_ack(inv, r, addr, dialog=d)  # the 200 was resent because our ACK was lost
-            self._responses.pop((call_id, 1, "INVITE"), None)
+            loop = asyncio.get_running_loop()
+            end = loop.time() + 10
+            try:
+                while loop.time() < end and not d.terminated.is_set():  # the task ends with the dialog, not ten seconds later
+                    getter = asyncio.ensure_future(q.get())
+                    gone = asyncio.ensure_future(d.terminated.wait())
+                    done, pending = await asyncio.wait({getter, gone}, timeout=1.0, return_when=asyncio.FIRST_COMPLETED)
+                    for p in pending:
+                        p.cancel()
+                    if getter in done and getter.result().status_code == 200:
+                        self._send_ack(inv, getter.result(), addr, dialog=d)  # the 200 was resent because our ACK was lost
+            finally:
+                self._responses.pop((call_id, 1, "INVITE"), None)
 
         asyncio.get_running_loop().create_task(run())
 
-    async def _cancel(self, inv: SipMessage, addr, q: asyncio.Queue) -> None:
+    async def _cancel(self, inv: SipMessage, addr, q: asyncio.Queue, make_dialog=None) -> None:
         headers = [
             ("Via", inv.get("via")),
             ("Max-Forwards", "70"),
@@ -459,6 +467,11 @@ class SipStack(asyncio.DatagramProtocol):
                 r = await asyncio.wait_for(q.get(), 2.0)
                 if r.status_code >= 300:
                     self._send_ack(inv, r, addr)
+                    break
+                if r.status_code >= 200 and make_dialog is not None:  # the far end answered as our CANCEL crossed it: take that call down properly
+                    d = make_dialog(r)
+                    self._send_ack(inv, r, addr, dialog=d)
+                    await d.bye(timeout=1.0)
                     break
         except asyncio.TimeoutError:
             pass
