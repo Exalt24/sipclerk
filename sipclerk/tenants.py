@@ -237,7 +237,8 @@ class TenantRegistry:
         return cls([load_file(f) for f in files])
 
     def by_did(self, did: str) -> LoadedTenant | None:
-        return self._by_did.get(normalize_did(did))
+        """One number, written any way: the same matching rules as `resolve`, so the two can never disagree."""
+        return self.resolve([normalize_did(did)])
 
     def resolve(self, candidates: list[str]) -> LoadedTenant | None:
         """The firm a call is for, from what the caller dialled (in the order they are trusted), or None.
