@@ -8,6 +8,7 @@ from __future__ import annotations
 import re
 import secrets
 from dataclasses import dataclass, field
+from urllib.parse import unquote
 
 CRLF = "\r\n"
 COMPACT = {"v": "via", "f": "from", "t": "to", "i": "call-id", "m": "contact", "l": "content-length", "c": "content-type"}
@@ -162,6 +163,52 @@ def normalize_did(raw: str) -> str:
     plus = raw.strip().startswith("+")
     digits = re.sub(r"\D", "", raw)
     return ("+" if plus or len(digits) >= 11 else "") + digits
+
+
+def _number_from(number: str, context: str = "") -> str:
+    """One dialled number in the one form it is compared in: '+' and digits when it is international, plain digits when it is national.
+
+    `+1 (415) 555-0101`, `%2B14155550101`, `0014155550101`, `14155550101` and `4155550101;phone-context=+1` are all `+14155550101`;
+    `4155550101` alone stays national, and `trunk01` or `s` is nothing."""
+    n = unquote(number).strip()
+    digits = re.sub(r"\D", "", n)
+    if not digits or re.search(r"[^\W\d_]", n):  # a name with a digit in it (trunk01) dials nothing
+        return ""
+    if n.startswith("+"):
+        return "+" + digits
+    if digits.startswith("00"):
+        return "+" + digits[2:] if digits[2:] else ""
+    if context.startswith("+") and re.sub(r"\D", "", context):
+        return "+" + re.sub(r"\D", "", context) + digits
+    return "+" + digits if len(digits) >= 11 else digits
+
+
+def number_in_uri(uri: str) -> str:
+    """The number a sip:, sips: or tel: URI (or a header value holding one) dials, or '' when it dials none (a trunk name, `s`, a host only)."""
+    m = re.search(r"\b(sips?|tel):([^>\s]*)", uri, re.I)
+    if not m:
+        return ""
+    scheme, rest = m.group(1).lower(), m.group(2)
+    if scheme == "tel":
+        user = rest
+    else:
+        user, at, _host = rest.partition("@")
+        if not at:
+            return ""
+        user = user.split(":")[0]  # sip:user:password@host
+    number, _, params = user.partition(";")
+    context = re.search(r"(?:^|;)phone-context=([^;]+)", params, re.I)
+    return _number_from(number, unquote(context.group(1)) if context else "")
+
+
+def dialled_numbers(req: "SipMessage") -> list[str]:
+    """What the caller dialled, as candidates in the order they are trusted: the Request-URI, then the To header. P-Called-Party-ID and
+    P-Asserted-Identity are not used: the first is a hint a proxy may add and the second says who the caller is, not what was dialled."""
+    out = []
+    for candidate in (number_in_uri(req.request_uri), number_in_uri(req.get("to"))):
+        if candidate and candidate not in out:
+            out.append(candidate)
+    return out
 
 
 def make_response(req: SipMessage, code: int, reason: str, *, to_tag: str = "", contact: str = "",

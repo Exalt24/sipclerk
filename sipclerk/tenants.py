@@ -239,6 +239,23 @@ class TenantRegistry:
     def by_did(self, did: str) -> LoadedTenant | None:
         return self._by_did.get(normalize_did(did))
 
+    def resolve(self, candidates: list[str]) -> LoadedTenant | None:
+        """The firm a call is for, from what the caller dialled (in the order they are trusted), or None.
+
+        A candidate is accepted only on an exact match of its normalised digits with a firm's number. A national number (ten digits, no country code) is
+        accepted only when exactly one firm's number ends with it, so a call is never loaded onto a firm that merely looks similar."""
+        for c in candidates:
+            if c.startswith("+"):
+                t = self._by_did.get(c)
+            elif re.fullmatch(r"\d{10}", c):
+                hits = [t for did, t in self._by_did.items() if did.endswith(c)]
+                t = hits[0] if len(hits) == 1 else None
+            else:
+                t = None
+            if t is not None:
+                return t
+        return None
+
     def by_id(self, tenant_id: str) -> LoadedTenant | None:
         return self._by_id.get(tenant_id)
 

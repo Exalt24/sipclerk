@@ -69,12 +69,14 @@ def D(id: str, file: str, function: str, kind_re: str, snippet: str, desc: str, 
 STORE = ["tests/test_store.py"]
 RETENTION = ["tests/test_retention.py", "tests/test_store.py", "tests/test_wiring.py"]
 OUTBOX = ["tests/test_outbox_at_rest.py", "tests/test_delivery.py"]
+DIAL = ["tests/test_dialled_number.py", "tests/test_sip_stack.py", "tests/test_tenants.py"]
 NAMES = ["tests/test_names_unicode.py", "tests/test_parsers.py", "tests/test_machine.py"]
 LEG = ["tests/test_transfer_leg.py", "tests/test_sip_stack.py"]
 WINDOW = ["tests/test_delivery_window.py", "tests/test_delivery.py"]
 ST, SV, DE = "sipclerk/store.py", "sipclerk/server.py", "sipclerk/delivery.py"
 CA, SK = "sipclerk/call.py", "sipclerk/sip/stack.py"
 PA = "sipclerk/intake/parsers.py"
+MS, TN = "sipclerk/sip/message.py", "sipclerk/tenants.py"
 
 DERIVED_MUTANTS: list[DerivedMutant] = [
     # ---- retention: the purge itself (these two replace the typed rows store-retention and store-purge-audit)
@@ -118,4 +120,14 @@ DERIVED_MUTANTS: list[DerivedMutant] = [
     D("parsers-squash-keeps-letters", PA, "_squash", "and <-> or", "in keep", "a letter of any language, a combining mark or an apostrophe is turned into a space", NAMES),
     D("parsers-squash-digits-flag", PA, "_squash", "and <-> or", "digits or", "the digits flag no longer decides whether a digit stays", NAMES),
     D("parse-name-digits-are-not-letters", PA, "parse_name", "False -> True", "False", "a digit inside a name is kept as part of the name", NAMES),
+    # ---- which firm a call is for is read from what was dialled, in every form, and never guessed (F6, F11)
+    D("dial-plus-sign", MS, "_number_from", "negate the condition", "n.startswith('+')", "a number written with a plus sign is read as a national one", DIAL),
+    D("dial-00-prefix", MS, "_number_from", "negate the condition", "digits.startswith('00')", "a number written with the 00 prefix is not read as international", DIAL),
+    D("dial-eleven-digits", MS, "_number_from", "negate the condition", "len(digits) >= 11", "eleven digits with no plus are not read as an international number", DIAL),
+    D("dial-candidates-distinct", MS, "dialled_numbers", "negate the condition", "candidate and candidate not in out", "the dialled number candidates are collected wrongly", DIAL),
+    D("tenants-resolve-international", TN, "resolve", "negate the condition", "c.startswith('+')", "an international number is looked up as if it were national", DIAL),
+    D("tenants-resolve-national-ten-digits", TN, "resolve", "negate the condition", "fullmatch", "a national number is never matched", DIAL),
+    D("tenants-resolve-national-unique", TN, "resolve", "Eq -> NotEq", "len(hits) == 1", "a national number two firms share loads one of them", DIAL),
+    D("stack-400-needs-the-five-headers", SK, "_refuse_unreadable_invite", "Lt -> GtE", "len(found) < 5", "an unparseable INVITE gets no 400, or a 400 that is not a valid response", DIAL),
+    D("stack-400-only-for-an-invite", SK, "_refuse_unreadable_invite", "negate the condition", "re.match", "a request that is not an INVITE gets a 400 or an INVITE gets none", DIAL),
 ]

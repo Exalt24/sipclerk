@@ -89,11 +89,15 @@ class IncomingInvite:
         self.cancelled = asyncio.Event()
         self.final: SipMessage | None = None
         self.dialog: Dialog | None = None
-        self.did = sm.normalize_did(sm.uri_user(req.request_uri) or sm.uri_user(req.get("to")))
+        self.candidates = sm.dialled_numbers(req)  # the number as dialled: Request-URI first, then the To header
+        self.did = self.candidates[0] if self.candidates else ""
         self.caller = sm.normalize_did(sm.uri_user(req.get("from")))
         self.offer = req.body
         # The address the caller dialled is the one it can reach us on: behind NAT or a Docker bridge our own interface address is not.
-        self.dialled_ip = _ip_literal(sm.uri_hostport(req.request_uri)[0]) if req.is_request else ""
+        try:
+            self.dialled_ip = _ip_literal(sm.uri_hostport(req.request_uri)[0]) if req.is_request else ""
+        except sm.SipParseError:  # a tel: URI names no host
+            self.dialled_ip = ""
 
     def provisional(self, code: int = 180, reason: str = "Ringing") -> None:
         self.stack.send(sm.make_response(self.req, code, reason, to_tag=self.to_tag if code != 100 else ""), self.addr)
@@ -203,7 +207,8 @@ class SipStack(asyncio.DatagramProtocol):
             msg = sm.parse(data)
         except sm.SipParseError as e:
             self.stats["malformed"] += 1
-            log.debug("dropped malformed datagram from %s: %s", addr, e)
+            log.debug("malformed datagram from %s: %s", addr, e)
+            self._refuse_unreadable_invite(data, addr)
             return
         self.log.append(("in", msg.start_line, time.time()))
         try:
@@ -217,6 +222,27 @@ class SipStack(asyncio.DatagramProtocol):
             log.exception("error handling %s", msg.start_line)
 
     # ---- server side
+
+    def _refuse_unreadable_invite(self, data: bytes, addr) -> None:
+        """An INVITE we cannot parse still deserves an answer, or the caller retransmits it for half a minute. A 400 needs the five headers a response
+        copies; if even those cannot be found there is nothing to answer with and the datagram is dropped."""
+        text = data[:8192].decode("utf-8", errors="replace")
+        head = re.split(r"\r?\n\r?\n", text, maxsplit=1)[0]
+        lines = re.split(r"\r?\n", head)
+        if not lines or not re.match(r"^INVITE \S+ SIP/2\.0\s*$", lines[0]):
+            return
+        found: dict[str, list[str]] = {}
+        for ln in lines[1:]:
+            k, sep, v = ln.partition(":")
+            name = sm.COMPACT.get(k.strip().lower(), k.strip().lower())
+            if sep and name in ("via", "from", "to", "call-id", "cseq"):
+                found.setdefault(name, []).append(v.strip())
+        if len(found) < 5:
+            return
+        to = found["to"][0] + ("" if "tag=" in found["to"][0] else f";tag={sm.new_tag()}")
+        headers = [("Via", v) for v in found["via"]] + [("From", found["from"][0]), ("To", to), ("Call-ID", found["call-id"][0]),
+                                                           ("CSeq", found["cseq"][0]), ("Server", "sipclerk-lab")]
+        self.send(SipMessage("SIP/2.0 400 Bad Request", headers), addr)
 
     @staticmethod
     def _stamp_via(resp: SipMessage, addr: tuple[str, int]) -> SipMessage:
@@ -289,7 +315,12 @@ class SipStack(asyncio.DatagramProtocol):
         return self._acks.get(call_id)
 
     async def _handle_new_invite(self, req: SipMessage, addr) -> None:
-        inv = IncomingInvite(self, req, addr)
+        try:
+            inv = IncomingInvite(self, req, addr)
+        except Exception as exc:  # readable as a message, but not something we can answer: say so instead of going quiet
+            log.warning("bad INVITE %s: %s", req.call_id, exc)
+            self.remember(req, self._reply(req, addr, 400, "Bad Request", to_tag=sm.new_tag()))
+            return
         self.pending_invites[req.call_id] = inv
         self._acks[req.call_id] = inv
         trying = sm.make_response(req, 100, "Trying")

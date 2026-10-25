@@ -130,7 +130,7 @@ class ClerkServer:
             self.run_retention_pass()
 
     async def on_invite(self, inv: IncomingInvite) -> None:
-        tenant = self.registry.by_did(inv.did)
+        tenant = self.registry.resolve(inv.candidates)
         if tenant is None:  # a wrong number: nothing is loaded and nothing is recorded
             self.counters["wrong_number"] += 1
             inv.reject(404, "Not Found")
