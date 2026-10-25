@@ -190,8 +190,15 @@ class IntakeMachine:
         """The guard's verdict on what the caller said, before any model sees it."""
         if self.state == State.CONSENT:
             return guard.check_input(text, self.cfg)
-        scope = self.question is not None and self.question.id in ("practice_area", "description")
+        q = self.question
+        scope = q is not None and (q.id == "practice_area" or (q.id == "description" and not self._area_in_scope()))
         return guard.check_input(text, self.cfg, check_scope=scope)
+
+    def _area_in_scope(self) -> bool:
+        """True once the caller's practice area is known and the firm takes it: the description is then the story of that matter, and a word in it
+        (a DUI charge after the crash that is the case) does not turn the caller away."""
+        fs = self.fields.get("practice_area")
+        return fs is not None and fs.value is not None and self.cfg.area(str(fs.value)) is not None
 
     def parse(self, text: str) -> Parsed:
         """The deterministic reading of what the caller said, for whatever the machine is waiting on."""

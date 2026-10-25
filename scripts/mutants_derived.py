@@ -75,6 +75,7 @@ STORE = ["tests/test_store.py"]
 RETENTION = ["tests/test_retention.py", "tests/test_store.py", "tests/test_wiring.py"]
 OUTBOX = ["tests/test_outbox_at_rest.py", "tests/test_delivery.py"]
 REPORT = ["tests/test_emergency_report.py", "tests/test_emergency_tense.py", "tests/test_guard.py"]
+SCOPE = ["tests/test_scope_confirmed_area.py", "tests/test_machine.py", "tests/test_guard.py"]
 TENSE = ["tests/test_emergency_tense.py", "tests/test_guard.py", "tests/test_machine.py"]
 ANON = ["tests/test_anonymous_callers.py"]
 ROUTE = ["tests/test_route_set.py", "tests/test_sip_stack.py"]
@@ -164,6 +165,10 @@ DERIVED_MUTANTS: list[DerivedMutant] = [
     D("guard-report-hedge", GD, "_is_report", "return value -> None", "_HEDGE_BEFORE", "`kind of an emergency` is an alarm", REPORT),
     D("guard-report-asks-for-help", GD, "_is_report", "remove `not`", "_HELP_NOW", "`my son is hurt, please help` is dropped as a report", REPORT),
     D("guard-report-badly-hurt", GD, "_is_report", "remove `not`", "(?:badly|seriously)", "`my husband is badly hurt` is dropped as a report", REPORT),
+    # ---- a practice area the caller confirmed in scope is not overturned by a word in the description (output round 2, F8)
+    D("machine-confirmed-area-wins", "sipclerk/intake/machine.py", "screen", "remove `not`", "_area_in_scope", "a word in the description turns away a caller whose area the firm takes", SCOPE),
+    D("machine-area-must-be-one-the-firm-takes", "sipclerk/intake/machine.py", "_area_in_scope", "IsNot -> Is", "self.cfg.area", "an area the firm does not list counts as confirmed in scope", SCOPE),
+    D("machine-unknown-area-keeps-the-check", "sipclerk/intake/machine.py", "_area_in_scope", "IsNot -> Is", "fs.value is not None", "a skipped area counts as confirmed and the word check is dropped", SCOPE),
 ]
 
 
