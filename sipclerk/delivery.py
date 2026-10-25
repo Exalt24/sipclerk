@@ -7,9 +7,12 @@ Two receivers, each used the way its own repository documents it:
 * clinic-call-console takes `POST /api/ingest/calls` with `X-Signature: t=<unix>,v1=HMAC(secret, "t.body")`
   and dedupes on `externalId` (its WebhookSignature and IngestController).
 
-A failed delivery never touches the call: the entry waits in the outbox and is retried with backoff.
-The same idempotency key is sent every time, so a retry after a half-finished attempt cannot create a
-second record. A permanent refusal (a 4xx other than 408 and 429) goes to the dead letters at once.
+A failed delivery never touches the call: the entry waits in the outbox and is retried with a capped, growing
+backoff (BACKOFF_S: seconds at first, then up to four hours, about 23 hours in all), so a receiver that is down
+for an afternoon still gets the delivery when it comes back. The same idempotency key is sent every time, so a
+retry after a half-finished attempt cannot create a second record, and every attempt is signed afresh. A
+permanent refusal (a 4xx other than 408 and 429) goes to the dead letters at once, and so does an entry that
+used up the whole schedule; a dead entry is logged at WARNING, counted in the stats and sent again by `requeue`.
 """
 from __future__ import annotations
 
@@ -31,8 +34,10 @@ log = logging.getLogger("sipclerk.delivery")
 
 Sender = Callable[[str, bytes, dict[str, str]], Awaitable[tuple[int, str]]]
 
-BACKOFF_S = [1, 2, 4, 8, 16, 32]
-MAX_ATTEMPTS = 6
+# The wait after attempt 1, 2, 3 ...; the last step repeats. Doubling for ten attempts, then an hour, two hours, four hours.
+BACKOFF_S = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 3600, 3600, 7200, 7200, 14400, 14400, 14400, 14400]
+MAX_ATTEMPTS = len(BACKOFF_S) + 1  # one attempt now and one after each wait
+GIVE_UP_AFTER_S = sum(BACKOFF_S)  # 83,295 s: an entry is dead about 23 hours after it was queued
 RETRYABLE = {408, 425, 429}
 
 
@@ -242,7 +247,37 @@ class Outbox:
         e.status, e.payload, e.finished_at = "dead", None, self.clock()
         if why:
             e.last = why
-        log.warning("delivery %s to %s for %s is dead after %d attempt(s) (%s)", e.key[:12], e.target, e.tenant_id, e.attempts, e.last[:60])
+        log.warning("delivery %s to %s for %s is dead after %d attempt(s) (%s); `python scripts/requeue_dead.py` sends it again",
+                    e.key[:12], e.target, e.tenant_id, e.attempts, e.last[:60])
+
+    def requeue(self, key: str | None = None, target: str | None = None) -> int:
+        """Give dead entries (all, or one key, or one target) a fresh set of attempts, starting now. Returns how many were queued."""
+        n = 0
+        for e in self.dead:
+            if (key is not None and e.key != key) or (target is not None and e.target != target) or not e.sealed:
+                continue
+            e.status, e.attempts, e.next_at, e.finished_at = "pending", 0, self.clock(), None
+            e.history.append("requeued")
+            n += 1
+        if n:
+            self._persist()
+            log.warning("outbox: %d dead delivery(ies) queued again", n)
+        return n
+
+    def _requeue_marker(self) -> Path:
+        return self.path.with_name(self.path.name + ".requeue")
+
+    def _apply_requeue_request(self) -> int:
+        """scripts/requeue_dead.py leaves a request beside the file; the running line applies it here, so its own copy is not written over."""
+        marker = self._requeue_marker()
+        if not marker.exists():
+            return 0
+        try:
+            req = json.loads(marker.read_text(encoding="utf-8") or "{}")
+        except ValueError:
+            req = {}
+        marker.unlink(missing_ok=True)
+        return self.requeue(key=req.get("key"), target=req.get("target"))
 
     def purge(self, retention_days: Callable[[str], int | None]) -> int:
         """Remove delivered and dead entries older than their firm's retention_days, counted from when they finished. A waiting entry is
@@ -267,6 +302,7 @@ class Outbox:
         """Try every entry that is due. Returns how many were delivered in this pass."""
         delivered = 0
         async with self._lock:
+            self._apply_requeue_request()
             for e in list(self.entries.values()):
                 if e.status != "pending" or e.next_at > self.clock():
                     continue

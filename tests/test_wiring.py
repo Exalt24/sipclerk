@@ -17,9 +17,6 @@ SUBJECTS = {
 }
 NOT_RUN_BY_THE_LINE = {
     ("TenantStore", "read"): "the staff read interface: the line writes calls and never reads one back, and this lab has no staff screen",
-    ("Outbox", "pending"): "the undelivered entries, until the server's status view reads them",
-    ("Outbox", "dead"): "the dead letters, until the server's status view reads them",
-    ("Outbox", "stats"): "the delivery counts, until the server's status view reads them",
 }
 
 

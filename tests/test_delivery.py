@@ -92,10 +92,10 @@ async def test_server_error_retries_with_backoff_and_the_call_is_untouched(tmp_p
 
 async def test_gives_up_after_the_attempt_limit(tmp_path):
     now = {"t": 0.0}
-    ob = box(tmp_path, Receiver([500] * 10), now)
+    ob = box(tmp_path, Receiver([500] * (d.MAX_ATTEMPTS + 5)), now)
     ob.enqueue("bridge", "k1", {}, tenant_id=TENANT)
     for _ in range(d.MAX_ATTEMPTS + 2):
-        now["t"] += 100
+        now["t"] += d.BACKOFF_S[-1] + 1  # past the longest wait, so every pass finds the entry due
         await ob.deliver_due()
     assert ob.stats()["dead"] == 1 and ob.dead[0].attempts == d.MAX_ATTEMPTS
 
@@ -166,7 +166,7 @@ async def test_random_failure_worlds_never_lose_or_double_deliver(tmp_path, seed
         if rnd.random() < 0.15:  # a restart in the middle
             ob = box(tmp_path / str(seed), r, now)
     for _ in range(d.MAX_ATTEMPTS + 2):
-        now["t"] += 100
+        now["t"] += d.BACKOFF_S[-1] + 1  # past the longest wait, so every pass finds the entry due
         await ob.deliver_due()
     for e in ob.entries.values():
         assert e.status in ("delivered", "dead"), (seed, e)

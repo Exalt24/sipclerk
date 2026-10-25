@@ -69,6 +69,7 @@ def D(id: str, file: str, function: str, kind_re: str, snippet: str, desc: str, 
 STORE = ["tests/test_store.py"]
 RETENTION = ["tests/test_retention.py", "tests/test_store.py", "tests/test_wiring.py"]
 OUTBOX = ["tests/test_outbox_at_rest.py", "tests/test_delivery.py"]
+WINDOW = ["tests/test_delivery_window.py", "tests/test_delivery.py"]
 ST, SV, DE = "sipclerk/store.py", "sipclerk/server.py", "sipclerk/delivery.py"
 
 DERIVED_MUTANTS: list[DerivedMutant] = [
@@ -93,4 +94,13 @@ DERIVED_MUTANTS: list[DerivedMutant] = [
     D("outbox-unopenable-dies", DE, "deliver_due", "delete the call statement", "cannot be opened", "an entry whose body cannot be opened waits for ever", OUTBOX),
     D("outbox-bad-line-counted", DE, "_load", "Add= -> Sub=", "unreadable_lines", "a line the loader skipped is not counted", OUTBOX),
     D("delivery-4xx-retried", DE, "deliver_due", "delete the call statement", "self._die(e)", "a permanent refusal is retried forever (the first _die(e) in walk order is the 4xx branch)", OUTBOX),
+    # ---- a delivery is not given up inside a short window (F3)
+    D("delivery-backoff-index", DE, "deliver_due", "Sub -> Add", "e.attempts - 1", "the wait after an attempt is read from the wrong step of the schedule", WINDOW),
+    D("delivery-window-off-by-one", DE, "deliver_due", "GtE -> Lt", "e.attempts >= MAX_ATTEMPTS", "an entry is dead after its first attempt, or never", WINDOW),
+    D("delivery-dead-is-warned", DE, "_die", "delete the call statement", "log.warning", "an entry that goes dead is not logged", WINDOW),
+    D("delivery-requeue-selective", DE, "requeue", "negate the condition", "key is not None", "requeue ignores the key it was given", WINDOW),
+    D("delivery-requeue-history", DE, "requeue", "delete the call statement", "history.append", "a requeued entry does not say it was requeued", WINDOW),
+    D("delivery-requeue-request-consumed", DE, "_apply_requeue_request", "delete the call statement", "marker.unlink", "a requeue request is applied on every pass for ever", WINDOW),
+    D("server-dead-reminder", SV, "run_retention_pass", "negate the condition", "self.outbox.dead", "the hourly pass says nothing about dead deliveries", WINDOW),
+    D("script-requeue-now-or-ask", "scripts/requeue_dead.py", "main", "negate the condition", "a.now", "the script edits a running line's file instead of asking the line", WINDOW),
 ]

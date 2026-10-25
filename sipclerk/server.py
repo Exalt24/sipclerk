@@ -76,6 +76,11 @@ class ClerkServer:
             await self._retention_task
         await self.stack.stop()
 
+    def status(self) -> dict:
+        """What an operator looks at: call counters, deliveries (the dead letters among them) and the retention passes."""
+        return {"calls_open": len(self.sessions), "counters": dict(self.counters), "deliveries": {**self.outbox.stats(), "waiting": len(self.outbox.pending)},
+                "retention": dict(self.retention)}
+
     # ---- retention
 
     def run_retention_pass(self) -> bool:
@@ -97,9 +102,12 @@ class ClerkServer:
             self.retention["outbox_entries_purged"] += self.outbox.purge(self._retention_days)
         except Exception:
             log.exception("retention: the outbox purge failed; it will be tried again in %.0f s", self.retention_every_s)
+        if self.outbox.dead:  # a delivery given up on is the one thing here that needs a person: keep saying so until it is sent again or purged
+            log.warning("outbox: %d dead delivery(ies); `python scripts/requeue_dead.py` sends them again", len(self.outbox.dead))
         self.retention["audit_broken"] = [t.config.tenant_id for t in self.registry.all if not self._audit_verifies(t.config.tenant_id)]
         if self.retention["audit_broken"]:
             log.error("retention: the audit chain of %s does not verify", ", ".join(self.retention["audit_broken"]))
+        log.info("line status: %s", self.status())  # counts only, once an hour
         return True
 
     def _retention_days(self, tenant_id: str) -> int | None:
