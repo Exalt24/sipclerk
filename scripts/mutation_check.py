@@ -8,7 +8,7 @@
     python scripts/mutation_check.py --in-place           # mutate this working tree instead of a throwaway copy of it
 
 By default the run happens in a COPY of the repository in a temporary folder, so the working tree is never edited. Rows
-in mutants_derived.py get their edit from Operations/tools/mutate_ast.py (the code's own syntax tree), not from typed text.
+in mutants_derived.py get their edit from scripts/mutate_ast.py (the code's own syntax tree), not from typed text.
 
 A mutant counts as killed only when pytest ran and reported at least one failed test. A crash or a collection
 error is reported as ERROR and does not count. The source file is always restored, even on Ctrl-C.

@@ -58,6 +58,7 @@ async def main(names: list[str], out: str | None, deliver: bool) -> int:
                 print(f"delivery {e.target:8} {e.status:10} attempts={e.attempts} last={e.last}")
             rows[-1]["deliveries"] = [{"target": e.target, "status": e.status, "attempts": e.attempts, "last": e.last} for e in rig.outbox.entries.values()]
     if out:
+        Path(out).parent.mkdir(parents=True, exist_ok=True)
         Path(out).write_text(json.dumps(rows, indent=2), encoding="utf-8")
     return 0
 

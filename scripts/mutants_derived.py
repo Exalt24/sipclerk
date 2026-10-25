@@ -2,7 +2,7 @@
 
 A hand written `old -> new` pair goes stale the first time someone rewords a line: it then fails to apply, or applies
 somewhere else. These rows name a FUNCTION, the KIND of change (the description mutate_ast.py gives its mutation sites)
-and a SNIPPET of the code at that site, and the edit is computed at run time with `Operations/tools/mutate_ast.py`
+and a SNIPPET of the code at that site, and the edit is computed at run time with `scripts/mutate_ast.py`
 (`sites` and `apply`). A refactor moves the site; it does not break the row. If the snippet no longer exists the row
 fails `mutation_check.py --check` instead of silently testing nothing.
 
@@ -19,7 +19,7 @@ from pathlib import Path
 
 from mutants import FAST, PIPE_FAST, Mutant
 
-DEFAULT_TOOL = Path("C:/Projects/Professional/Operations/tools/mutate_ast.py")
+DEFAULT_TOOL = Path(__file__).resolve().parent / "mutate_ast.py"
 
 
 def _tool():
