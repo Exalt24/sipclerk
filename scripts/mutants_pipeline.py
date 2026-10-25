@@ -39,8 +39,6 @@ PIPELINE_MUTANTS = [
       "a finished intake is not sent to the case-management receiver", "full_intake"),
     P("pipe-console-delivery", CALL, "        if self.cfg.integrations.call_console:\n            payload = delivery", "        if False:\n            payload = delivery",
       "the masked call is not sent to the console", "full_intake"),
-    P("pipe-duplicate-call", SERVER, "        if any(s.caller == inv.caller and s.cfg.tenant_id == tenant.config.tenant_id for s in self.sessions.values()):", "        if False:",
-      "the same caller can hold two calls on one line", "same_caller"),
     P("pipe-blocked-caller", SERVER, '        if v.action == "blocked_caller":', "        if False:", "a blocked number is answered", "blocked_caller"),
     P("pipe-wrong-number", SERVER, "        if tenant is None:  # a wrong number", "        if False:  # a wrong number", "a wrong number loads a tenant", "dialled_number"),
     P("pipe-capacity", SERVER, "        if len(self.sessions) >= self.max_calls:", "        if False:", "there is no limit on simultaneous calls", "beyond_the_limit"),

@@ -17,7 +17,7 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from mutants import FAST, Mutant
+from mutants import FAST, PIPE_FAST, Mutant
 
 DEFAULT_TOOL = Path("C:/Projects/Professional/Operations/tools/mutate_ast.py")
 
@@ -60,9 +60,14 @@ def derive(m: DerivedMutant, text: str) -> str:
     return ast.unparse(tool.apply(tree, hits[m.nth]))
 
 
-def D(id: str, file: str, function: str, kind_re: str, snippet: str, desc: str, tests: list[str] | None = None, nth: int = 0) -> DerivedMutant:
-    return DerivedMutant(id, file, function, kind_re, list(tests) if tests is not None else list(FAST), desc, "ast", "unit",
+def D(id: str, file: str, function: str, kind_re: str, snippet: str, desc: str, tests: list[str] | None = None, nth: int = 0, layer: str = "unit") -> DerivedMutant:
+    return DerivedMutant(id, file, function, kind_re, list(tests) if tests is not None else list(FAST), desc, "ast", layer,
                          function=function, kind_re=kind_re, snippet=snippet, nth=nth)
+
+
+def PD(id: str, file: str, function: str, kind_re: str, snippet: str, desc: str, k: str) -> DerivedMutant:
+    """A derived mutant checked through the whole line (real SIP, RTP and voice activity detection, stand-in speech models)."""
+    return D(id, file, function, kind_re, snippet, desc, [*PIPE_FAST, "tests/test_processors.py", "-k", k], layer="pipeline")
 
 
 # Fields before `function` are the Mutant ones: id, file, old, new, tests, desc, kind, layer.
@@ -152,4 +157,13 @@ DERIVED_MUTANTS: list[DerivedMutant] = [
     D("guard-emergency-present-verb-is-live", GD, "_is_account", "negate the condition", "(?:is|are)", "a hit that says `is bleeding` is dropped when the clause mentions the past", TENSE),
     D("guard-emergency-now-before-the-hit", GD, "_is_account", "negate the condition", "_NOW_BEFORE_HIT", "`he's unconscious after the fall` is dropped as an account", TENSE),
     D("guard-emergency-past-clause", GD, "_is_account", "return value -> None", "", "no clause is ever an account of the past", TENSE),
+]
+
+
+PIPELINE_DERIVED: list[DerivedMutant] = [
+    PD("pipe-duplicate-call", SV, "on_invite", "negate the condition", "_already_on_this_line", "the same caller can hold two calls on one line", "same_caller"),
+    PD("pipe-anonymous-callers", SV, "_already_on_this_line", "negate the condition", "caller_is_withheld", "a second anonymous caller is turned away as a duplicate", "anonymous"),
+    PD("pipe-caller-hangs-up-during-the-transfer", CA, "_watch_caller_bye", "Is -> IsNot", "self.bridged_at is None", "a caller who hangs up while the desk phone rings or hears the whisper does not end the call",
+       "desk_invite_and_still or hangs_up_the_desk"),
+    PD("pipe-dialled-shapes", TN, "resolve", "negate the condition", "fullmatch", "a call dialled as ten digits is turned away", "line_answers_each_shape"),
 ]

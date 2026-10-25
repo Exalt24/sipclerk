@@ -31,7 +31,7 @@ ROOT = HERE.parent
 sys.path.insert(0, str(HERE))
 
 from mutants import MUTANTS as UNIT_BASE, Mutant  # noqa: E402
-from mutants_derived import DERIVED_MUTANTS, derive  # noqa: E402
+from mutants_derived import DERIVED_MUTANTS, PIPELINE_DERIVED, derive  # noqa: E402
 from mutants_found import FOUND_MUTANTS  # noqa: E402
 from mutants_pipeline import PIPELINE_MUTANTS  # noqa: E402
 
@@ -94,7 +94,8 @@ def main() -> int:
     ap.add_argument("--only")
     ap.add_argument("--report")
     a = ap.parse_args()
-    pool = [m for m in MUTANTS if m.layer == "unit"] if a.layer == "unit" else [m for m in PIPELINE_MUTANTS] if a.layer == "pipeline" else [*MUTANTS, *PIPELINE_MUTANTS]
+    pipeline = [*PIPELINE_MUTANTS, *PIPELINE_DERIVED]
+    pool = [m for m in MUTANTS if m.layer == "unit"] if a.layer == "unit" else pipeline if a.layer == "pipeline" else [*MUTANTS, *pipeline]
     if a.only:
         pool = [m for m in pool if m.id in a.only.split(",")]
     # every mutant must still apply
