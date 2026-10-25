@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import shutil
 import wave
@@ -32,8 +33,19 @@ PARTS = ("record", "transcript", "summary", "recording")
 CHAIN_START = "0" * 64
 
 
+log = logging.getLogger("sipclerk.store")
+
+
 class AccessDenied(PermissionError):
     pass
+
+
+class PurgeResult(list):
+    """The (tenant, call) pairs a purge deleted, as a plain list; `.skipped` holds (tenant, call, reason) for what it could not handle."""
+
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.skipped: list[tuple[str, str, str]] = []
 
 
 @dataclass(frozen=True)
@@ -150,19 +162,42 @@ class TenantStore:
 
     # ---- retention
 
-    def purge(self, now: datetime | None = None) -> list[tuple[str, str]]:
+    def purge(self, now: datetime | None = None) -> PurgeResult:
+        """Delete every call older than its firm's `retention_days`. One folder that cannot be read, deleted or audited is
+        skipped, logged and counted in `result.skipped`; it never stops the folders after it or the other firm."""
         now = now or self.clock()
-        gone = []
+        result = PurgeResult()
         for t in self.registry.all:
+            tenant_id = t.config.tenant_id
             cutoff = now - timedelta(days=t.config.retention_days)
-            for call_id in self.list_calls(t.config.tenant_id):
-                meta_path = self._call_dir(t.config.tenant_id, call_id) / "meta.json"
-                saved = datetime.fromisoformat(json.loads(meta_path.read_text(encoding="utf-8"))["saved_at"].rstrip("Z"))
-                if saved < cutoff:
-                    shutil.rmtree(self._call_dir(t.config.tenant_id, call_id))
-                    self._audit(t.config.tenant_id, "system", "system", "purge", call_id, "all", f"older than {t.config.retention_days} days")
-                    gone.append((t.config.tenant_id, call_id))
-        return gone
+            try:
+                call_ids = self.list_calls(tenant_id)
+            except Exception as exc:  # one firm's folder that will not open is not the other firm's problem
+                log.warning("retention: cannot list the calls of %s: %s", tenant_id, exc)
+                result.skipped.append((tenant_id, "", f"list failed: {type(exc).__name__}: {exc}"))
+                continue
+            for call_id in call_ids:
+                try:
+                    meta_path = self._call_dir(tenant_id, call_id) / "meta.json"
+                    saved = datetime.fromisoformat(json.loads(meta_path.read_text(encoding="utf-8"))["saved_at"].rstrip("Z"))
+                except Exception as exc:  # a half written folder, a torn or foreign meta file, a bad folder name
+                    log.warning("retention: skipped %s/%s, cannot read its meta.json: %s", tenant_id, call_id, exc)
+                    result.skipped.append((tenant_id, call_id, f"unreadable meta: {type(exc).__name__}: {exc}"))
+                    continue
+                if saved >= cutoff:
+                    continue
+                try:
+                    shutil.rmtree(self._call_dir(tenant_id, call_id))
+                except OSError as exc:
+                    log.warning("retention: could not delete %s/%s: %s", tenant_id, call_id, exc)
+                    result.skipped.append((tenant_id, call_id, f"delete failed: {type(exc).__name__}: {exc}"))
+                    continue
+                result.append((tenant_id, call_id))
+                try:
+                    self._audit(tenant_id, "system", "system", "purge", call_id, "all", f"older than {t.config.retention_days} days")
+                except Exception as exc:  # the calls are gone: say so, and go on with the rest
+                    log.error("retention: deleted %s/%s but could not write its audit line: %s", tenant_id, call_id, exc)
+        return result
 
     # ---- audit
 
@@ -189,7 +224,11 @@ class TenantStore:
 
     def verify_audit(self, tenant_id: str) -> bool:
         prev = CHAIN_START
-        for e in self.audit_lines(tenant_id):
+        try:
+            entries = self.audit_lines(tenant_id)
+        except ValueError:  # a line that is not JSON is a damaged chain, which is what this method exists to say
+            return False
+        for e in entries:
             body = {k: v for k, v in e.items() if k != "hash"}
             if e["prev"] != prev or hashlib.sha256(json.dumps(body, sort_keys=True).encode()).hexdigest() != e["hash"]:
                 return False

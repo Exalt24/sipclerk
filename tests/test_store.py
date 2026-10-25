@@ -127,3 +127,130 @@ def test_no_recording_part_when_the_caller_did_not_consent(store):
     with pytest.raises(FileNotFoundError):
         store.read(Actor("lee", "ashgrovepell", "attorney"), "ashgrovepell", "call-1", "recording")
     assert os.path.exists(store._call_dir("ashgrovepell", "call-1") / "meta.json")
+
+
+# ---- one bad entry must not stop a pass over all entries (retention)
+
+def _expire(s, clock, days):
+    clock["now"] = NOW + timedelta(days=days)
+
+
+def _break_meta(s, tenant, call, how):
+    d = s._call_dir(tenant, call)
+    meta = d / "meta.json"
+    if how == "missing":
+        meta.unlink()
+    elif how == "empty":
+        meta.write_text("", encoding="utf-8")
+    elif how == "torn":
+        meta.write_text('{"call_id": "x", "saved_at": "2026-10-2', encoding="utf-8")
+    elif how == "no_saved_at":
+        meta.write_text('{"call_id": "x"}', encoding="utf-8")
+    elif how == "garbage_date":
+        meta.write_text('{"saved_at": "last tuesday"}', encoding="utf-8")
+    elif how == "not_an_object":
+        meta.write_text("[1, 2]", encoding="utf-8")
+    elif how == "null_date":
+        meta.write_text('{"saved_at": null}', encoding="utf-8")
+
+
+def test_a_half_written_call_folder_does_not_stop_the_purge_for_either_firm(registry, tmp_path):
+    clock = {"now": NOW}
+    s = TenantStore(tmp_path, registry, MASTER, clock=lambda: clock["now"])
+    for tenant in ("ashgrovepell", "tidewaterquint"):
+        for call in ("a-half", "b-old", "z-half", "z-old"):
+            put(s, tenant, call)
+        for call in ("a-half", "z-half"):
+            (s._call_dir(tenant, call) / "meta.json").unlink()  # the folder was made and the process died before meta.json was written
+    clock["now"] = NOW + timedelta(days=100)
+    result = s.purge()
+    assert sorted(result) == [(t, c) for t in ("ashgrovepell", "tidewaterquint") for c in ("b-old", "z-old")]
+    assert sorted((t, c) for t, c, _why in result.skipped) == [(t, c) for t in ("ashgrovepell", "tidewaterquint") for c in ("a-half", "z-half")]
+    for tenant in ("ashgrovepell", "tidewaterquint"):
+        assert s.list_calls(tenant) == ["a-half", "z-half"]
+        assert s.verify_audit(tenant)
+
+
+@pytest.mark.parametrize("how", ["missing", "empty", "torn", "no_saved_at", "garbage_date", "not_an_object", "null_date"])
+def test_whatever_is_wrong_with_one_entry_every_good_expired_call_is_still_purged(registry, tmp_path, how):
+    """Class: one bad entry aborts a pass over all entries. Every way a meta file can be unreadable leaves the other calls purged."""
+    clock = {"now": NOW}
+    s = TenantStore(tmp_path, registry, MASTER, clock=lambda: clock["now"])
+    for tenant in ("ashgrovepell", "tidewaterquint"):
+        for call in ("c1", "c2", "c3"):
+            put(s, tenant, call)
+        _break_meta(s, tenant, "c2", how)
+    # folders that are not calls at all: a name the store refuses, and a stray file
+    (tmp_path / "tenants/ashgrovepell/calls/not.a.call").mkdir()
+    (tmp_path / "tenants/tidewaterquint/calls/stray.txt").write_text("x", encoding="utf-8")
+    clock["now"] = NOW + timedelta(days=100)
+    result = s.purge()
+    assert sorted(result) == [(t, c) for t in ("ashgrovepell", "tidewaterquint") for c in ("c1", "c3")]
+    assert {c for _t, c, _why in result.skipped} >= {"c2", "not.a.call", "stray.txt"}
+    assert "c1" not in s.list_calls("ashgrovepell") and "c3" not in s.list_calls("tidewaterquint")
+
+
+def test_a_folder_that_cannot_be_deleted_is_counted_and_the_rest_go(registry, tmp_path, monkeypatch):
+    clock = {"now": NOW}
+    s = TenantStore(tmp_path, registry, MASTER, clock=lambda: clock["now"])
+    for call in ("c1", "c2", "c3"):
+        put(s, "ashgrovepell", call)
+    real = st.shutil.rmtree
+
+    def flaky(path, *a, **kw):
+        if str(path).endswith("c2"):
+            raise PermissionError("held open by another program")
+        return real(path, *a, **kw)
+
+    monkeypatch.setattr(st.shutil, "rmtree", flaky)
+    clock["now"] = NOW + timedelta(days=100)
+    result = s.purge()
+    assert sorted(result) == [("ashgrovepell", "c1"), ("ashgrovepell", "c3")]
+    assert [(t, c) for t, c, _w in result.skipped] == [("ashgrovepell", "c2")]
+    assert s.list_calls("ashgrovepell") == ["c2"]
+
+
+def test_a_failing_audit_write_does_not_stop_the_purge_either(registry, tmp_path, monkeypatch):
+    clock = {"now": NOW}
+    s = TenantStore(tmp_path, registry, MASTER, clock=lambda: clock["now"])
+    for call in ("c1", "c2"):
+        put(s, "ashgrovepell", call)
+        put(s, "tidewaterquint", call)
+    real = s._audit
+    seen = []
+
+    def flaky(tenant, actor, role, action, call_id, *rest):
+        if action == "purge" and not seen:
+            seen.append(1)
+            raise OSError("disk full")
+        return real(tenant, actor, role, action, call_id, *rest)
+
+    monkeypatch.setattr(s, "_audit", flaky)
+    clock["now"] = NOW + timedelta(days=100)
+    result = s.purge()
+    assert len(result) == 4 and s.list_calls("ashgrovepell") == [] and s.list_calls("tidewaterquint") == []
+
+
+def test_a_firm_whose_calls_folder_cannot_be_listed_does_not_stop_the_other_firm(registry, tmp_path, monkeypatch):
+    clock = {"now": NOW}
+    s = TenantStore(tmp_path, registry, MASTER, clock=lambda: clock["now"])
+    put(s, "ashgrovepell", "c1")
+    put(s, "tidewaterquint", "c1")
+    real = s.list_calls
+
+    def listing(tenant):
+        if tenant == "ashgrovepell":
+            raise PermissionError("access denied")
+        return real(tenant)
+
+    monkeypatch.setattr(s, "list_calls", listing)
+    clock["now"] = NOW + timedelta(days=100)
+    result = s.purge()
+    assert list(result) == [("tidewaterquint", "c1")] and [(t, why.split(":")[0]) for t, _c, why in result.skipped] == [("ashgrovepell", "list failed")]
+
+
+def test_an_audit_line_that_is_not_json_reads_as_a_broken_chain_not_a_crash(store):
+    put(store)
+    with store._audit_path("ashgrovepell").open("a", encoding="utf-8") as fh:
+        fh.write("not json at all\n")
+    assert store.verify_audit("ashgrovepell") is False
