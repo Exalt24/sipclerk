@@ -354,7 +354,7 @@ class Intake(FrameProcessor):
             name = await ctx.llm.extract_name(text)
             self._mark_llm()
             if name:
-                return parsers.parse_name(name)
+                return parsers.parse_name(name, named=True)
         elif q.type == "date" and p.reason == "not_a_date":
             iso = await ctx.llm.extract_date(text, ctx.now_date.isoformat())
             self._mark_llm()

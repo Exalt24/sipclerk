@@ -76,6 +76,7 @@ RETENTION = ["tests/test_retention.py", "tests/test_store.py", "tests/test_wirin
 OUTBOX = ["tests/test_outbox_at_rest.py", "tests/test_delivery.py"]
 REPORT = ["tests/test_emergency_report.py", "tests/test_emergency_tense.py", "tests/test_guard.py"]
 SCOPE = ["tests/test_scope_confirmed_area.py", "tests/test_machine.py", "tests/test_guard.py"]
+STOPWORDS = ["tests/test_names_stopwords.py", "tests/test_names_unicode.py", "tests/test_parsers.py"]
 TENSE = ["tests/test_emergency_tense.py", "tests/test_guard.py", "tests/test_machine.py"]
 ANON = ["tests/test_anonymous_callers.py"]
 ROUTE = ["tests/test_route_set.py", "tests/test_sip_stack.py"]
@@ -169,6 +170,11 @@ DERIVED_MUTANTS: list[DerivedMutant] = [
     D("machine-confirmed-area-wins", "sipclerk/intake/machine.py", "screen", "remove `not`", "_area_in_scope", "a word in the description turns away a caller whose area the firm takes", SCOPE),
     D("machine-area-must-be-one-the-firm-takes", "sipclerk/intake/machine.py", "_area_in_scope", "IsNot -> Is", "self.cfg.area", "an area the firm does not list counts as confirmed in scope", SCOPE),
     D("machine-unknown-area-keeps-the-check", "sipclerk/intake/machine.py", "_area_in_scope", "IsNot -> Is", "fs.value is not None", "a skipped area counts as confirmed and the word check is dropped", SCOPE),
+    # ---- a word that is also a filler is not a veto on a real name (output round 2, F7)
+    D("parse-name-ambiguous-words-are-listed", PA, "parse_name", "In -> NotIn", "NAME_AMBIGUOUS", "An, To, Case and Hurt are not read as parts of a name", STOPWORDS),
+    D("parse-name-ambiguous-needs-a-capital", PA, "parse_name", "remove `not`", "named or all", "a lower case an, to, case or hurt is read as part of a name, or a capitalised one is not", STOPWORDS),
+    D("parse-name-lone-ambiguous-word", PA, "parse_name", "Eq -> NotEq", "len(ambiguous) == len(tokens)", "`to` or `an` on its own is taken for a name", STOPWORDS),
+    D("proc-model-name-is-a-name", "sipclerk/voice/processors.py", "_interpret", "True -> False", "True", "the model's extracted name is rejected by the capital letter check", STOPWORDS, nth=1),
 ]
 
 

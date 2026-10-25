@@ -86,18 +86,25 @@ def parse_yesno(text: str) -> Parsed:
 NAME_LEAD = re.compile(r"^(?:(?:uh|um|well|yes|yeah|hi|hello|hey|sure|okay|ok)[,\s]+)*"
                        r"(?:my (?:full )?name(?: is|'s)|this is|it is|it's|its|i am|i'm|name is|name's|call me|they call me)\s+", re.I)
 NAME_STOP = {"yes", "no", "the", "and", "but", "not", "what", "why", "how", "please", "sorry", "hello", "hi", "um", "uh",
-             "skip", "lawyer", "attorney", "case", "client", "person", "someone", "phone", "number", "accident", "injured",
-             "is", "was", "are", "were", "my", "i", "need", "want", "help", "have", "has", "had", "with", "for", "to", "at",
-             "a", "an", "it", "that", "this", "me", "we", "you", "bleeding", "hurt"}
+             "skip", "lawyer", "attorney", "client", "person", "someone", "phone", "number", "accident", "injured",
+             "is", "was", "are", "were", "my", "i", "need", "want", "help", "have", "has", "had", "with", "for", "at",
+             "a", "it", "that", "this", "me", "we", "you", "bleeding"}
+# Words that are an answer or a filler AND a real part of a name (An Nguyen, Thi An Tran, Daniel To, Kevin Case, Mary Hurt). Heard capitalised next to a word that
+# is only a name, they are a name; said on their own, or in lower case, they are still the filler they usually are.
+NAME_AMBIGUOUS = {"an", "to", "case", "hurt"}
 
 
-def parse_name(text: str) -> Parsed:
+def parse_name(text: str, *, named: bool = False) -> Parsed:
+    """`named` is for text that is already a name (what the model extracted): the capital letter is then not needed to read An, To, Case or Hurt as part of it."""
     raw = _squash(unicodedata.normalize("NFC", text).replace("’", "'"), "'-", digits=False)
     raw = NAME_LEAD.sub("", raw.strip())
     tokens = [t.strip("-'") for t in raw.split() if t.strip("-'")]
     if not tokens:
         return Parsed(False, reason="empty")
     if len(tokens) > 5 or any(t.lower() in NAME_STOP for t in tokens):
+        return Parsed(False, reason="not_a_name")
+    ambiguous = [t for t in tokens if t.lower() in NAME_AMBIGUOUS]
+    if ambiguous and (len(ambiguous) == len(tokens) or not (named or all(t[:1].isupper() for t in ambiguous))):
         return Parsed(False, reason="not_a_name")
     if re.search(r"\d", text) and not re.search(r"[^\W\d_]{2}", text):
         return Parsed(False, reason="not_a_name")

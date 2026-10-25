@@ -27,6 +27,11 @@ NAMES = [
 NAMES_WITH_PUNCTUATION = [("Seán O'Brien", "Seán O'Brien"), ("Seán O’Brien", "Seán O'Brien"), ("Dr. Álvaro Núñez", "Dr Álvaro Núñez"), ("Jean-Luc Garçon", "Jean-luc Garçon")]
 
 
+# The stop words as they were: the four that are also parts of real names (test_names_stopwords.py) were part of this set, and the frozen parser keeps them
+# so the comparison below still holds for every input that does not say one of them capitalised.
+OLD_NAME_STOP = p.NAME_STOP | p.NAME_AMBIGUOUS
+
+
 def old_parse_name(text: str):
     """The parser as it was before: A to Z only. Returns (ok, value, reason)."""
     raw = re.sub(r"[^A-Za-z'\-\s]", " ", text.replace("’", "'"))
@@ -34,7 +39,7 @@ def old_parse_name(text: str):
     tokens = [t.strip("-'") for t in raw.split() if t.strip("-'")]
     if not tokens:
         return (False, None, "empty")
-    if len(tokens) > 5 or any(t.lower() in p.NAME_STOP for t in tokens):
+    if len(tokens) > 5 or any(t.lower() in OLD_NAME_STOP for t in tokens):
         return (False, None, "not_a_name")
     if re.search(r"\d", text) and not re.search(r"[A-Za-z]{2}", text):
         return (False, None, "not_a_name")
