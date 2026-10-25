@@ -68,7 +68,8 @@ def D(id: str, file: str, function: str, kind_re: str, snippet: str, desc: str, 
 # Fields before `function` are the Mutant ones: id, file, old, new, tests, desc, kind, layer.
 STORE = ["tests/test_store.py"]
 RETENTION = ["tests/test_retention.py", "tests/test_store.py", "tests/test_wiring.py"]
-ST, SV = "sipclerk/store.py", "sipclerk/server.py"
+OUTBOX = ["tests/test_outbox_at_rest.py", "tests/test_delivery.py"]
+ST, SV, DE = "sipclerk/store.py", "sipclerk/server.py", "sipclerk/delivery.py"
 
 DERIVED_MUTANTS: list[DerivedMutant] = [
     # ---- retention: the purge itself (these two replace the typed rows store-retention and store-purge-audit)
@@ -83,4 +84,13 @@ DERIVED_MUTANTS: list[DerivedMutant] = [
     D("server-retention-loop", SV, "_retention_loop", "delete the call statement", "run_retention_pass", "retention is applied once at start and never again", RETENTION),
     D("server-retention-failure-counted", SV, "run_retention_pass", "Add= -> Sub=", "'failures'", "a failed retention pass is not counted", RETENTION),
     D("server-retention-failure-logged", SV, "run_retention_pass", "delete the call statement", "log.exception", "a failed pass is not logged", RETENTION),
+    # ---- the outbox is the second place caller data rests (F2)
+    D("outbox-body-never-written", DE, "to_line", "delete the call statement", "pop('payload')", "the readable body of an entry is written to the file", OUTBOX),
+    D("outbox-needs-a-firm", DE, "enqueue", "negate the condition", "not tenant_id", "an entry can be queued with no firm to encrypt it under", OUTBOX),
+    D("outbox-body-bound-to-its-call", DE, "_aad", "return value -> None", "", "an encrypted body can be moved to another entry", OUTBOX),
+    D("outbox-purge-window", DE, "purge", "LtE?|Lt -> GtE|Gt", "finished_at <", "a dead or delivered entry is purged inside its firm's retention", OUTBOX),
+    D("outbox-purge-spares-waiting", DE, "purge", "negate the condition", "e.status == 'pending'", "a waiting entry is purged", OUTBOX),
+    D("outbox-unopenable-dies", DE, "deliver_due", "delete the call statement", "cannot be opened", "an entry whose body cannot be opened waits for ever", OUTBOX),
+    D("outbox-bad-line-counted", DE, "_load", "Add= -> Sub=", "unreadable_lines", "a line the loader skipped is not counted", OUTBOX),
+    D("delivery-4xx-retried", DE, "deliver_due", "delete the call statement", "self._die(e)", "a permanent refusal is retried forever (the first _die(e) in walk order is the 4xx branch)", OUTBOX),
 ]

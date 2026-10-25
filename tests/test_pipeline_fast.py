@@ -4,6 +4,7 @@ Fast enough to run on any machine and in CI (a few seconds of real time per call
 test_voice_suite.py replaces the stand-ins with Whisper, Kokoro and the language model.
 """
 import asyncio
+import logging
 import time
 
 import pytest
@@ -252,7 +253,8 @@ async def test_the_saved_call_is_readable_only_by_that_firms_staff_and_both_deli
         assert [e.target for e in r.outbox.entries.values() if e.key == rec["idempotency_key"]] == ["console"]  # no intake was submitted
 
 
-async def test_a_full_intake_with_stand_in_models_is_saved_and_queued_to_both_receivers():
+async def test_a_full_intake_with_stand_in_models_is_saved_and_queued_to_both_receivers(caplog):
+    caplog.set_level(logging.DEBUG)
     script = ["yes", "Jordan Mitchell", "yes", "four one five five five five oh one two three", "yes", "no", "I was in a car accident",
               "about two weeks ago", "A truck ran a red light and hit my car on Main Street and my neck has hurt ever since"]
     async with rig(script) as r:
@@ -267,7 +269,19 @@ async def test_a_full_intake_with_stand_in_models_is_saved_and_queued_to_both_re
         assert rec["fields"]["practice_area"]["value"] == "personal_injury" and rec["ended_by"] == "agent:complete"
         queued = sorted(e.target for e in r.outbox.entries.values() if e.key == rec["idempotency_key"])
         assert queued == ["bridge", "console"]
-        bridge = next(e for e in r.outbox.entries.values() if e.target == "bridge")
-        assert bridge.payload["data"]["client"]["name"] == "Jordan Mitchell" and bridge.payload["meta"]["config_hash"] == rec["config_hash"]
-        console = next(e for e in r.outbox.entries.values() if e.target == "console")
-        assert console.payload["reason"] == "OTHER" and "555" not in str(console.payload["transcript"])
+        end = time.monotonic() + 10
+        while r.outbox.stats()["delivered"] < 2 and time.monotonic() < end:
+            await asyncio.sleep(0.1)
+        sent = {url: body for url, _headers, body in r.stub.received}  # what the receivers got; the outbox keeps no body once delivered
+        bridge, console = sent[r.bridge_url], sent[r.console_url]
+        assert bridge["data"]["client"]["name"] == "Jordan Mitchell" and bridge["meta"]["config_hash"] == rec["config_hash"]
+        assert console["reason"] == "OTHER" and "555" not in str(console["transcript"])
+        assert all(e.payload is None and e.sealed == "" for e in r.outbox.entries.values())  # delivered: only id, status and times stay
+        # class: caller data in a file the line writes outside the encrypted store. Read EVERY file under the data folder, and every log line.
+        planted = [b"Jordan", b"Mitchell", b"4155550123", b"Main Street", b"neck has hurt"]
+        for f in r.data_dir.rglob("*"):
+            if f.is_file() and not f.name.endswith(".enc"):
+                assert not [p for p in planted if p in f.read_bytes()], f"caller data in the clear in {f.relative_to(r.data_dir)}"
+        logged = " ".join(rec.getMessage() for rec in caplog.records)
+        assert not [p.decode() for p in planted if p.decode() in logged], "caller words reached a log line"
+        assert "chars" in logged  # the log still says that it heard something, only not what

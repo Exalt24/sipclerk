@@ -6,10 +6,17 @@ import random
 import pytest
 
 from sipclerk import delivery as d
+from sipclerk.store import derive_key
 from sipclerk.intake.machine import IntakeMachine
 from conftest import IN_HOURS
 
 SECRET = "lab-secret"
+MASTER = bytes(range(32)) * 2
+TENANT = "ashgrovepell"
+
+
+def keys(tenant):
+    return derive_key(MASTER, tenant)
 
 
 def finished_record(tenant, call_id="call-9"):
@@ -46,7 +53,7 @@ class Receiver:
 
 def box(tmp_path, receiver, now):
     return d.Outbox(tmp_path / "outbox.jsonl", {"bridge": d.Target("bridge", "http://x/hook", SECRET)}, sender=receiver,
-                    clock=lambda: now["t"])
+                    clock=lambda: now["t"], keys=keys)
 
 
 async def test_bridge_payload_is_clio_shaped_and_signature_verifies(ashgrove, tmp_path):
@@ -57,14 +64,14 @@ async def test_bridge_payload_is_clio_shaped_and_signature_verifies(ashgrove, tm
     now = {"t": 1000.0}
     r = Receiver([200])
     ob = box(tmp_path, r, now)
-    ob.enqueue("bridge", rec["idempotency_key"], p)
+    ob.enqueue("bridge", rec["idempotency_key"], p, tenant_id=TENANT)
     assert await ob.deliver_due() == 1 and ob.stats() == {"pending": 0, "delivered": 1, "dead": 0}
 
 
 async def test_wrong_secret_is_a_permanent_refusal_and_goes_to_dead_letters(ashgrove, tmp_path):
     now = {"t": 0.0}
     ob = box(tmp_path, Receiver([200], secret="other"), now)
-    ob.enqueue("bridge", "k1", {"a": 1})
+    ob.enqueue("bridge", "k1", {"a": 1}, tenant_id=TENANT)
     await ob.deliver_due()
     assert ob.stats()["dead"] == 1 and ob.dead[0].attempts == 1 and "401" in ob.dead[0].last
 
@@ -73,7 +80,7 @@ async def test_server_error_retries_with_backoff_and_the_call_is_untouched(tmp_p
     now = {"t": 0.0}
     r = Receiver([500, 500, 200])
     ob = box(tmp_path, r, now)
-    ob.enqueue("bridge", "k1", {"a": 1})
+    ob.enqueue("bridge", "k1", {"a": 1}, tenant_id=TENANT)
     assert await ob.deliver_due() == 0 and ob.pending[0].next_at == 1.0
     assert await ob.deliver_due() == 0 and len(r.calls) == 1  # not due yet: no second attempt inside the backoff
     now["t"] = 1.0
@@ -86,7 +93,7 @@ async def test_server_error_retries_with_backoff_and_the_call_is_untouched(tmp_p
 async def test_gives_up_after_the_attempt_limit(tmp_path):
     now = {"t": 0.0}
     ob = box(tmp_path, Receiver([500] * 10), now)
-    ob.enqueue("bridge", "k1", {})
+    ob.enqueue("bridge", "k1", {}, tenant_id=TENANT)
     for _ in range(d.MAX_ATTEMPTS + 2):
         now["t"] += 100
         await ob.deliver_due()
@@ -99,13 +106,13 @@ async def test_connection_errors_and_429_are_retried_but_other_4xx_are_not(tmp_p
     async def refused(url, body, headers):
         raise ConnectionRefusedError("down")
 
-    ob = d.Outbox(tmp_path / "o.jsonl", {"bridge": d.Target("bridge", "http://x", SECRET)}, sender=refused, clock=lambda: now["t"])
-    ob.enqueue("bridge", "k1", {})
+    ob = d.Outbox(tmp_path / "o.jsonl", {"bridge": d.Target("bridge", "http://x", SECRET)}, sender=refused, clock=lambda: now["t"], keys=keys)
+    ob.enqueue("bridge", "k1", {}, tenant_id=TENANT)
     await ob.deliver_due()
     assert ob.stats()["pending"] == 1 and "ConnectionRefusedError" in ob.pending[0].last
     ob2 = box(tmp_path / "b", Receiver([429, 422]), now)
-    ob2.enqueue("bridge", "a", {})
-    ob2.enqueue("bridge", "b", {})
+    ob2.enqueue("bridge", "a", {}, tenant_id=TENANT)
+    ob2.enqueue("bridge", "b", {}, tenant_id=TENANT)
     await ob2.deliver_due()
     assert {e.key: e.status for e in ob2.entries.values()} == {"a": "pending", "b": "dead"}
 
@@ -113,8 +120,8 @@ async def test_connection_errors_and_429_are_retried_but_other_4xx_are_not(tmp_p
 async def test_enqueue_is_idempotent_per_target_and_key(tmp_path):
     now = {"t": 0.0}
     ob = box(tmp_path, Receiver([]), now)
-    assert ob.enqueue("bridge", "k1", {"a": 1}) is True
-    assert ob.enqueue("bridge", "k1", {"a": 2}) is False
+    assert ob.enqueue("bridge", "k1", {"a": 1}, tenant_id=TENANT) is True
+    assert ob.enqueue("bridge", "k1", {"a": 2}, tenant_id=TENANT) is False
     assert len(ob.entries) == 1 and ob.entries["bridge:k1"].payload == {"a": 1}
 
 
@@ -122,7 +129,7 @@ async def test_outbox_survives_a_restart(tmp_path):
     now = {"t": 0.0}
     r = Receiver([500])
     ob = box(tmp_path, r, now)
-    ob.enqueue("bridge", "k1", {"a": 1})
+    ob.enqueue("bridge", "k1", {"a": 1}, tenant_id=TENANT)
     await ob.deliver_due()
     again = box(tmp_path, Receiver([200]), now)
     assert again.stats()["pending"] == 1 and again.pending[0].attempts == 1
@@ -133,7 +140,7 @@ async def test_outbox_survives_a_restart(tmp_path):
 async def test_unknown_target_goes_dead_instead_of_looping(tmp_path):
     now = {"t": 0.0}
     ob = box(tmp_path, Receiver([]), now)
-    ob.enqueue("nowhere", "k", {})
+    ob.enqueue("nowhere", "k", {}, tenant_id=TENANT)
     await ob.deliver_due()
     assert ob.stats()["dead"] == 1
 
@@ -151,9 +158,9 @@ async def test_random_failure_worlds_never_lose_or_double_deliver(tmp_path, seed
     for step in range(60):
         if rnd.random() < 0.3 and keys:
             k = keys.pop()
-            ob.enqueue("bridge", k, {"k": k})
+            ob.enqueue("bridge", k, {"k": k}, tenant_id=TENANT)
             if rnd.random() < 0.3:
-                assert ob.enqueue("bridge", k, {"k": "dup"}) is False  # a duplicate enqueue must be refused
+                assert ob.enqueue("bridge", k, {"k": "dup"}, tenant_id=TENANT) is False  # a duplicate enqueue must be refused
         now["t"] += rnd.choice([0.5, 1, 5, 40])
         await ob.deliver_due()
         if rnd.random() < 0.15:  # a restart in the middle

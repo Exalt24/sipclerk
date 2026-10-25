@@ -10,7 +10,8 @@ from dataclasses import dataclass, field
 
 FAST = ["tests/test_guard.py", "tests/test_machine.py", "tests/test_machine_property.py", "tests/test_parsers.py", "tests/test_tenants.py",
         "tests/test_store.py", "tests/test_delivery.py", "tests/test_sip_stack.py", "tests/test_audio.py", "tests/test_llm.py",
-        "tests/test_processors.py", "tests/test_retention.py", "tests/test_wiring.py"]
+        "tests/test_processors.py", "tests/test_retention.py", "tests/test_wiring.py", "tests/test_outbox_at_rest.py",
+        "tests/test_logs_carry_no_caller_words.py"]
 
 
 @dataclass
@@ -137,8 +138,6 @@ MUTANTS: list[Mutant] = [
     # ---- delivery
     M("delivery-duplicate-enqueue", DE, "        if ek in self.entries:\n            return False", "        if False:\n            return False", "a delivery can be queued twice"),
     M("delivery-5xx-not-retried", DE, "elif code in RETRYABLE or code >= 500 or code == 0:", "elif code in RETRYABLE or code == 0:", "a server error is not retried"),
-    M("delivery-4xx-retried", DE, '                else:  # a 4xx that will not get better by asking again\n                    e.status = "dead"',
-      '                else:  # a 4xx that will not get better by asking again\n                    e.next_at = self.clock() + 1', "a permanent refusal is retried forever"),
     M("delivery-attempt-limit", DE, "                    if e.attempts >= MAX_ATTEMPTS:", "                    if False:", "retries never stop"),
     M("delivery-no-backoff", DE, "e.next_at = self.clock() + BACKOFF_S[min(e.attempts - 1, len(BACKOFF_S) - 1)]", "e.next_at = self.clock()", "retries hammer the receiver"),
     M("delivery-bridge-signature", DE, "    return hmac.new(secret.encode(), raw_body, hashlib.sha256).hexdigest()", "    return hmac.new(secret.encode(), raw_body + b' ', hashlib.sha256).hexdigest()",

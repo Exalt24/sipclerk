@@ -14,15 +14,20 @@ second record. A permanent refusal (a 4xx other than 408 and 429) goes to the de
 from __future__ import annotations
 
 import asyncio
+import base64
 import hashlib
 import hmac
 import json
+import logging
 import time
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from pathlib import Path
 
 from sipclerk.intake.parsers import mask_for_transcript
+from sipclerk.store import decrypt, encrypt
+
+log = logging.getLogger("sipclerk.delivery")
 
 Sender = Callable[[str, bytes, dict[str, str]], Awaitable[tuple[int, str]]]
 
@@ -99,12 +104,26 @@ class Target:
 class OutboxEntry:
     key: str
     target: str
-    payload: dict
+    tenant_id: str = ""
+    call_id: str = ""
+    payload: dict | None = None  # the readable body: in memory only while the entry waits, never written to the file
+    sealed: str = ""  # the body encrypted under the firm's key and bound to firm, call and target; empty once delivered
     attempts: int = 0
     next_at: float = 0.0
     status: str = "pending"  # pending, delivered, dead
     last: str = ""
     history: list[str] = field(default_factory=list)
+    created_at: float = 0.0
+    finished_at: float | None = None  # when it was delivered or went dead: retention counts from here
+
+    def to_line(self) -> dict:
+        line = dict(self.__dict__)
+        line.pop("payload")
+        return line
+
+
+STATUSES = ("pending", "delivered", "dead")
+_FIELDS = {f.name for f in fields(OutboxEntry)}
 
 
 async def httpx_sender(url: str, body: bytes, headers: dict[str, str]) -> tuple[int, str]:
@@ -115,32 +134,99 @@ async def httpx_sender(url: str, body: bytes, headers: dict[str, str]) -> tuple[
         return r.status_code, r.text[:300]
 
 
+def _tenant_of(payload: dict) -> str:
+    """The firm named inside an old plaintext entry: the bridge body says it in meta, the console body in externalId."""
+    meta = payload.get("meta")
+    if isinstance(meta, dict) and isinstance(meta.get("tenant_id"), str):
+        return meta["tenant_id"]
+    ext = payload.get("externalId")
+    return ext.split("-")[0] if isinstance(ext, str) and "-" in ext else ""
+
+
 class Outbox:
+    """The deliveries waiting to go out. The file holds the id, status and times of every entry in the clear and the body of a
+    waiting or dead one encrypted under its firm's key (`keys(tenant_id)`); a delivered entry keeps no body at all."""
+
     def __init__(self, path: Path, targets: dict[str, Target], sender: Sender = httpx_sender,
-                 clock: Callable[[], float] = time.time):
+                 clock: Callable[[], float] = time.time, *, keys: Callable[[str], bytes]):
         self.path = Path(path)
         self.targets = targets
         self.sender = sender
         self.clock = clock
+        self.keys = keys
         self.entries: dict[str, OutboxEntry] = {}
+        self.unreadable_lines = 0
         self._lock = asyncio.Lock()
         if self.path.exists():
-            for line in filter(str.strip, self.path.read_text(encoding="utf-8").splitlines()):
-                e = OutboxEntry(**json.loads(line))
-                self.entries[f"{e.target}:{e.key}"] = e
+            self._load()
+
+    # ---- file
+
+    @staticmethod
+    def _aad(e: OutboxEntry) -> bytes:
+        return f"{e.tenant_id}|{e.call_id}|outbox|{e.target}".encode()
+
+    def _seal(self, e: OutboxEntry, payload: dict) -> str:
+        return base64.b64encode(encrypt(self.keys(e.tenant_id), json.dumps(payload, separators=(",", ":")).encode(), self._aad(e))).decode()
+
+    def _open(self, e: OutboxEntry) -> dict:
+        return json.loads(decrypt(self.keys(e.tenant_id), base64.b64decode(e.sealed), self._aad(e)))
+
+    def _load(self) -> None:
+        """Read the file. A line that cannot be read is counted, logged and skipped, so one bad line never stops the line from starting.
+        An entry written by the version that kept its body in the clear is sealed now and the file is rewritten without it."""
+        rewrite = False
+        for line in filter(str.strip, self.path.read_text(encoding="utf-8").splitlines()):
+            try:
+                raw = json.loads(line)
+                e = OutboxEntry(**{k: v for k, v in raw.items() if k in _FIELDS and k != "payload"})
+                if e.status not in STATUSES:
+                    raise ValueError(f"status {e.status!r}")
+                legacy = raw.get("payload")
+                if isinstance(legacy, dict):
+                    self._migrate(e, legacy)
+                    rewrite = True
+                if e.status != "pending" and e.finished_at is None:
+                    e.finished_at = e.created_at or self.clock()
+            except Exception as exc:
+                self.unreadable_lines += 1
+                log.error("outbox: skipped a line it cannot read (%s)", type(exc).__name__)
+                continue
+            self.entries[f"{e.target}:{e.key}"] = e
+        if rewrite:
+            self._persist()
+
+    def _migrate(self, e: OutboxEntry, legacy: dict) -> None:
+        e.created_at = e.created_at or self.clock()
+        if e.status == "delivered":
+            return  # a delivered body is simply dropped
+        tenant = e.tenant_id or _tenant_of(legacy)
+        if not tenant:
+            e.status, e.last = "dead", "an old entry that names no firm"
+            return
+        e.tenant_id = tenant
+        e.call_id = e.call_id or str(legacy.get("data", {}).get("id", "") if isinstance(legacy.get("data"), dict) else "")
+        e.sealed = self._seal(e, legacy)
 
     def _persist(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         tmp = self.path.with_suffix(".tmp")
-        tmp.write_text("".join(json.dumps(e.__dict__) + "\n" for e in self.entries.values()), encoding="utf-8")
+        tmp.write_text("".join(json.dumps(e.to_line()) + "\n" for e in self.entries.values()), encoding="utf-8")
         tmp.replace(self.path)
 
-    def enqueue(self, target: str, key: str, payload: dict) -> bool:
-        """Queue a delivery. The same (target, key) twice is one delivery. Returns False for the duplicate."""
+    # ---- queue
+
+    def enqueue(self, target: str, key: str, payload: dict, *, tenant_id: str, call_id: str = "") -> bool:
+        """Queue a delivery for a firm's call. The same (target, key) twice is one delivery. Returns False for the duplicate."""
+        if not tenant_id:
+            raise ValueError("an outbox entry belongs to a firm: its body is encrypted under that firm's key")
         ek = f"{target}:{key}"
         if ek in self.entries:
             return False
-        self.entries[ek] = OutboxEntry(key=key, target=target, payload=payload, next_at=self.clock())
+        e = OutboxEntry(key=key, target=target, tenant_id=tenant_id, call_id=call_id or key, payload=payload, next_at=self.clock(),
+                        created_at=self.clock())
+        e.sealed = self._seal(e, payload)
+        self.entries[ek] = e
         self._persist()
         return True
 
@@ -152,6 +238,31 @@ class Outbox:
     def dead(self) -> list[OutboxEntry]:
         return [e for e in self.entries.values() if e.status == "dead"]
 
+    def _die(self, e: OutboxEntry, why: str = "") -> None:
+        e.status, e.payload, e.finished_at = "dead", None, self.clock()
+        if why:
+            e.last = why
+        log.warning("delivery %s to %s for %s is dead after %d attempt(s) (%s)", e.key[:12], e.target, e.tenant_id, e.attempts, e.last[:60])
+
+    def purge(self, retention_days: Callable[[str], int | None]) -> int:
+        """Remove delivered and dead entries older than their firm's retention_days, counted from when they finished. A waiting entry is
+        never removed here: it is delivered or goes dead within a day. A firm `retention_days` does not know keeps its entries."""
+        now = self.clock()
+        gone = []
+        for ek, e in list(self.entries.items()):
+            if e.status == "pending" or e.finished_at is None:
+                continue
+            days = retention_days(e.tenant_id)
+            if days is not None and e.finished_at < now - days * 86400:
+                gone.append(ek)
+        for ek in gone:
+            del self.entries[ek]
+        if gone:
+            self._persist()
+        return len(gone)
+
+    # ---- delivery
+
     async def deliver_due(self) -> int:
         """Try every entry that is due. Returns how many were delivered in this pass."""
         delivered = 0
@@ -161,9 +272,14 @@ class Outbox:
                     continue
                 t = self.targets.get(e.target)
                 if t is None:
-                    e.status, e.last = "dead", "no such target"
+                    self._die(e, "no such target")
                     continue
-                raw, headers = t.request(e.payload, e.key, self.clock())
+                try:
+                    payload = e.payload if e.payload is not None else self._open(e)
+                except Exception as exc:  # a tampered file or the wrong key: this entry only
+                    self._die(e, f"body cannot be opened ({type(exc).__name__})")
+                    continue
+                raw, headers = t.request(payload, e.key, self.clock())
                 e.attempts += 1
                 try:
                     code, text = await self.sender(t.url, raw, headers)
@@ -172,15 +288,15 @@ class Outbox:
                 e.last = f"{code} {text[:80]}"
                 e.history.append(f"{e.attempts}:{code}")
                 if 200 <= code < 300:
-                    e.status = "delivered"
+                    e.status, e.payload, e.sealed, e.finished_at = "delivered", None, "", self.clock()  # nothing of the caller stays
                     delivered += 1
                 elif code in RETRYABLE or code >= 500 or code == 0:
                     if e.attempts >= MAX_ATTEMPTS:
-                        e.status = "dead"
+                        self._die(e)
                     else:
                         e.next_at = self.clock() + BACKOFF_S[min(e.attempts - 1, len(BACKOFF_S) - 1)]
                 else:  # a 4xx that will not get better by asking again
-                    e.status = "dead"
+                    self._die(e)
             self._persist()
         return delivered
 

@@ -74,7 +74,7 @@ class LabRig:
         self.store = TenantStore(self.data_dir, self.registry, self.master_key or master_key_from_env(), clock=lambda: self.now)
         self.outbox = delivery.Outbox(self.data_dir / "outbox.jsonl", {
             "bridge": delivery.Target("bridge", self.bridge_url, BRIDGE_SECRET),
-            "console": delivery.Target("console", self.console_url, CONSOLE_SECRET)}, sender=self.sender)
+            "console": delivery.Target("console", self.console_url, CONSOLE_SECRET)}, sender=self.sender, keys=self.store.key_for)
         self.server = ClerkServer(registry=self.registry, models=self.models, store=self.store, outbox=self.outbox, host=self.host, port=self.port,
                                   rtp_host=self.rtp_host, now_fn=lambda: self.now, llm_factory=self.llm_factory, faults=self.faults,
                                   on_finished=self.results.append)

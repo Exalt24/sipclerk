@@ -104,7 +104,8 @@ class CallSession:
         """The intake is complete: queue the case-management delivery now, while the closing line is still being spoken."""
         self.submitted_key = record["idempotency_key"]
         if self.cfg.integrations.case_management:
-            self.server.outbox.enqueue("bridge", record["idempotency_key"], delivery.build_bridge_payload(record, ""))
+            self.server.outbox.enqueue("bridge", record["idempotency_key"], delivery.build_bridge_payload(record, ""),
+                                       tenant_id=self.cfg.tenant_id, call_id=self.call_id)
             asyncio.get_running_loop().create_task(self.server.outbox.deliver_due())
 
     async def _hang_up(self, reason: str) -> None:
@@ -254,7 +255,7 @@ class CallSession:
         parts = self.server.store.save_call(self.cfg.tenant_id, self.call_id, record, transcript, summary, rec_pcm)
         if self.cfg.integrations.call_console:
             payload = delivery.build_console_payload(record, transcript, int(duration), self.cfg.display_name)
-            self.server.outbox.enqueue("console", record["idempotency_key"], payload)
+            self.server.outbox.enqueue("console", record["idempotency_key"], payload, tenant_id=self.cfg.tenant_id, call_id=self.call_id)
         asyncio.get_running_loop().create_task(self.server.outbox.deliver_due())
         return CallResult(record, transcript, summary, len(rec_pcm or b""), {"saved_parts": parts})
 

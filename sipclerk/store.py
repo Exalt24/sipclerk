@@ -104,6 +104,12 @@ class TenantStore:
     def _key(self, tenant_id: str) -> bytes:
         return derive_key(self._master, tenant_id)
 
+    def key_for(self, tenant_id: str) -> bytes:
+        """The firm's at-rest key, for the one other thing that holds caller data: the delivery outbox."""
+        if self.registry.by_id(tenant_id) is None:
+            raise KeyError(f"unknown tenant {tenant_id}")
+        return self._key(tenant_id)
+
     @staticmethod
     def _aad(tenant_id: str, call_id: str, part: str) -> bytes:
         return f"{tenant_id}|{call_id}|{part}".encode()

@@ -252,7 +252,7 @@ class Stt(FrameProcessor):
             self.ctx.stt_seconds += t.took
             turn.stt_done = time.perf_counter()
             text = t.text
-            log.info("stt #%d %.2fs audio, %.2fs to transcribe, no_speech=%.2f: %r", n, t.seconds, t.took, t.no_speech_prob, text)
+            log.info("stt #%d %.2fs audio, %.2fs to transcribe, no_speech=%.2f, %d chars", n, t.seconds, t.took, t.no_speech_prob, len(text))  # never the words: a log is not the encrypted store
             if (not text or t.no_speech_prob > 0.7 or
                     (text.lower().strip(" .!?,") in JUNK_TRANSCRIPTS and t.seconds < 1.5)):
                 self.ctx.stt_dropped += 1  # a phantom word Whisper invents on noise
@@ -441,7 +441,7 @@ class Intake(FrameProcessor):
 
     async def _speak(self, text: str) -> None:
         frame = TTSSpeakFrame(text=text)
-        log.info("say: %s", text[:60])
+        log.info("say: %d chars", len(text))  # a read-back carries the caller's name and number: the length only
         self.ctx.outstanding.add(frame.id)
         self.ctx.say_log(text)
         await self.push_frame(frame)
@@ -498,7 +498,7 @@ class Tts(FrameProcessor):
             except asyncio.CancelledError:
                 raise
             except Exception:
-                log.exception("tts failed for %r", frame.text[:40])
+                log.exception("tts failed for a line of %d chars", len(frame.text))
             finally:
                 ctx.outstanding.discard(frame.id)
             return

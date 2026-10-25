@@ -49,7 +49,7 @@ class ClerkServer:
         self.counters = {"answered": 0, "wrong_number": 0, "blocked_caller": 0, "duplicate_call": 0, "busy": 0, "no_codec": 0,
                          "no_offer": 0}
         self.retention_every_s = retention_every_s
-        self.retention = {"passes": 0, "failures": 0, "calls_purged": 0, "folders_skipped": 0, "last_ok_at": None, "audit_broken": []}
+        self.retention = {"passes": 0, "failures": 0, "calls_purged": 0, "folders_skipped": 0, "outbox_entries_purged": 0, "last_ok_at": None, "audit_broken": []}
         self._stop = asyncio.Event()
         self._worker: asyncio.Task | None = None
         self._retention_task: asyncio.Task | None = None
@@ -93,10 +93,18 @@ class ClerkServer:
         self.retention["folders_skipped"] = len(purged.skipped)
         if purged or purged.skipped:
             log.info("retention: deleted %d call(s), skipped %d folder(s) it could not read", len(purged), len(purged.skipped))
+        try:  # a delivered or dead outbox entry goes at its firm's retention like a call does
+            self.retention["outbox_entries_purged"] += self.outbox.purge(self._retention_days)
+        except Exception:
+            log.exception("retention: the outbox purge failed; it will be tried again in %.0f s", self.retention_every_s)
         self.retention["audit_broken"] = [t.config.tenant_id for t in self.registry.all if not self._audit_verifies(t.config.tenant_id)]
         if self.retention["audit_broken"]:
             log.error("retention: the audit chain of %s does not verify", ", ".join(self.retention["audit_broken"]))
         return True
+
+    def _retention_days(self, tenant_id: str) -> int | None:
+        t = self.registry.by_id(tenant_id)
+        return t.config.retention_days if t else None
 
     def _audit_verifies(self, tenant_id: str) -> bool:
         try:

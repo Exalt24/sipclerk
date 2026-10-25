@@ -17,6 +17,7 @@ import pytest
 
 from conftest import IN_HOURS, ROOT
 from sipclerk import delivery as d
+from sipclerk.store import derive_key
 from sipclerk.intake.machine import IntakeMachine
 
 BRIDGE_DIR = Path(os.environ.get("CLIO_BRIDGE_DIR", ROOT.parent / "clio-matter-bridge"))
@@ -60,8 +61,8 @@ def record(tenant, call_id):
 
 
 async def deliver(url, secret, rec):
-    box = d.Outbox(Path(tempfile.mkdtemp()) / "outbox.jsonl", {"bridge": d.Target("bridge", url, secret)}, sender=d.httpx_sender)
-    box.enqueue("bridge", rec["idempotency_key"], d.build_bridge_payload(rec, "summary"))
+    box = d.Outbox(Path(tempfile.mkdtemp()) / "outbox.jsonl", {"bridge": d.Target("bridge", url, secret)}, sender=d.httpx_sender, keys=lambda t: derive_key(bytes(range(32)) * 2, t))
+    box.enqueue("bridge", rec["idempotency_key"], d.build_bridge_payload(rec, "summary"), tenant_id="ashgrovepell")
     await box.deliver_due()
     return box
 

@@ -20,7 +20,7 @@ def build(tmp_path, registry, clock, **kw):
     store = TenantStore(tmp_path, registry, MASTER, clock=lambda: clock["now"])
     async def sender(url, body, headers):
         return 200, "{}"
-    outbox = Outbox(tmp_path / "outbox.jsonl", {}, sender=sender)
+    outbox = Outbox(tmp_path / "outbox.jsonl", {}, sender=sender, keys=store.key_for)
     server = ClerkServer(registry=registry, models=None, store=store, outbox=outbox, host="127.0.0.1", port=0,
                          now_fn=lambda: clock["now"], **kw)
     return server, store
