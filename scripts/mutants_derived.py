@@ -69,10 +69,12 @@ def D(id: str, file: str, function: str, kind_re: str, snippet: str, desc: str, 
 STORE = ["tests/test_store.py"]
 RETENTION = ["tests/test_retention.py", "tests/test_store.py", "tests/test_wiring.py"]
 OUTBOX = ["tests/test_outbox_at_rest.py", "tests/test_delivery.py"]
+NAMES = ["tests/test_names_unicode.py", "tests/test_parsers.py", "tests/test_machine.py"]
 LEG = ["tests/test_transfer_leg.py", "tests/test_sip_stack.py"]
 WINDOW = ["tests/test_delivery_window.py", "tests/test_delivery.py"]
 ST, SV, DE = "sipclerk/store.py", "sipclerk/server.py", "sipclerk/delivery.py"
 CA, SK = "sipclerk/call.py", "sipclerk/sip/stack.py"
+PA = "sipclerk/intake/parsers.py"
 
 DERIVED_MUTANTS: list[DerivedMutant] = [
     # ---- retention: the purge itself (these two replace the typed rows store-retention and store-purge-audit)
@@ -112,4 +114,8 @@ DERIVED_MUTANTS: list[DerivedMutant] = [
     D("stack-cancel-is-sent", SK, "_cancel", "delete the call statement", "CANCEL", "an INVITE nobody wants any more is never cancelled", LEG),
     D("stack-cancel-crossing-2xx", SK, "_cancel", "negate the condition", "make_dialog is not None", "an answer that crosses the CANCEL is left up", LEG),
     D("stack-invite-task-ends-with-the-dialog", SK, "run", "and <-> or", "d.terminated", "the 2xx retransmit task outlives its dialog", LEG),
+    # ---- names are read as written in any language (F5)
+    D("parsers-squash-keeps-letters", PA, "_squash", "and <-> or", "in keep", "a letter of any language, a combining mark or an apostrophe is turned into a space", NAMES),
+    D("parsers-squash-digits-flag", PA, "_squash", "and <-> or", "digits or", "the digits flag no longer decides whether a digit stays", NAMES),
+    D("parse-name-digits-are-not-letters", PA, "parse_name", "False -> True", "False", "a digit inside a name is kept as part of the name", NAMES),
 ]

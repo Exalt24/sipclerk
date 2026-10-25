@@ -7,6 +7,7 @@ fuzzy types (name, date, practice area), and its answer goes through the same va
 from __future__ import annotations
 
 import re
+import unicodedata
 from dataclasses import dataclass
 from datetime import date, timedelta
 
@@ -36,9 +37,15 @@ SKIP_WORDS = ("skip", "pass", "no thanks", "no thank you", "rather not", "i woul
               "prefer not", "not right now", "none")
 
 
+def _squash(text: str, keep: str, digits: bool = True) -> str:
+    """Every character that is not a letter (or a digit, unless `digits` is off) of any language, a combining mark, or one of `keep` becomes a space."""
+    return "".join(c if ((c.isalnum() and (digits or not c.isdigit())) or c in keep or unicodedata.category(c).startswith("M")) else " " for c in text)
+
+
 def _norm(text: str) -> str:
-    t = text.lower().replace("’", "'")
-    t = re.sub(r"[^a-z0-9'@.\-\s]", " ", t)
+    """Lower case, NFC, letters of any language kept (a name said as `José García` must stay that), everything else a space."""
+    t = unicodedata.normalize("NFC", text).lower().replace("’", "'")
+    t = _squash(t, "'@.-")
     return re.sub(r"\s+", " ", t).strip()
 
 
@@ -85,17 +92,18 @@ NAME_STOP = {"yes", "no", "the", "and", "but", "not", "what", "why", "how", "ple
 
 
 def parse_name(text: str) -> Parsed:
-    raw = re.sub(r"[^A-Za-z'\-\s]", " ", text.replace("’", "'"))
+    raw = _squash(unicodedata.normalize("NFC", text).replace("’", "'"), "'-", digits=False)
     raw = NAME_LEAD.sub("", raw.strip())
     tokens = [t.strip("-'") for t in raw.split() if t.strip("-'")]
     if not tokens:
         return Parsed(False, reason="empty")
     if len(tokens) > 5 or any(t.lower() in NAME_STOP for t in tokens):
         return Parsed(False, reason="not_a_name")
-    if re.search(r"\d", text) and not re.search(r"[A-Za-z]{2}", text):
+    if re.search(r"\d", text) and not re.search(r"[^\W\d_]{2}", text):
         return Parsed(False, reason="not_a_name")
     name = " ".join(t[:1].upper() + t[1:].lower() if not re.match(r"^(mc|o')", t.lower()) else t[:1].upper() + t[1:2] + t[2:3].upper() + t[3:].lower()
                     for t in tokens)
+    name = unicodedata.normalize("NFC", name)
     if len(tokens) < 2:
         return Parsed(False, name, reason="need_last_name", detail=name)
     return Parsed(True, name)
@@ -255,7 +263,7 @@ FILLER_LEAD = re.compile(r"^(?:(?:uh|um|so|well|okay|ok|yeah|yes|hi)[,\s]+)+", r
 def parse_text(text: str, min_words: int) -> Parsed:
     t = FILLER_LEAD.sub("", text.strip())
     t = re.sub(r"\s+", " ", t)[:600]
-    words = [w for w in re.split(r"\s+", t) if re.search(r"[A-Za-z0-9]", w)]
+    words = [w for w in re.split(r"\s+", t) if re.search(r"[^\W_]", w)]
     if len(words) < min_words:
         return Parsed(False, reason="too_short", detail=str(len(words)))
     return Parsed(True, t)
