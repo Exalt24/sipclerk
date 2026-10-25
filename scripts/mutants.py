@@ -15,7 +15,7 @@ FAST = ["tests/test_guard.py", "tests/test_machine.py", "tests/test_machine_prop
         "tests/test_transfer_leg.py",
         "tests/test_names_unicode.py", "tests/test_dialled_number.py",
         "tests/test_route_set.py",
-        "tests/test_anonymous_callers.py"]
+        "tests/test_anonymous_callers.py", "tests/test_emergency_tense.py"]
 
 
 @dataclass

@@ -69,6 +69,7 @@ def D(id: str, file: str, function: str, kind_re: str, snippet: str, desc: str, 
 STORE = ["tests/test_store.py"]
 RETENTION = ["tests/test_retention.py", "tests/test_store.py", "tests/test_wiring.py"]
 OUTBOX = ["tests/test_outbox_at_rest.py", "tests/test_delivery.py"]
+TENSE = ["tests/test_emergency_tense.py", "tests/test_guard.py", "tests/test_machine.py"]
 ANON = ["tests/test_anonymous_callers.py"]
 ROUTE = ["tests/test_route_set.py", "tests/test_sip_stack.py"]
 DIAL = ["tests/test_dialled_number.py", "tests/test_sip_stack.py", "tests/test_tenants.py"]
@@ -79,6 +80,7 @@ ST, SV, DE = "sipclerk/store.py", "sipclerk/server.py", "sipclerk/delivery.py"
 CA, SK = "sipclerk/call.py", "sipclerk/sip/stack.py"
 PA = "sipclerk/intake/parsers.py"
 MS, TN = "sipclerk/sip/message.py", "sipclerk/tenants.py"
+GD = "sipclerk/guard.py"
 
 DERIVED_MUTANTS: list[DerivedMutant] = [
     # ---- retention: the purge itself (these two replace the typed rows store-retention and store-purge-audit)
@@ -145,4 +147,9 @@ DERIVED_MUTANTS: list[DerivedMutant] = [
     D("server-duplicate-needs-the-same-firm", SV, "_already_on_this_line", "and <-> or", "s.caller == caller", "the same number on the other firm's line counts as a duplicate", ANON),
     D("message-withheld-placeholder-numbers", MS, "caller_is_withheld", "and <-> or", "WITHHELD_NUMBERS", "the keypad placeholder for anonymous counts as a real number", ANON),
     D("message-withheld-zeros", MS, "caller_is_withheld", "Eq -> NotEq", "set(digits)", "a caller id of only zeros counts as a real number", ANON),
+    # ---- the emergency rule fires on a danger happening now, not on an account of one (F12)
+    D("guard-emergency-account-dropped", GD, "_emergency_now", "negate the condition", "_is_account", "the emergency rule fires only on accounts of the past", TENSE),
+    D("guard-emergency-present-verb-is-live", GD, "_is_account", "negate the condition", "(?:is|are)", "a hit that says `is bleeding` is dropped when the clause mentions the past", TENSE),
+    D("guard-emergency-now-before-the-hit", GD, "_is_account", "negate the condition", "_NOW_BEFORE_HIT", "`he's unconscious after the fall` is dropped as an account", TENSE),
+    D("guard-emergency-past-clause", GD, "_is_account", "return value -> None", "", "no clause is ever an account of the past", TENSE),
 ]

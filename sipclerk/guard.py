@@ -50,8 +50,10 @@ HUMAN_REQUEST = [
     r"\bi (?:want|need) (?:a |an )?(?:person|human)\b",
 ]
 EMERGENCY = [
-    r"\b911\b",
-    r"\bemergency\b",
+    r"\b(?:call|calling|dial|dialing|phone)\b(?: (?:now|me|us|them))? 911\b",
+    r"\b911\b(?= (?:please|now|help|right now|immediately|asap)\b)|^\W*911\W*$",
+    r"\bemergency\b(?! (?:rooms?|departments?|dept|ward|surgery|surgeries|contacts?|care|services?|vehicles?|personnel|crews?|responders?|medical|"
+    r"technicians?|treatment|visits?|doctors?|physicians?|staff|lane|brakes?|exits?|lights?|stop|fund|calls?|bills?|transport|helicopter|workers?)\b)",
     r"\bin (?:immediate )?danger\b",
     r"\b(?:is|are) (?:badly |seriously )?(?:hurt|bleeding|dying|unconscious)\b",
     r"\b(?:unconscious|overdos\w*|bleeding (?:badly|heavily|out))\b",
@@ -59,6 +61,13 @@ EMERGENCY = [
     r"\bnot breathing\b",
     r"\bbeing (?:attacked|followed|threatened)\b",
 ]
+# An emergency is a danger that is happening now. A keyword hit inside an account of something that happened (`I was unconscious for a minute after the
+# crash`, `the paramedics said she was not breathing when they arrived`) is an ordinary injury story, so a hit is dropped when its clause is in the past
+# and nothing right before it says it is now. The first rule fired on `taken to the emergency room`, which is how most injury calls begin.
+_CLAUSE_BREAKS = (".", "!", "?", ";", " and ", " but ", " then ", " so ", " because ")
+_PAST = re.compile(r"\b(?:was|were|wasn't|weren't|had|been|ago|yesterday|last (?:night|week|month|year)|when|after|while|until|since|before|rushed|taken|took|went|woke|arrived)\b")
+_SUICIDE_PAST = re.compile(r"\b(?:died by|death by|death from|committed|completed|took (?:his|her|their|my) own life|ago|last (?:night|week|month|year))\b")
+_NOW_BEFORE_HIT = re.compile(r"(?:\b(?:is|are|am|isn't|aren't)|'s|'re|'m|\bjust|\bnow|\bstill)\s+(?:(?:not|badly|seriously|really|completely|currently|an?|the|medical|so|very)\s+)*$")
 
 # --------------------------------------------------------------------------- agent side (after the model)
 
@@ -135,10 +144,30 @@ def check_caller(number: str, tenant: TenantConfig) -> InputVerdict:
     return InputVerdict("allow")
 
 
+def _is_account(text: str, m: re.Match) -> bool:
+    """True when the keyword `m` found sits in a clause that tells what happened, with no sign in front of it that it is happening now."""
+    if re.match(r"(?:is|are)\b", m.group(0)):  # `is bleeding`: the pattern itself says now
+        return False
+    left = max((text.rfind(b, 0, m.start()) + len(b) for b in _CLAUSE_BREAKS if text.rfind(b, 0, m.start()) != -1), default=0)
+    right = min((i for b in _CLAUSE_BREAKS if (i := text.find(b, m.end())) != -1), default=len(text))
+    if _NOW_BEFORE_HIT.search(text[left:m.start()]):
+        return False
+    return bool((_SUICIDE_PAST if "suicid" in m.re.pattern else _PAST).search(text[left:right]))
+
+
+def _emergency_now(text: str) -> str | None:
+    """The first emergency keyword that is not part of an account of the past, or None."""
+    for p in EMERGENCY:
+        for m in re.finditer(p, text):
+            if not _is_account(text, m):
+                return m.group(0)
+    return None
+
+
 def check_input(text: str, tenant: TenantConfig, *, check_scope: bool = False) -> InputVerdict:
     """Screen what the caller said. Called before the interpreter or any model sees the text."""
     t = _norm(text)
-    if hit := _match(EMERGENCY, t):
+    if hit := _emergency_now(t):
         return InputVerdict("emergency", "emergency", hit)
     if hit := _match(EXISTING_CLIENT, t):
         return InputVerdict("escalate", "existing_client", hit)
