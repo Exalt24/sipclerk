@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 
 FAST = ["tests/test_guard.py", "tests/test_machine.py", "tests/test_machine_property.py", "tests/test_parsers.py", "tests/test_tenants.py",
         "tests/test_store.py", "tests/test_delivery.py", "tests/test_sip_stack.py", "tests/test_audio.py", "tests/test_llm.py",
-        "tests/test_processors.py"]
+        "tests/test_processors.py", "tests/test_retention.py", "tests/test_wiring.py"]
 
 
 @dataclass
@@ -132,9 +132,6 @@ MUTANTS: list[Mutant] = [
     M("store-audit-denied", ST, '            self._audit(tenant_id, actor.name, actor.role, "read", call_id, part, f"denied (actor tenant {actor.tenant_id})")\n', "",
       "a denied read leaves no audit line"),
     M("store-audit-chain", ST, '                prev = json.loads(lines[-1])["hash"]', "                prev = CHAIN_START", "the audit log is not chained"),
-    M("store-retention", ST, "                if saved < cutoff:", "                if False:", "nothing is ever purged"),
-    M("store-purge-audit", ST, '                    self._audit(t.config.tenant_id, "system", "system", "purge", call_id, "all", f"older than {t.config.retention_days} days")\n', "",
-      "a purge leaves no audit line"),
     M("store-call-id", ST, '        if not call_id.replace("-", "").replace("_", "").isalnum():', "        if False:", "a call id can walk out of its folder"),
     M("store-master-key", ST, "        if len(master_key) < 32:", "        if False:", "a short master key is accepted"),
     # ---- delivery

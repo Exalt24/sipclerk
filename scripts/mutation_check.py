@@ -5,6 +5,10 @@
     python scripts/mutation_check.py --layer pipeline     # the line with real SIP, RTP and VAD, stand-in speech models
     python scripts/mutation_check.py --layer all --report docs/mutation_report.json
     python scripts/mutation_check.py --only guard-emergency
+    python scripts/mutation_check.py --in-place           # mutate this working tree instead of a throwaway copy of it
+
+By default the run happens in a COPY of the repository in a temporary folder, so the working tree is never edited. Rows
+in mutants_derived.py get their edit from Operations/tools/mutate_ast.py (the code's own syntax tree), not from typed text.
 
 A mutant counts as killed only when pytest ran and reported at least one failed test. A crash or a collection
 error is reported as ERROR and does not count. The source file is always restored, even on Ctrl-C.
@@ -15,6 +19,7 @@ import argparse
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -26,13 +31,16 @@ ROOT = HERE.parent
 sys.path.insert(0, str(HERE))
 
 from mutants import MUTANTS as UNIT_BASE, Mutant  # noqa: E402
+from mutants_derived import DERIVED_MUTANTS, derive  # noqa: E402
 from mutants_found import FOUND_MUTANTS  # noqa: E402
 from mutants_pipeline import PIPELINE_MUTANTS  # noqa: E402
 
-MUTANTS = [*UNIT_BASE, *FOUND_MUTANTS]
+MUTANTS = [*UNIT_BASE, *FOUND_MUTANTS, *DERIVED_MUTANTS]
 
 
 def apply(m: Mutant, text: str) -> str:
+    if m.kind == "ast":
+        return derive(m, text)
     if m.kind == "empty_list":
         pattern = re.compile(rf"^{m.old} = \[.*?^\]\n", re.S | re.M)
         if len(pattern.findall(text)) != 1:
@@ -57,8 +65,30 @@ def killed_by(output: str) -> list[str]:
     return re.findall(r"^FAILED (\S+)", output, re.M)
 
 
+HEAVY = {".git", "models", "scratch", "demo", "__pycache__", ".pytest_cache", ".secrets", "tools", "docs"}
+
+
+def run_in_copy(argv: list[str]) -> int:
+    """Copy the repository to a temporary folder and run this script there with --in-place."""
+    tmp = Path(tempfile.mkdtemp(prefix="sipclerk-mut-"))
+    try:
+        shutil.copytree(ROOT, tmp / "repo", ignore=lambda d, names: [n for n in names if n in HEAVY or n.endswith((".mp4", ".gif"))])
+        args = list(argv)
+        if "--report" in args:  # the report belongs to the real repository, not the copy
+            i = args.index("--report")
+            args[i + 1] = str((ROOT / args[i + 1]).resolve())
+        env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1")
+        return subprocess.run([sys.executable, str(tmp / "repo" / "scripts" / "mutation_check.py"), "--in-place", *args], cwd=tmp / "repo", env=env).returncode
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def main() -> int:
+    argv = sys.argv[1:]
+    if "--in-place" not in argv and "--check" not in argv:
+        return run_in_copy(argv)
     ap = argparse.ArgumentParser()
+    ap.add_argument("--in-place", action="store_true")
     ap.add_argument("--check", action="store_true")
     ap.add_argument("--layer", choices=["unit", "pipeline", "all"], default="unit")
     ap.add_argument("--only")
@@ -66,7 +96,7 @@ def main() -> int:
     a = ap.parse_args()
     pool = [m for m in MUTANTS if m.layer == "unit"] if a.layer == "unit" else [m for m in PIPELINE_MUTANTS] if a.layer == "pipeline" else [*MUTANTS, *PIPELINE_MUTANTS]
     if a.only:
-        pool = [m for m in pool if m.id == a.only]
+        pool = [m for m in pool if m.id in a.only.split(",")]
     # every mutant must still apply
     bad = []
     for m in pool:
