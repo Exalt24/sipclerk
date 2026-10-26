@@ -3,7 +3,7 @@ type: reference
 updated: 2026-10-26
 ---
 
-*Everything here was run on one Windows 11 PC on 2026-10-25 and 2026-10-26 (the latency figures and the SIPp run were measured before the three review rounds' fixes, and the SIPp record carries config version 2026.10.4, now 2026.10.6; the unit suite, the guards, the probes and a replay of the spoken suite after them): an RTX 5070 Ti shared with other work, Python 3.13.14, Pipecat 1.6.0, faster-whisper `small.en` on the GPU (float16), Kokoro through onnxruntime on the CPU, Ollama with `qwen3.5:4b`, and SIPp 3.6.1 from the Debian `sip-tester` package in Docker (the image is not pinned: that is the version as built on 2026-10-25). Firms, callers, numbers and voices are invented. Most claims name the command that produced them; section 5 and the cost table do not.*
+*Everything here was run on one Windows 11 PC on 2026-10-25 and 2026-10-26 (the latency figures and the SIPp run were measured before the three review rounds' fixes, and the SIPp record carries config version 2026.10.4, now 2026.10.6, and `integration_run.txt` and `codec_proof.txt` also come from before the fixes; the unit suite, the guards, the probes and a replay of the spoken suite after them): an RTX 5070 Ti shared with other work, Python 3.13.14, Pipecat 1.6.0, faster-whisper `small.en` on the GPU (float16), Kokoro through onnxruntime on the CPU, Ollama with `qwen3.5:4b`, and SIPp 3.6.1 from the Debian `sip-tester` package in Docker (the image is not pinned: that is the version as built on 2026-10-25). Firms, callers, numbers and voices are invented. Most claims name the command that produced them; section 5 and the cost table do not.*
 
 ## 1. A real INVITE reaches the agent
 
@@ -28,7 +28,7 @@ What the line saw ([`docs/sipp_run.json`](sipp_run.json), full messages, copied 
 | 15 to 75 | in | `OPTIONS` every 15 s from SIPp, answered `200` (keeps Docker Desktop's UDP mapping open, see below) |
 | 87.32 | out | `BYE` from the line when the intake finished, answered `200` |
 
-The call: 4,367 RTP packets in and 4,365 out (679,844 bytes of G.711 and events received), 10 logged keypad events (the scenario sends eleven characters, ten digits and the pound) made the phone number (`callback_number` came from the keypad, not from speech), five fields were spoken (name, practice area, state, urgent deadline, description) and email was skipped, the outcome was `intake_priority`, and the record carries tenant `tidewaterquint`, config version `2026.10.4` and config hash `75569928f389...`.
+The call: 4,367 RTP packets in and 4,365 out (679,844 bytes of G.711 and events received), 11 logged keypad events (ten digits and the pound) made the phone number (`callback_number` came from the keypad, not from speech), five fields were spoken (name, practice area, state, urgent deadline, description) and email was skipped, the outcome was `intake_priority`, and the record carries tenant `tidewaterquint`, config version `2026.10.4` and config hash `75569928f389...`.
 
 **Where the audio goes.** G.711 on the wire is 160 bytes per 20 ms packet, 64 kbit/s, SNR after a round trip about 37 dB for both codecs; decoded to 8 kHz linear; upsampled to 16 kHz in 20 ms frames for the voice activity detector and Whisper (relative error against a whole-signal resample 0.0000, 2 ms delay); Kokoro's 24 kHz output is resampled 3 to 1 to 8 kHz and encoded back. [`docs/codec_proof.txt`](codec_proof.txt) is the output of `python scripts/codec_proof.py`.
 
