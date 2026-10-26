@@ -52,6 +52,46 @@ def test_every_keyword_still_finds_its_area(registry):
                     assert r.ok and r.value == area.id, (cfg.tenant_id, kw, template, r)
 
 
+# One everyday sentence for every practice area keyword of both firms, holding that keyword and no other. The table must match the tenant files exactly, so a keyword added
+# or dropped there is a decision made here too (a deleted keyword would otherwise leave every caller who used it unread).
+KEYWORD_SENTENCES = {
+    "ashgrovepell": {
+        "car accident": "I was in a car accident", "crash": "there was a crash on the highway", "collision": "a collision at the intersection",
+        "injured": "I was injured last week", "injury": "a serious injury at the store", "hurt": "I got hurt on the stairs", "slip and fall": "a slip and fall at the mall",
+        "fell": "I fell on the ice", "dog bite": "a dog bite on my arm", "truck": "a truck backed into me", "hit by": "I was hit by a bike", "whiplash": "I have whiplash",
+        "hospital": "I ended up in the hospital", "fired": "I got fired yesterday", "laid off": "I was laid off in May", "terminated": "my contract was terminated",
+        "boss": "my boss yelled at me", "employer": "my employer stopped paying me", "workplace": "an unsafe workplace", "harassment": "harassment from a coworker",
+        "wages": "unpaid wages", "overtime": "unpaid overtime", "discrimination": "discrimination because of my age", "retaliation": "retaliation after I complained",
+        "job": "they took away my job",
+    },
+    "tidewaterquint": {
+        "divorce": "I want a divorce", "custody": "a custody battle", "child support": "child support payments", "alimony": "alimony after twenty years",
+        "separation": "a separation agreement", "visitation": "visitation on weekends", "adoption": "a stepparent adoption", "spouse": "my spouse moved out",
+        "paternity": "a paternity question", "visa": "my visa expires soon", "green card": "my green card renewal", "citizenship": "the citizenship test",
+        "deportation": "a deportation notice", "asylum": "an asylum case", "immigration": "immigration paperwork", "work permit": "my work permit lapsed",
+        "naturalization": "a naturalization interview",
+        "a will": "I need a will drawn up", "my will": "I want to update my will", "the will": "we have to read the will", "his will": "his will leaves the house to my brother",
+        "her will": "her will was never signed", "their will": "their will names the wrong person", "our will": "our will needs changing",
+        "last will": "she wrote a last will in 2021", "living will": "I want a living will", "will and testament": "Will and testament questions",
+        "dad's will": "my dad's will", "mom's will": "my mom's will", "mother's will": "my mother's will", "father's will": "my father's will",
+        "husband's will": "my husband's will", "wife's will": "my wife's will", "trust": "a family trust", "estate": "my aunt left an estate", "probate": "probate court",
+        "inheritance": "an inheritance dispute", "power of attorney": "a power of attorney form", "guardianship": "guardianship of my aunt", "beneficiary": "I am the beneficiary",
+    },
+}
+
+
+# CLASS-TABLE: every practice area keyword of both firms x its own sentence; the table and the tenant files list the same keywords
+def test_every_keyword_has_a_sentence_and_the_sentence_finds_its_area(registry):
+    for firm in registry.all:
+        cfg = firm.config
+        table = KEYWORD_SENTENCES[cfg.tenant_id]
+        assert set(table) == {kw for a in cfg.practice_areas for kw in a.keywords}, cfg.tenant_id
+        for area in cfg.practice_areas:
+            for kw in area.keywords:
+                r = p.parse_area(table[kw], cfg.practice_areas)
+                assert r.ok and r.value == area.id, (cfg.tenant_id, kw, table[kw], r)
+
+
 MODAL_SUBJECTS = ["my husband", "my wife", "he", "she", "they", "my ex", "the other driver", "my sister", "we", "I", "it", "the landlord", "my neighbour"]
 MODAL_TAILS = ["will not let me see our kids", "will pay me back on Friday", "will call you tomorrow", "will take a while", "will not return my calls",
                "will be there at five", "will come in on Monday", "will say anything", "will never agree to that", "will not talk to me",
