@@ -1,7 +1,7 @@
 """Print the audio path of a call with numbers: G.711 on the wire, 8 kHz linear, 16 kHz for the models, 24 kHz in from the voice.
 
     python scripts/codec_proof.py            # prints the table
-    python scripts/codec_proof.py --out docs/codec_proof.txt
+    python scripts/codec_proof.py --out scratch/codec_proof.txt
 
 Uses a rendered caller clip (voice_scripts/wav) and a synthetic 24 kHz tone for the voice side, so it needs no model.
 """
@@ -48,6 +48,7 @@ def main() -> int:
     text = "\n".join(rows)
     print(text)
     if a.out:
+        Path(a.out).parent.mkdir(parents=True, exist_ok=True)
         Path(a.out).write_text(text + "\n", encoding="utf-8")
     return 0
 

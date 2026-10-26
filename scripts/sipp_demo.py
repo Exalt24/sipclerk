@@ -3,7 +3,7 @@
     docker build -t sipclerk-sipp tools/sipp
     python scripts/replay.py sipp_reference --json scratch/ref.json
     python scripts/make_sipp_media.py scratch/ref.json tools/sipp/media/call.pcap
-    python scripts/sipp_demo.py --out docs/sipp_run.json
+    python scripts/sipp_demo.py --out scratch/sipp_run.json
 
 SIPp is not our code: it is the Debian `sip-tester` package. It offers PCMA first, PCMU second and telephone-event; the line answers
 with its own preference (PCMU), so the run shows a negotiation, not a default. The caller speech and the keypad digits come from the
@@ -57,6 +57,7 @@ async def main(out: Path) -> int:
             report.update({"tenant_id": r["tenant_id"], "config_version": r["config_version"], "config_hash": r["config_hash"], "codec": r["codec"], "rtp": r["rtp"], "outcome": r["outcome"], "ended_by": r["ended_by"], "duration_s": r["duration_s"],
                            "fields": {k: v["value"] for k, v in r["fields"].items()}, "field_sources": {k: v["source"] for k, v in r["fields"].items()},
                            "transcript": res.transcript, "usage": r["usage"], "events": [(e["kind"], e.get("reason", "")) for e in r["events"]]})
+        out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(json.dumps(report, indent=2, default=str), encoding="utf-8")
         print(json.dumps({k: v for k, v in report.items() if k not in ("server_sip_log", "sipp_stdout_tail", "transcript", "usage")}, default=str)[:1800])
         for t in report.get("transcript", []):

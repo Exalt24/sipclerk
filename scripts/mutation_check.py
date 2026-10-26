@@ -3,7 +3,7 @@
     python scripts/mutation_check.py --check              # every mutant's text still appears exactly once
     python scripts/mutation_check.py                      # the unit layer (fast, no audio)
     python scripts/mutation_check.py --layer pipeline     # the line with real SIP, RTP and VAD, stand-in speech models
-    python scripts/mutation_check.py --layer all --report docs/mutation_report.json
+    python scripts/mutation_check.py --layer all --report scratch/mutation_report.json
     python scripts/mutation_check.py --only guard-emergency
     python scripts/mutation_check.py --in-place           # mutate this working tree instead of a throwaway copy of it
 
@@ -150,6 +150,7 @@ def main() -> int:
     killed = sum(1 for r in results if r["status"] == "KILLED")
     print(f"\n{killed} of {len(results)} mutants killed in {time.time() - t_start:.0f}s; not killed: {survivors or 'none'}")
     if a.report:
+        (ROOT / a.report).parent.mkdir(parents=True, exist_ok=True)
         Path(ROOT / a.report).write_text(json.dumps({"killed": killed, "total": len(results), "results": results}, indent=2), encoding="utf-8")
     return 0 if killed == len(results) else 1
 
