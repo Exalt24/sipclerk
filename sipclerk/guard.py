@@ -45,10 +45,15 @@ EXISTING_CLIENT = [
 ]
 HUMAN_REQUEST = [
     r"\b(?:talk|speak) (?:to|with) (?:a |an |the )?(?:real )?(?:person|human|someone|representative|attorney|lawyer|receptionist|operator|staff|somebody)\b",
-    r"\b(?:real|live) (?:person|human)\b",
+    r"\b(?:real|live|actual) (?:person|human|agent|representative)\b",
     r"\boperator\b",
     r"\bget me (?:a |an )?(?:person|human|attorney|lawyer|representative)\b",
     r"\bi (?:want|need) (?:a |an )?(?:person|human)\b",
+    # Other ways a caller asks for a person (found by a blind probe: `let me talk to your manager` was stored as the description of the matter).
+    r"\b(?:talk|speak) (?:to|with) (?:your |my |the |an? )?(?:manager|owner|agent|supervisor|boss)\b",
+    r"\b(?:put|get|patch|connect) me (?:through |over )?(?:to )?(?:a |an |the |your )?(?:somebody|someone|person|human|manager|attorney|lawyer|receptionist|representative|agent|staff)\b",
+    r"\btransfer me\b|\bput me through\b|\bconnect me\b",
+    r"^\W*(?:a |an )?(?:representative|agent|human|person|manager|receptionist)\W*$",
 ]
 EMERGENCY = [
     r"\b(?:call|calling|dial|dialing|phone)\b(?: (?:now|me|us|them))? 911\b",

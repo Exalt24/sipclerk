@@ -39,7 +39,7 @@ def test_hash_follows_content_not_formatting(tmp_path):
 
 def test_stamp_carries_tenant_version_and_hash(ashgrove):
     s = ashgrove.stamp
-    assert s["tenant_id"] == "ashgrovepell" and s["config_version"] == "2026.10.3" and len(s["config_hash"]) == 64
+    assert s["tenant_id"] == "ashgrovepell" and s["config_version"] == "2026.10.7" and len(s["config_hash"]) == 64
 
 
 @pytest.mark.parametrize("edit,message", [

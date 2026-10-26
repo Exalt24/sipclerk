@@ -61,8 +61,12 @@ def _words(text: str) -> list[str]:
 # ------------------------------------------------------------------ yes / no
 
 YES = {"yes", "yeah", "yep", "yup", "sure", "correct", "right", "absolutely", "affirmative", "okay", "ok", "mhm", "uh-huh",
-       "definitely", "exactly", "indeed"}
+       "definitely", "exactly", "indeed", "fine", "alright", "mm-hmm", "mmhmm", "mm"}
+YES_PHRASES = ("that's me", "that is me", "that's it", "that is it", "that's fine", "that is fine", "that's good", "that's correct", "go ahead", "of course",
+               "all right", "sounds good", "that works", "that's what it is")
 NO = {"no", "nope", "nah", "wrong", "incorrect", "negative", "not"}
+# `I don't know` and `I don't remember` are not a no: the answer is unknown, and a stored no on a deadline question is a wrong record.
+NOT_A_NO_AFTER_DONT = {"know", "remember", "recall", "care", "mind", "see"}
 
 
 def parse_yesno(text: str) -> Parsed:
@@ -71,9 +75,15 @@ def parse_yesno(text: str) -> Parsed:
         return Parsed(False, reason="empty")
     head = words[:5]
     yes_i = next((i for i, w in enumerate(head) if w in YES or w == "yes"), None)
-    no_i = next((i for i, w in enumerate(head) if w in NO or w in ("isn't", "wasn't", "don't", "didn't")), None)
+    no_i = next((i for i, w in enumerate(head) if w in NO or w in ("isn't", "wasn't", "didn't")
+                 or (w == "don't" and (head[i + 1:i + 2] or [""])[0] not in NOT_A_NO_AFTER_DONT)), None)
     if "that's" in head and "right" in head and no_i is None:
         yes_i = head.index("right")
+    if yes_i is None and no_i is None:
+        said = " ".join(head)
+        phrase = next((ph for ph in YES_PHRASES if ph in said), None)
+        if phrase:
+            return Parsed(True, True, remainder="")
     if yes_i is not None and no_i is not None:
         return Parsed(False, reason="ambiguous")
     if yes_i is not None:
@@ -89,7 +99,7 @@ def parse_yesno(text: str) -> Parsed:
 # ------------------------------------------------------------------ name
 
 NAME_LEAD = re.compile(r"^(?:(?:uh|um|well|yes|yeah|hi|hello|hey|sure|okay|ok)[,\s]+)*"
-                       r"(?:my (?:full )?name(?: is|'s)|this is|it is|it's|its|i am|i'm|name is|name's|call me|they call me)\s+", re.I)
+                       r"(?:my (?:full |last |family )?name(?: is|'s)|this is|it is|it's|its|i am|i'm|name is|name's|call me|they call me)\s+", re.I)
 NAME_TRAIL = re.compile(r"(?:[,.\s]+(?:please|thanks|thank you(?: very much)?|that's it|that is it|that's all|that is all|okay|ok))+[.!\s]*$", re.I)  # courtesy said after the name
 NAME_STOP = {"yes", "no", "the", "and", "but", "not", "what", "why", "how", "please", "sorry", "hello", "hi", "um", "uh",
              "skip", "lawyer", "attorney", "client", "person", "someone", "phone", "number", "accident", "injured",
@@ -128,7 +138,7 @@ def parse_name(text: str, *, named: bool = False) -> Parsed:
 def spoken_digits(text: str) -> str:
     """Digits from speech: 'four one five double five oh one two' and '415-555-0123' both work."""
     out: list[str] = []
-    words = [w.strip(".,") for w in _norm(text).replace("-", " ").split()]
+    words = [w.strip(".,") for w in _norm(text).replace("-", " ").replace(".", " ").split()]  # `415.555.0123` is three groups
     words = [w for w in words if w]
     i = 0
     while i < len(words):
@@ -150,7 +160,13 @@ def spoken_digits(text: str) -> str:
 
 def parse_phone(text: str) -> Parsed:
     digits = spoken_digits(text)
-    return validate_phone_digits(digits)
+    p = validate_phone_digits(digits)
+    if not p.ok and digits.startswith("0"):
+        # `oh, it's 415 555 0123`: the interjection was read as a zero. An area code cannot start with zero, so a number that is valid without it is the number.
+        without = validate_phone_digits(digits[1:])
+        if without.ok:
+            return without
+    return p
 
 
 def validate_phone_digits(digits: str) -> Parsed:
@@ -172,7 +188,9 @@ EMAIL_RE = re.compile(r"^[a-z0-9._%+\-]+@[a-z0-9\-]+(\.[a-z0-9\-]+)*\.[a-z]{2,}$
 
 def is_skip(text: str) -> bool:
     n = _norm(text)
-    return any(n == s or n.startswith(s + " ") or s in n.split(". ")[0] for s in SKIP_WORDS)
+    first = n.split(". ")[0]
+    # Whole words only: `pass` is a skip, `Passmore` and `passportlaw dot com` are not.
+    return any(n == s or n.startswith(s + " ") or re.search(rf"(?<![a-z0-9'@.-]){re.escape(s)}(?![a-z0-9'@-])", first) for s in SKIP_WORDS)
 
 
 # What a caller says before the address: a filler (`um`, `yeah`, `sure`) or a lead-in (`my email is`, `it's`). A word that a spoken connector follows is the
@@ -255,7 +273,39 @@ def _ordinal_days(n: str) -> str:
     """`the third of March`, `May fifth` and `the fifth of last month` as `3 march`, `may 5`, `5 last month`: a day said in words beside a month."""
     n = re.sub(r"\b(twenty|thirty)-", r"\1 ", n)
     n = re.sub(rf"\b({_ORD})\b(?= (?:of )?(?:{_MONTH}|last month|this month)\b)", lambda m: str(ORDINAL_DAYS[m.group(1)]), n)
-    return re.sub(rf"\b({_MONTH}) ({_ORD})\b", lambda m: f"{m.group(1)} {ORDINAL_DAYS[m.group(2)]}", n)
+    return re.sub(rf"\b({_MONTH}) (?:the )?({_ORD})\b", lambda m: f"{m.group(1)} {ORDINAL_DAYS[m.group(2)]}", n)  # `May the fifth` is `may 5`
+
+
+_TEEN_WORDS = "ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen"
+
+
+def _year_words(n: str) -> str:
+    """`twenty twenty four` as `2024` and `nineteen ninety five` as `1995`: a year said in two numbers. `twenty one days ago` is not one: a bare unit after
+    `twenty` is a number of days, so only a teen, a tens word or `oh` and a unit make a year."""
+    second = rf"(?:(?:oh|zero) (?:{_UNIT_WORDS})|{_TEEN_WORDS}|(?:{_TENS_WORDS})(?:[ -](?:{_UNIT_WORDS}))?)"
+    pattern = rf"\b(nineteen|twenty) ({second})\b(?! (?:days?|weeks?|months?|years?|hours?|minutes?)\b)"
+
+    def year(m):
+        head = 1900 if m.group(1) == "nineteen" else 2000
+        words = m.group(2).replace("-", " ").split()
+        if words[0] in ("oh", "zero"):
+            return str(head + NUMBER_WORDS[words[1]])
+        return str(head + sum(NUMBER_WORDS[w] for w in words))
+
+    return re.sub(pattern, year, n)
+
+
+CORRECTION_CUE = re.compile(r"\b(?:no wait|wait no|no sorry|sorry no|i mean|actually|no no|rather|correction)\b")
+
+
+def _after_correction(n: str) -> str:
+    """`it was in March no wait April` is April: after the last correction cue the caller's new answer replaces the old one, when it holds a date."""
+    cues = list(CORRECTION_CUE.finditer(n))
+    if cues:
+        tail = n[cues[-1].end():].strip()
+        if re.search(rf"\b(?:{_MONTH}|\d+|today|yesterday|last|ago|{_ORD})\b", tail):
+            return tail
+    return n
 
 
 def _years_back(n: str) -> int | None:
@@ -303,7 +353,7 @@ def parse_date(text: str, today: date, max_age_days: int | None = None) -> Parse
     if us:
         year = int(us.group(3))
         return _whole_date(year + 2000 if year < 100 else year, int(us.group(1)), int(us.group(2)), today, max_age_days)
-    n = _compound_numbers(_ordinal_days(_norm(text)))
+    n = _compound_numbers(_ordinal_days(_after_correction(_year_words(_norm(text)))))
     if m := re.search(r"\b((?:\w+\s(?:years?|months?|weeks?|days?)(?:\sand)?\s)+)ago\b", n):  # `three years and two months ago`, `two weeks and three days ago`: every unit counts
         spans = re.findall(r"(\w+) (year|month|week|day)s?", m.group(1))
         counts = [_num(k) for k, _ in spans]
@@ -317,9 +367,9 @@ def parse_date(text: str, today: date, max_age_days: int | None = None) -> Parse
     month = _named_month(n)
     if re.search(r"\b(?:tomorrow|next (?:week|month|year|monday|tuesday|wednesday|thursday|friday|saturday|sunday))\b", n):
         return Parsed(False, reason="in_the_future", detail="a date that has not happened yet")
-    if re.search(r"\byesterday\b", n):
+    if re.search(r"\byesterday\b", n) and not month:  # a month the caller named is the date, `June 3rd, I saw the doctor yesterday` is June 3rd
         found = today - timedelta(days=1)
-    elif re.search(r"\btoday\b|\bthis morning\b|\btonight\b", n):
+    elif re.search(r"\btoday\b|\bthis morning\b|\btonight\b", n) and not month:
         found = today
     elif month:  # a month the caller named wins over a relative word: `March of last year` is March, and `last year` only says which year
         year_m = re.search(r"\b(19\d\d|20\d\d)\b", n)
@@ -377,10 +427,14 @@ def parse_area(text: str, areas: list[PracticeArea]) -> Parsed:
 
 def parse_option(text: str, options: list[str]) -> Parsed:
     n = _norm(text)
-    for o in options:
-        if re.search(rf"(?<![a-z]){re.escape(o.lower())}(?![a-z])", n):
-            return Parsed(True, o)
-    return Parsed(False, reason="no_match")
+    hits = [o for o in options if re.search(rf"(?<![a-z]){re.escape(o.lower())}(?![a-z])", n)]
+    if len(hits) > 1:
+        # Two options named (`I live in Georgia but my ex lives in Florida`): the list order must not decide. After a correction cue the last one named
+        # wins, otherwise the caller is asked again.
+        if CORRECTION_CUE.search(n):
+            return Parsed(True, max(hits, key=lambda o: n.rfind(o.lower())))
+        return Parsed(False, reason="ambiguous")
+    return Parsed(True, hits[0]) if hits else Parsed(False, reason="no_match")
 
 
 FILLER_LEAD = re.compile(r"^(?:(?:uh|um|so|well|okay|ok|yeah|yes|hi)[,\s]+)+", re.I)

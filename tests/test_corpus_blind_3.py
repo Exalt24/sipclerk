@@ -17,9 +17,7 @@ ROWS = [json.loads(line) for line in CORPUS.read_text(encoding="utf-8").splitlin
 # row number (1 based) -> why the recorded behaviour is kept, from the triage of output round 3
 KNOWN_LIMITS = {
     25: "F7: `No problem` to the recording question turns recording off, the safe direction (nothing is recorded that the caller may not have agreed to)",
-    26: "F7: `No, that's fine` to the recording question turns recording off, the same limit",
     50: "F8: the written summary is on the console record; the bridge payload carries every field but an empty summary",
-    51: "F9: a surname holding the skip word `pass` skips the email, and the caller is asked for the address again at the end",
 }
 PAYLOAD_ISO = {12: "2025-03-01", 13: "2026-08-01", 14: "2026-03-03", 15: "2026-09-05", 16: "2026-10-13", 17: "2026-10-23", 18: "2026-03-03"}
 EMAILS = {5: "jordan.reyes@gmail.com", 6: "jordan.reyes@gmail.com", 7: "jordanreyes@gmail.com", 8: "jordan.reyes@gmail.com", 9: "jordan.reyes@gmail.com"}
@@ -38,6 +36,10 @@ CHECKS = {
     4: lambda r: r["is_open"] is True,
     **{n: (lambda e: lambda r: r["email"] == e and not r["skipped"])(e) for n, e in EMAILS.items()},
     10: lambda r: r["email"] is None and r["skipped"],
+    # Rows that were known limits in the third round and are fixed: `No, that's fine` is ambiguous so the question is asked again (it no longer turns
+    # recording off), and a surname holding the skip word `pass` no longer skips the email (whole words only).
+    26: lambda r: "Please say yes or no" in " ".join(r["said"]),
+    51: lambda r: r["email"] == "jordan.passmore@gmail.com" and not r["skipped"],
     11: lambda r: r["email"] is None and r["skipped"],
     **{n: (lambda iso: lambda r: r["incident_date"] == iso)(iso) for n, iso in PAYLOAD_ISO.items()},
     19: lambda r: r["pending"] == PHONE and r["state"] == "confirm",

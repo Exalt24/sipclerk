@@ -1,7 +1,7 @@
 # Invented firm. Every name, number and rule below is made up for the lab.
 schema_version: 1
 tenant_id: ashgrovepell
-version: "2026.10.3"
+version: "2026.10.7"
 display_name: Ashgrove and Pell LLP
 did: "+14155550101"
 language: en
@@ -28,7 +28,7 @@ disclosures:
 practice_areas:
   - id: personal_injury
     label: personal injury
-    keywords: [car accident, crash, collision, injured, injury, hurt, slip and fall, fell, dog bite, truck, hit by, whiplash, hospital]
+    keywords: [car accident, crash, collision, injured, injury, hurt, slip and fall, fell, dog bite, truck, hit by, whiplash, hospital, rear-ended, rear ended, hit my car, hit me, drunk driver]
   - id: employment
     label: employment law
     keywords: [fired, laid off, terminated, boss, employer, workplace, harassment, wages, overtime, discrimination, retaliation, job]

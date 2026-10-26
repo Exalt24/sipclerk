@@ -59,7 +59,8 @@ KEYWORD_SENTENCES = {
         "car accident": "I was in a car accident", "crash": "there was a crash on the highway", "collision": "a collision at the intersection",
         "injured": "I was injured last week", "injury": "a serious injury at the store", "hurt": "I got hurt on the stairs", "slip and fall": "a slip and fall at the mall",
         "fell": "I fell on the ice", "dog bite": "a dog bite on my arm", "truck": "a truck backed into me", "hit by": "I was hit by a bike", "whiplash": "I have whiplash",
-        "hospital": "I ended up in the hospital", "fired": "I got fired yesterday", "laid off": "I was laid off in May", "terminated": "my contract was terminated",
+        "hospital": "I ended up in the hospital", "rear-ended": "I was rear-ended at a light", "rear ended": "I got rear ended on the freeway",
+        "hit my car": "somebody hit my car in the lot", "hit me": "a van hit me in the crosswalk", "drunk driver": "a drunk driver ran the light", "fired": "I got fired yesterday", "laid off": "I was laid off in May", "terminated": "my contract was terminated",
         "boss": "my boss yelled at me", "employer": "my employer stopped paying me", "workplace": "an unsafe workplace", "harassment": "harassment from a coworker",
         "wages": "unpaid wages", "overtime": "unpaid overtime", "discrimination": "discrimination because of my age", "retaliation": "retaliation after I complained",
         "job": "they took away my job",
@@ -75,7 +76,7 @@ KEYWORD_SENTENCES = {
         "last will": "she wrote a last will in 2021", "living will": "I want a living will", "will and testament": "Will and testament questions",
         "dad's will": "my dad's will", "mom's will": "my mom's will", "mother's will": "my mother's will", "father's will": "my father's will",
         "husband's will": "my husband's will", "wife's will": "my wife's will", "trust": "a family trust", "estate": "my aunt left an estate", "probate": "probate court",
-        "inheritance": "an inheritance dispute", "power of attorney": "a power of attorney form", "guardianship": "guardianship of my aunt", "beneficiary": "I am the beneficiary",
+        "inheritance": "an inheritance dispute", "power of attorney": "a power of attorney form", "guardianship": "guardianship of my aunt", "beneficiary": "I am the beneficiary", "executor": "I am the executor named in it", "deceased": "my uncle is deceased", "passed away": "my aunt passed away in June",
     },
 }
 

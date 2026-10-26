@@ -1,6 +1,6 @@
 {
-  "killed": 8,
-  "total": 8,
+  "killed": 17,
+  "total": 17,
   "results": [
     {
       "id": "parsers-future-date",
@@ -11,7 +11,7 @@
       "killed_by": [
         "tests/test_parsers.py::test_date_future_and_too_old_and_garbage"
       ],
-      "seconds": 8.2
+      "seconds": 7.0
     },
     {
       "id": "parsers-too-old",
@@ -22,7 +22,7 @@
       "killed_by": [
         "tests/test_parsers.py::test_date_future_and_too_old_and_garbage"
       ],
-      "seconds": 12.5
+      "seconds": 6.9
     },
     {
       "id": "parsers-email-words-after-the-ending",
@@ -33,7 +33,7 @@
       "killed_by": [
         "tests/test_email_and_date_shapes.py::test_class_words_after_a_spoken_email_are_not_part_of_it"
       ],
-      "seconds": 4.1
+      "seconds": 3.4
     },
     {
       "id": "parsers-name-courtesy-after-the-name",
@@ -47,6 +47,105 @@
       "seconds": 3.4
     },
     {
+      "id": "parsers-yes-phrases",
+      "file": "sipclerk/intake/parsers.py",
+      "desc": "that's fine and go ahead are not read as yes",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_probe_fixes.py::test_class_every_plain_yes_reads_as_yes"
+      ],
+      "seconds": 5.9
+    },
+    {
+      "id": "parsers-dont-know-is-not-a-no",
+      "file": "sipclerk/intake/parsers.py",
+      "desc": "I don't know is stored as no",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_probe_fixes.py::test_i_dont_know_is_not_a_stored_no[I"
+      ],
+      "seconds": 5.7
+    },
+    {
+      "id": "parsers-skip-whole-words",
+      "file": "sipclerk/intake/parsers.py",
+      "desc": "a surname holding the skip word skips the email",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_probe_fixes.py::test_class_a_skip_word_inside_a_longer_word_is_not_a_skip"
+      ],
+      "seconds": 3.6
+    },
+    {
+      "id": "parsers-two-options-named",
+      "file": "sipclerk/intake/parsers.py",
+      "desc": "two states named are decided by the list order",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_probe_fixes.py::test_class_two_states_named_are_not_decided_by_the_list_order"
+      ],
+      "seconds": 3.5
+    },
+    {
+      "id": "parsers-month-beats-yesterday",
+      "file": "sipclerk/intake/parsers.py",
+      "desc": "yesterday beats a month the caller named",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_probe_fixes.py::test_class_a_named_month_beats_today_and_yesterday"
+      ],
+      "seconds": 3.6
+    },
+    {
+      "id": "parsers-correction-cue-replaces",
+      "file": "sipclerk/intake/parsers.py",
+      "desc": "no wait April is read as March",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_probe_fixes.py::test_class_a_correction_replaces_the_first_answer"
+      ],
+      "seconds": 3.5
+    },
+    {
+      "id": "machine-first-name-then-last-name",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "a first name and then a last name are never put together",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_probe_fixes.py::test_first_name_then_last_name_in_two_answers"
+      ],
+      "seconds": 3.5
+    },
+    {
+      "id": "machine-this-number-is-the-caller-id",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "this number is fine is never offered back",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_probe_fixes.py::test_class_the_caller_id_is_offered_back_when_the_caller_says_to_use_it[this"
+      ],
+      "seconds": 3.5
+    },
+    {
+      "id": "guard-human-request-other-words",
+      "file": "sipclerk/guard.py",
+      "desc": "transfer me and put me through are not a request for a person",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_probe_fixes.py::test_class_every_way_of_asking_for_a_person_escalates[transfer"
+      ],
+      "seconds": 3.5
+    },
+    {
       "id": "parsers-number-words-compound",
       "file": "sipclerk/intake/parsers.py",
       "desc": "twenty one days ago is read as one day ago",
@@ -55,7 +154,7 @@
       "killed_by": [
         "tests/test_email_and_date_shapes.py::test_class_a_number_said_in_words_is_that_many_units_ago"
       ],
-      "seconds": 3.7
+      "seconds": 3.4
     },
     {
       "id": "guard-emergency-contractions",
@@ -66,7 +165,7 @@
       "killed_by": [
         "tests/test_emergency_contractions.py::test_class_every_way_of_saying_someone_is_in_danger_fires"
       ],
-      "seconds": 4.6
+      "seconds": 3.5
     },
     {
       "id": "parsers-numeric-date-two-digit-year",
@@ -77,7 +176,7 @@
       "killed_by": [
         "tests/test_email_and_date_shapes.py::test_class_a_numeric_date_is_stored_as_that_date"
       ],
-      "seconds": 3.8
+      "seconds": 3.4
     },
     {
       "id": "parsers-compound-ago-days-dropped",
@@ -88,7 +187,7 @@
       "killed_by": [
         "tests/test_email_and_date_shapes.py::test_class_two_units_ago_are_both_counted"
       ],
-      "seconds": 4.1
+      "seconds": 3.4
     }
   ]
 }

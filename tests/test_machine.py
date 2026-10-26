@@ -80,7 +80,7 @@ def test_record_is_stamped_with_tenant_version_and_hash_and_a_stable_key(ashgrov
     m, _ = new(ashgrove, call_id="abc")
     run(m, *GOOD_ASHGROVE)
     r = m.record()
-    assert r["tenant_id"] == "ashgrovepell" and r["config_version"] == "2026.10.3" and r["config_hash"] == ashgrove.config_hash
+    assert r["tenant_id"] == "ashgrovepell" and r["config_version"] == "2026.10.7" and r["config_hash"] == ashgrove.config_hash
     m2, _ = new(ashgrove, call_id="abc")
     assert m2.idempotency_key() == r["idempotency_key"]
     m3, _ = new(ashgrove, call_id="abd")

@@ -47,6 +47,9 @@ FIXED_LINES = [
     "Of course, take your time.",
     "I want to be careful here. I cannot give legal advice. An attorney will review your details.",
 ]
+import re
+
+SAME_NUMBER = re.compile(r"\b(?:this|same|that) (?:number|one|phone)\b|\bcalling from\b|\bsame as (?:this|the one)\b")
 MAX_SILENCES = 3  # consecutive silent prompts before the call is ended
 MAX_UNCLEAR_CONFIRMS = 1
 
@@ -208,6 +211,11 @@ class IntakeMachine:
         q = self.question
         if q is None:
             return Parsed(False, reason="no_question")
+        if q.type == "phone" and SAME_NUMBER.search(parsers._norm(text)):
+            # `this number is fine`, `the number I'm calling from`: the caller ID, offered back for the read-back like any other number.
+            own = parsers.parse_phone(self.caller_number or "")
+            if own.ok:
+                return own
         return parsers.parse_for(q, text, today=self.today, areas=self.cfg.practice_areas)
 
     def handle_text(self, text: str) -> list[Action]:
@@ -259,6 +267,8 @@ class IntakeMachine:
             fs.skipped = True
             self._log("skipped")
             return self._advance()
+        if q.type == "name":
+            p = self._name_partials(fs, p)
         if q.type == "phone" and source == "spoken":
             p, ask_more = self._phone_partials(fs, p)
             if ask_more:
@@ -277,6 +287,20 @@ class IntakeMachine:
             return [Say(f"I have {parsers.readback(q, p.value)}. Is that right?")]
         fs.value, fs.source, fs.confirmed = p.value, source, False
         return self._advance()
+
+    def _name_partials(self, fs: FieldState, p: Parsed) -> Parsed:
+        """`Jordan`, then `Reyes`: the first name said alone is kept (as the phone digits are), and the next single name is its last name, so the caller
+        is not asked for the same thing until the retry limit sends them to a person."""
+        if p.reason == "need_last_name" and p.value:
+            if fs.partial and str(p.value).lower() != fs.partial.lower():  # the same word again is the first name repeated, not a last name
+                combined = f"{fs.partial} {p.value}"
+                fs.partial = ""
+                return Parsed(True, combined)
+            fs.partial = str(p.value)
+            return p
+        if p.ok:
+            fs.partial = ""
+        return p
 
     MAX_PARTIAL_ROUNDS = 3
 
