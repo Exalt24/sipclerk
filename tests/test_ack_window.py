@@ -246,3 +246,70 @@ async def test_stopping_the_line_waits_for_every_live_call_to_file_its_record_an
             await until(lambda: not r.server.sessions, 15)
             for c in callers:
                 c.close()
+
+
+# ---- the class, enumerated: how long the stack's ACK window is x when the caller's ACK arrives inside it, after it, or never
+#
+# GROUNDING (docs/DECISIONS.md): "an ACK at 6 seconds (a lost ACK that was resent, a slow carrier) left an answered call with no session, no media and no record, and an ACK that
+# never came dropped the dialog silently." and "when it never comes the stack sends the BYE, the line frees its media and stores a record (outcome `dropped_no_ack`, a callback
+# task, both deliveries) so the firm has a trace of a call it answered."
+# WHY: a person phones the firm over a carrier that is slow with the ACK. The line answered, the caller hears nothing and hangs up, and the firm has no record that anyone
+# called, so the lead is lost and nobody knows to phone back.
+import itertools
+
+from test_pipeline_fast import finished
+
+T1S = (0.02, 0.1)  # the stack's T1 the cell runs at: the window is 64 * T1, 1.28 s or 6.4 s
+ACK_AT = (0.05, 0.9, 1.4, None)  # when the ACK arrives as a fraction of the window: early, just inside, after it, never
+# the cells that fit the time the suite can spend: every one of the short window, and the long one only where the ACK is late enough for the old fixed five second wait
+ACK_TIMINGS = [(t1, f) for t1, f in itertools.product(T1S, ACK_AT) if 64 * t1 * (f if f is not None else 1.0) <= 2.0 or (f is not None and 5.0 < 64 * t1 * f < 6.0)]
+
+
+# CLASS-TABLE: an answered call with a late or lost ACK left with no session and no record, for every ACK arrival time against the window
+async def test_class_an_ack_inside_the_window_starts_the_call_and_one_after_it_or_never_leaves_a_record_with_a_callback():
+    wrong = []
+    for n, (t1, fraction) in enumerate(ACK_TIMINGS):
+        window = 64 * t1
+        caller = f"+1415555019{n}"
+        async with rig(["yes"]) as r:
+            r.server.stack.t1 = t1
+            c = await Caller(r, caller).start()
+            problems = []
+            if fraction is not None:
+                await asyncio.sleep(max(0.0, window * fraction - (time.monotonic() - c.t0)))  # the cell fixes the moment the ACK arrives
+                c.send("ACK")
+            if fraction is not None and fraction < 1:
+                if not await until(lambda: r.server.sessions, 3):
+                    problems.append("an ACK inside the window did not start the call")
+                elif c.count(b"BYE"):
+                    problems.append("the line hung up on a call whose ACK came in time")
+                c.send("BYE", cseq=2)
+                try:
+                    res = await finished(r, caller, 4)
+                    if res.record["outcome"] != "caller_hung_up":
+                        problems.append(f"outcome {res.record['outcome']}")
+                except AssertionError:
+                    problems.append("a call that started left no record when it ended")
+            else:
+                if not await until(lambda: c.count(b"BYE") >= 1, window + 3):
+                    problems.append("the line never hung up on the dialog it gave up on")
+                else:
+                    c.t.sendto(answer_to_bye(next(d for _, d in c.p.log if d.startswith(b"BYE"))), ("127.0.0.1", c.sport))
+                if not await until(lambda: r.server.counters.get("no_ack", 0) == 1 and r.store.list_calls("ashgrovepell"), window + 3):
+                    problems.append("no record of a call whose ACK never came in time")
+                else:
+                    (call_id,) = r.store.list_calls("ashgrovepell")
+                    rec = r.store.read(Actor("sam", "ashgrovepell", "intake_staff"), "ashgrovepell", call_id, "record")
+                    if not (rec["outcome"] == "dropped_no_ack" and rec["caller_number"] == caller and rec["tasks"] and rec["tasks"][0]["kind"] == "callback"):
+                        problems.append(f"record {rec['outcome']}, tasks {rec['tasks']}")
+                    if sorted(e.target for e in r.outbox.entries.values() if e.key == rec["idempotency_key"]) != ["bridge", "console"]:
+                        problems.append("the record did not reach both receivers")
+                if fraction is not None:
+                    c.send("ACK")  # a stray ACK after the line gave up changes nothing
+                    await asyncio.sleep(0.2)
+                    if r.server.sessions or len(r.store.list_calls("ashgrovepell")) != 1:
+                        problems.append("a late ACK started a call or a second record")
+            c.close()
+        if problems:
+            wrong.append((t1, fraction, problems))
+    assert not wrong, f"{len(wrong)} of {len(ACK_TIMINGS)} ACK timings left a call without a session or a record: {wrong}"
