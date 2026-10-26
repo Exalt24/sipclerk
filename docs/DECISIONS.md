@@ -92,3 +92,7 @@ The two receivers are used the way their repositories document them: `clio-matte
 ## Two test helper faults
 
 The transfer check once used a desk-phone call left over from an earlier scenario, and a quiet gap before the whisper counted as the whisper being over. Both were fixed in the harness, not the agent.
+
+## Retention and a time zone in a saved record
+
+`TenantStore.purge` compares each call folder's `saved_at` with the clock, and raises a `TypeError` for the whole pass when `saved_at` carries a UTC offset, since both clocks default to naive time and nothing in the line writes an offset. It needs an injected time zone aware clock or a hand edited file, so it is a known limit and the code is not changed.

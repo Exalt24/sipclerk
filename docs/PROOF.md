@@ -37,7 +37,7 @@ The call: 4,367 RTP packets in and 4,365 out (679,844 bytes of G.711 and events 
 ## 2. Tests
 
 ```
-python -m pytest                    # 3824 passed, 25 deselected in 345 s
+python -m pytest                    # 3842 passed, 25 deselected in about 6 minutes
 python -m pytest -m voice           # 25 passed in 1472 s (24 minutes 32 seconds) before the review rounds; replayed after sections 7 to 9: 23 passed in 1541 s with the machine busy, and the other two (barge in, caller correction) failed there and passed alone in 206 s
 python scripts/mutation_check.py --layer all --report docs/mutation_report.json   # 220 of 220 killed before the third review round, run in a copy of the repository
 python scripts/mutation_check.py --only <the 12 added in round 3> --report docs/mutation_report_round3.json   # 12 of 12 killed; 89 earlier rows in the changed files rerun, 89 of 89 killed
@@ -50,17 +50,17 @@ python scripts/mutation_check.py --only <the 12 added in round 3> --report docs/
 | `test_machine.py` | 42 | read-back, retries, limits, keypad, silence, partial phone numbers, transfer results, qualification boundaries |
 | `test_machine_property.py` | 163 | 160 seeded random calls over both firms, in and out of hours, with the invariants listed in the file, plus every record they produce being deliverable |
 | `test_parsers.py` | 51 | names, numbers, dates, yes and no, practice areas, masking |
-| `test_names_unicode.py` | 160 | 30 real names from several languages, with lead-ins and in decomposed form, and 4,000 seeded ASCII inputs read exactly as the old parser read them |
+| `test_names_unicode.py` | 162 | 30 real names from several languages, with lead-ins and in decomposed form, and 4,000 seeded ASCII inputs read exactly as the old parser read them |
 | `test_tenants.py` | 22 | schema, refusals, the hash following content not formatting, two firms sharing nothing, hours |
-| `test_store.py` | 23 | encryption at rest, roles, a denied read leaving an audit line, a tampered audit chain, retention, and one unreadable call folder never stopping the purge |
-| `test_retention.py`, `test_wiring.py` | 11 | the server applying retention at start and every interval on a fake clock, a failing pass retried, and every public method of the store, outbox and server being run by the line or listed with a reason |
+| `test_store.py` | 24 | encryption at rest, roles, a denied read leaving an audit line, a tampered audit chain, retention, and one unreadable call folder never stopping the purge |
+| `test_retention.py`, `test_wiring.py` | 14 | the server applying retention at start and every interval on a fake clock, a failing pass retried, and every public method of the store, outbox and server being run by the line or listed with a reason |
 | `test_delivery.py` | 36 | signatures against the two receivers' documented formats, backoff, dead letters, 25 seeded random failure worlds |
-| `test_delivery_window.py` | 19 | a receiver down for ten minutes still gets the delivery, dead only after the 23 hour schedule, requeue by function and script, the dead count in the status |
-| `test_outbox_at_rest.py`, `test_logs_carry_no_caller_words.py` | 10 | the raw outbox bytes holding no name, number, email or story in any state, bodies bound to firm and call, purge at retention, no log call carrying caller words |
-| `test_dialled_number.py` | 88 | every written form of the dialled number for both firms, look-alike firms never confused, a `tel:` INVITE answered, an unparseable INVITE getting a 400, four shapes through the whole line |
-| `test_route_set.py` | 11 | Record-Route echoed in the 200 OK in order, the BYE and ACK following the route set, strict and loose routers, the first route as the next hop |
-| `test_anonymous_callers.py` | 11 | a withheld caller id never counting as a duplicate, a real number twice still refused |
-| `test_transfer_leg.py` | 9 | the caller hanging up at every stage of a transfer: a CANCEL or BYE, no RTP afterwards, sockets and tasks back to the count before the call |
+| `test_delivery_window.py` | 21 | a receiver down for ten minutes still gets the delivery, dead only after the 23 hour schedule, requeue by function and script, the dead count in the status |
+| `test_outbox_at_rest.py`, `test_logs_carry_no_caller_words.py` | 11 | the raw outbox bytes holding no name, number, email or story in any state, bodies bound to firm and call, purge at retention, no log call carrying caller words |
+| `test_dialled_number.py` | 89 | every written form of the dialled number for both firms, look-alike firms never confused, a `tel:` INVITE answered, an unparseable INVITE getting a 400, four shapes through the whole line |
+| `test_route_set.py` | 13 | Record-Route echoed in the 200 OK in order, the BYE and ACK following the route set, strict and loose routers, the first route as the next hop |
+| `test_anonymous_callers.py` | 12 | a withheld caller id never counting as a duplicate, a real number twice still refused |
+| `test_transfer_leg.py` | 10 | the caller hanging up at every stage of a transfer: a CANCEL or BYE, no RTP afterwards, sockets and tasks back to the count before the call |
 | `test_sip_stack.py`, `test_audio.py` | 20 | SIP parsing, SDP negotiation, a call over UDP with audio and digits, retransmissions, G.711, resampling |
 | `test_llm.py`, `test_processors.py` | 32 | the language model's fences, what the Intake processor refuses to say, what the Stt processor refuses to hear |
 | `test_pipeline_fast.py` | 18 | the whole line with real SIP, RTP and voice activity detection and stand-in speech models, including an abandoned transfer and two anonymous callers |
@@ -71,12 +71,12 @@ python scripts/mutation_check.py --only <the 12 added in round 3> --report docs/
 | `test_existing_client_after_no.py` | 321 | 21 phrases of the existing client rule x every answer to the client question x in and after hours, and the other guard rules still running |
 | `test_practice_keywords.py` | 179 | no keyword of either firm a function word, one sentence for every keyword with the table matching the tenant files, and 156 sentences with the modal `will` picking no area |
 | `test_corpus_blind_3.py` | 61 | the 59 cases of the third review round replayed from `tests/corpus`, four known limits pinned to what the rows recorded |
-| `test_caller_number.py` | 720 | the caller id read one way for the stored number, the block list and the one call per number rule, in every written form |
-| `test_outcome_receivers.py` | 32 | every outcome that carries a task reaching both receivers by one path |
+| `test_caller_number.py` | 721 | the caller id read one way for the stored number, the block list and the one call per number rule, in every written form |
+| `test_outcome_receivers.py` | 33 | every outcome that carries a task reaching both receivers by one path |
 | `test_names_stopwords.py` | 50 | `An`, `To`, `Case` and `Hurt` read as parts of a name |
 | `test_emergency_report.py` | 44 | a hurt body part, an emergency hearing and the other legal phrases never reaching the 911 line, next to the same words said as a real alarm |
-| `test_scope_confirmed_area.py` | 6 | a word in the description not turning away a caller whose area the firm takes |
-| `test_ack_window.py` | 9 | the wait for the caller's ACK, a call whose ACK never comes recorded, a redial behind an unconfirmed call |
+| `test_scope_confirmed_area.py` | 7 | a word in the description not turning away a caller whose area the firm takes |
+| `test_ack_window.py` | 10 | the wait for the caller's ACK, a call whose ACK never comes recorded, a redial behind an unconfirmed call |
 | `test_bridge_contract.py` | 3 | our delivery against the real verification code of `clio-matter-bridge` (skipped without node and the sibling checkout) |
 | `test_voice_suite.py` | 25 | the spoken scenarios below |
 
@@ -218,3 +218,7 @@ Impact check, over the inputs an ordinary day brings: the 44 `pass` rows of this
 A sweep of every mutation site on the changed lines and in the functions around them, in copies of the repository and with the tables and the corpus replay as the only tests: 276 of 281 killed on the changed lines (tenants 5 of 6, machine 11 of 11, guard 4 of 5, parsers 154 of 157, 102 of 102 edits of the tenant files). The five that stand: two `int | None` return annotations that are never evaluated, `1 <= day` against `2 <= day` where day 1 is also the default, the default of the existing `check_scope` argument (killed by `test_guard.py`), and a validator named with an empty string that fails at import. The sweep found and closed these gaps: the 29th to the 31st and `twenty-first` were unpinned, a month followed by a full stop, `may be` and `may have` at the end of a sentence, a number that is not a day beside a month, the 31st of a 30 day month, the default of the guard flag, and a keyword that could be deleted from either firm with every test green (the table now holds one sentence for each keyword). The 12 new derived rows were killed and 89 earlier rows in the four changed files were rerun and killed.
 
 Left alone on purpose, each scored 3 or less by the lead: `No problem` or `No, that's fine` to the recording question turns recording off (the safe direction); the written summary reaches the console record but the bridge payload carries every field with an empty summary; a surname holding the skip word `pass` skips the email; a caller who answered no to being a client and later says `I'm already a client` is not handed to a person (it takes two faults); a keyword with an everyday meaning (`trust`, `job`, `estate`, `truck`) can still read as an area when it is the only keyword; `rear-ended` is not a keyword of Ashgrove, so row 28 reads no area (the model reads it in the line) while the harm the row names, the escalation, is gone. The spoken suite was not replayed after this round.
+
+## 10. Class tables for the first two rounds
+
+Every class the first two review rounds fixed also has a test marked `CLASS-TABLE:` that runs the whole class from a table generated in code: 18 tests, about 37 s together, 3,842 tests in all. Each table was run in a copy with the pre-fix behaviour put back (the code of the commit before the fix, or the old lines restored by hand), and the counts are the writer's, not re-run by the lead: for example 130 of 182 outbox cells, 192 of 192 store cells, 1,536 caller id cells and 24 route set faults failed there, while the ordinary rows passed. One real edge was found and left alone: `TenantStore.purge` raises on a `meta.json` whose `saved_at` carries a UTC offset (a two fault corner, since both clocks default to naive time), listed in DECISIONS.

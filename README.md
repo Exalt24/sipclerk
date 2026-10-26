@@ -8,7 +8,7 @@ A voice intake line for invented law firms: a real SIP call comes in, the dialle
 
 *A separate SIP client (SIPp, in Docker) places an INVITE with G.711 audio and keypad digits. This is the logged run replayed at 4x. Full quality: [`docs/demo.mp4`](docs/demo.mp4).*
 
-**Proof, run on this machine on 2026-10-26:** 3,824 tests pass and the 101 of 232 deliberate breaks rerun after the third review round are all caught by a failing test. The 25 spoken tests over 20 scenarios (real SIP and RTP through Whisper, a local language model and Kokoro) were replayed after the review rounds: 23 passed, barge-in and a caller's correction failed once on a busy machine and passed alone. The first audio of the agent's answer arrived 619 ms (median) and 1611 ms (95th percentile) after the caller stopped talking in the earlier, quieter run. Every figure and command is in [`docs/PROOF.md`](docs/PROOF.md).
+**Proof, run on this machine on 2026-10-26:** 3,842 tests pass and the 101 of 232 deliberate breaks rerun after the third review round are all caught by a failing test. The 25 spoken tests over 20 scenarios (real SIP and RTP through Whisper, a local language model and Kokoro) were replayed after the review rounds: 23 passed, barge-in and a caller's correction failed once on a busy machine and passed alone. The first audio of the agent's answer arrived 619 ms (median) and 1611 ms (95th percentile) after the caller stopped talking in the earlier, quieter run. Every figure and command is in [`docs/PROOF.md`](docs/PROOF.md).
 
 > **A lab, not a service.** Two invented firms, synthetic callers and voices, no real phone number, no production traffic and no customer. The one leg not tested is a real phone number from a carrier, because that is the only part that costs money. [Limits](#limits) lists the rest.
 
@@ -91,7 +91,7 @@ python scripts/sipp_demo.py --out docs/sipp_run.json
 
 | Layer | Command | What it covers | Count |
 |---|---|---|---|
-| Unit and property | `python -m pytest` | tenant files, parsers, names in any language, the guard, the state machine (examples plus 160 seeded random calls), storage, retention and access, the outbox, the dialled number and the caller id, the ACK window, route sets, SIP, SDP, RTP, the language model fences, the office hours, and the 59 cases of the third review round replayed from `tests/corpus` | 3,824 |
+| Unit and property | `python -m pytest` | tenant files, parsers, names in any language, the guard, the state machine (examples plus 160 seeded random calls), storage, retention and access, the outbox, the dialled number and the caller id, the ACK window, route sets, SIP, SDP, RTP, the language model fences, the office hours, and the 59 cases of the third review round replayed from `tests/corpus` | 3,842 |
 | The line with stand-in models | included in the above | real SIP and RTP over UDP, real voice activity detection and Pipecat, with Whisper and Kokoro replaced: routing, barge-in, silence, keypad, recording consent, transfer and bridge, an abandoned transfer, anonymous callers, a full intake | 18 |
 | Spoken scenarios | `python -m pytest -m voice` | 25 tests over 20 scenarios replayed as WAV through real SIP, Whisper, the model and Kokoro (about 25 minutes, each call in real time) | 25 |
 | Mutation check | `python scripts/mutation_check.py --layer all` | 232 deliberate breaks, one at a time, run in a copy of the repository, each must fail a named test | 232 rows; 101 rerun after round 3, all killed |
@@ -111,7 +111,7 @@ Rows in `scripts/mutants_derived.py` take their edit from the syntax tree, not t
 - **Latency is this machine's.** A GPU shared with other work, one event loop for the line and the test caller, and a model of 4 billion parameters. Nothing here says what a production deployment would measure.
 - **Case management is not Clio.** No Clio record is written: a Clio developer trial token answered 401 when tried (not reproducible from the repo; the trial ended in August 2026). The intake goes to the verification code of `clio-matter-bridge` as a Clio-shaped delivery and to a local `clinic-call-console` API, whose reasons are clinic ones, so every intake maps to `OTHER`.
 - **No conflict check, no booking, no calendar.** A caller who says they are an existing client is handed to a person; nothing checks a conflict list.
-- **Scripts and tests only.** No server command starts the line: it runs inside `replay.py`, `sipp_demo.py` and the tests. Three bridge tests skip without node and a sibling `clio-matter-bridge` checkout, so a fresh clone shows 3,821 passed and 3 skipped.
+- **Scripts and tests only.** No server command starts the line: it runs inside `replay.py`, `sipp_demo.py` and the tests. Three bridge tests skip without node and a sibling `clio-matter-bridge` checkout, so a fresh clone shows 3,839 passed and 3 skipped.
 - **No staff screen, two calls at once.** Nothing reads a stored record back (`TenantStore.read` has no caller, as `tests/test_wiring.py` says), and two simultaneous calls were run, not twenty.
 
 ## Layout
