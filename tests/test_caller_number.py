@@ -143,3 +143,68 @@ def test_the_shipped_tenants_still_load():
     from sipclerk.tenants import TenantRegistry
 
     assert len(TenantRegistry.from_dir(ROOT / "tenants").all) == 2
+
+
+# ---- the class, enumerated: every written form of a caller id x every way a carrier wraps it x every use the number is put to
+#
+# GROUNDING (docs/DECISIONS.md): "`caller_number` now reads a From header, a URI or a block list entry the way a dialled number is read (parameters after the `;` dropped,
+# `sip:`, `sips:` and `tel:`, plus, `00`, `%2B`, visual separators, `phone-context`), and the stored number, the block list and the duplicate rule all use it." and
+# "a blocked number a carrier sent as ten digits was answered while the `+1` form got 603".
+# WHY: a firm blocks a persistent spam caller, whose carrier sometimes sends ten digits and sometimes +1 with a parameter. The block works on one spelling, the spammer's
+# other calls are answered and take the line, and the number stored on a real caller's record is empty so the firm cannot call them back.
+import itertools
+
+CALLER = "+14155550142"
+OTHER = "+14155550143"
+
+
+def caller_forms(did: str) -> list[tuple[str, str, str]]:
+    """The user part a carrier may write for `did` (a + and eleven digits), as (label, text, what it reads as). Ten digits stay national: nothing says the country."""
+    d = did[1:]
+    n = d[1:]
+    return [("international", did, did), ("eleven digits", d, did), ("percent-encoded plus", f"%2B{d}", did), ("00 prefix", f"00{d}", did),
+            ("dashes", f"+1-{n[:3]}-{n[3:6]}-{n[6:]}", did), ("dots", f"+1.{n[:3]}.{n[3:6]}.{n[6:]}", did), ("parentheses", f"+1({n[:3]}){n[3:6]}-{n[6:]}", did),
+            ("ten digits", n, n), ("ten digits with dashes", f"{n[:3]}-{n[3:6]}-{n[6:]}", n), ("ten digits with phone-context", f"{n};phone-context=+1", did)]
+
+
+WRAPPERS = [("angle sip", "<sip:{u}@carrier.example>;tag=1"), ("display name", '"Jo Caller" <sip:{u}@carrier.example>;tag=1'), ("sips", "<sips:{u}@carrier.example>;tag=1"),
+            ("bare sip", "sip:{u}@carrier.example;tag=1"), ("cpc parameter", "<sip:{u};cpc=ordinary@carrier.example>;tag=1"),
+            ("npdi and rn parameters", "<sip:{u};npdi;rn=+14155550000@carrier.example;user=phone>;tag=1"), ("tel", "<tel:{u}>;tag=1"), ("tel with isub", "<tel:{u};isub=12>;tag=1")]
+BLOCK_ENTRY_FORMS = ["+14155550142", "+1 (415) 555-0142", "14155550142", "0014155550142", "tel:+14155550142", "sip:+14155550142@carrier.example", "+14155550142;note=spam", "4155550142"]
+
+
+def written_callers(did: str):
+    """Every From header a carrier could send for `did`: (label, header, reading)."""
+    for (form, text, reading), (wrapper, template) in itertools.product(caller_forms(did), WRAPPERS):
+        yield f"{form} in {wrapper}", template.format(u=text), reading
+
+
+# CLASS-TABLE: caller id compared as a raw string, for every written form, every wrapper and every use of the number
+def test_class_a_caller_id_in_any_written_form_is_stored_blocked_and_counted_as_the_same_caller(registry):
+    wrong = []
+    headers = list(written_callers(CALLER))
+    others = list(written_callers(OTHER))
+    # use 1, the stored number: every form reads as one number (ten digits stay national)
+    for label, header, reading in headers:
+        got = sm.caller_number(header)
+        if got != reading:
+            wrong.append(("stored number", label, got, reading))
+    # use 2, the block list: whichever way the firm wrote the entry and the carrier sends the caller, it is blocked, and a different number never is
+    for (label, header, _reading), entry in itertools.product(headers, BLOCK_ENTRY_FORMS):
+        if guard.check_caller(sm.caller_number(header), tenant([entry])).action != "blocked_caller":
+            wrong.append(("block list", label, entry))
+    for label, header, _reading in others:
+        if guard.check_caller(sm.caller_number(header), tenant(BLOCK_ENTRY_FORMS)).action != "allow":
+            wrong.append(("other number blocked", label))
+    # use 3, one call per number on a firm's line: the caller already on the line in one form is the same caller in any other form, on that firm only
+    for (label_a, header_a, _a), (label_b, header_b, _b) in itertools.product(headers[::7], headers):
+        s = server([(sm.caller_number(header_a), "ashgrovepell")])
+        if not s._already_on_this_line(sm.caller_number(header_b), "ashgrovepell"):
+            wrong.append(("one call per number", label_a, label_b))
+        if s._already_on_this_line(sm.caller_number(header_b), "tidewaterquint"):
+            wrong.append(("same number, other firm", label_a, label_b))
+    for (label_a, header_a, _a), (label_b, header_b, _b) in itertools.product(headers[::7], others[::3]):
+        if server([(sm.caller_number(header_a), "ashgrovepell")])._already_on_this_line(sm.caller_number(header_b), "ashgrovepell"):
+            wrong.append(("different number counted as the same", label_a, label_b))
+    kinds = {k: sum(1 for w in wrong if w[0] == k) for k in sorted({w[0] for w in wrong})}
+    assert not wrong, f"{len(wrong)} cells read the caller id as a raw string {kinds}: {wrong[:5]}"
