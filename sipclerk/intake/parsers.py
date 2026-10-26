@@ -201,16 +201,94 @@ def _add_months(d: date, months: int) -> date:
     return date(y, m + 1, day)
 
 
+ORDINAL_DAYS = {w: i + 1 for i, w in enumerate(["first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth", "eleventh", "twelfth",
+                                                "thirteenth", "fourteenth", "fifteenth", "sixteenth", "seventeenth", "eighteenth", "nineteenth", "twentieth"])}
+ORDINAL_DAYS.update({f"twenty {w}": 20 + i for i, w in enumerate(["first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth"], 1)})
+ORDINAL_DAYS.update({"thirtieth": 30, "thirty first": 31})
+_ORD = "|".join(sorted(ORDINAL_DAYS, key=len, reverse=True))
+_MONTH = "|".join(MONTHS)
+# Words that, in front of "may", say it is the month (`in may`, `since may`, `last may`).
+_MAY_AFTER_PREPOSITION = {"in", "of", "on", "since", "during", "early", "late", "mid", "until", "till", "by", "from", "last", "this", "around", "about",
+                          "before", "after", "between", "through", "to"}
+
+# Words that may follow the month (`May of last year`, `May last year`, `May two years ago`) and never follow the verb, which takes a verb or an adverb.
+_MAY_BEFORE_DATE_WORD = {"of", "or", "and", "last", "this", "the"} | set(NUMBER_WORDS)
+
+
+def _named_month(n: str) -> int | None:
+    """The month the caller named, or None. `may` is a month only in a date position: after a preposition, before a day or year, or as the last word;
+    in `it may have been in August` it is the verb, and August is the month."""
+    words = n.split()
+    for i, w in enumerate(words):
+        name = w.strip(".-")
+        if name not in MONTHS:
+            continue
+        if name == "may":
+            before = words[i - 1] if i else ""
+            after = words[i + 1] if i + 1 < len(words) else ""
+            if not (before in _MAY_AFTER_PREPOSITION or not after or after.isdigit() or after in _MAY_BEFORE_DATE_WORD):
+                continue
+        return MONTHS.index(name) + 1
+    return None
+
+
+def _ordinal_days(n: str) -> str:
+    """`the third of March`, `May fifth` and `the fifth of last month` as `3 march`, `may 5`, `5 last month`: a day said in words beside a month."""
+    n = re.sub(r"\b(twenty|thirty)-", r"\1 ", n)
+    n = re.sub(rf"\b({_ORD})\b(?= (?:of )?(?:{_MONTH}|last month|this month)\b)", lambda m: str(ORDINAL_DAYS[m.group(1)]), n)
+    return re.sub(rf"\b({_MONTH}) ({_ORD})\b", lambda m: f"{m.group(1)} {ORDINAL_DAYS[m.group(2)]}", n)
+
+
+def _years_back(n: str) -> int | None:
+    """How many years back a relative phrase says (`last year` 1, `two years ago` 2, `this year` 0), or None."""
+    if re.search(r"\blast year\b", n):
+        return 1
+    if re.search(r"\bthis year\b", n):
+        return 0
+    if m := re.search(r"\b(\w+)(?: of)? years? ago\b", n):
+        return _num(m.group(1))
+    return None
+
+
+def _day_beside(n: str, month: int) -> int:
+    """The day number the caller gave with the month (`3 march`, `march 3`), else the first number said; 1 when there is none."""
+    name = MONTHS[month - 1]
+    rest = re.sub(r"\b(?:19|20)\d\d\b", " ", n)
+    rest = re.sub(r"\b\w+(?: of)? (?:days?|weeks?|months?|years?) ago\b", " ", rest)  # the number in `two years ago` is not a day
+    m = re.search(rf"\b([0-3]?\d)\b(?: of)? {name}\b", rest) or re.search(rf"\b{name} ([0-3]?\d)\b", rest) or re.search(r"\b([0-3]?\d)\b", rest)
+    return int(m.group(1)) if m and 1 <= int(m.group(1)) <= 31 else 1
+
+
 def parse_date(text: str, today: date, max_age_days: int | None = None) -> Parsed:
-    n = _norm(text)
+    n = _ordinal_days(_norm(text))
     n = re.sub(r"(\d+)(st|nd|rd|th)\b", r"\1", n)
     found: date | None = None
+    month = _named_month(n)
     if re.search(r"\b(?:tomorrow|next (?:week|month|year|monday|tuesday|wednesday|thursday|friday|saturday|sunday))\b", n):
         return Parsed(False, reason="in_the_future", detail="a date that has not happened yet")
     if re.search(r"\byesterday\b", n):
         found = today - timedelta(days=1)
     elif re.search(r"\btoday\b|\bthis morning\b|\btonight\b", n):
         found = today
+    elif month:  # a month the caller named wins over a relative word: `March of last year` is March, and `last year` only says which year
+        year_m = re.search(r"\b(19\d\d|20\d\d)\b", n)
+        back = _years_back(n)
+        if year_m:
+            year = int(year_m.group(1))
+        elif back is not None:
+            year = today.year - back
+        else:  # no year said: the most recent such month that is not in the future
+            year = today.year if date(today.year, month, 1) <= today else today.year - 1
+        try:
+            found = date(year, month, _day_beside(n, month))
+        except ValueError:
+            return Parsed(False, reason="not_a_date")
+    elif m := re.search(r"\b([0-3]?\d)(?: of)? (last|this) month\b", n):  # `the 5th of last month`
+        base = _add_months(today, 1) if m.group(2) == "last" else today
+        try:
+            found = date(base.year, base.month, int(m.group(1)))
+        except ValueError:
+            return Parsed(False, reason="not_a_date")
     elif m := re.search(r"\b(\w+)(?: of)? (day|days|week|weeks|month|months|year|years) ago\b", n):
         k = _num(m.group(1))
         if k is not None:
@@ -222,21 +300,8 @@ def parse_date(text: str, today: date, max_age_days: int | None = None) -> Parse
     elif m := re.search(r"\blast (" + "|".join(WEEKDAYS) + r")\b", n):
         back = (today.weekday() - WEEKDAYS.index(m.group(1))) % 7 or 7
         found = today - timedelta(days=back)
-    else:
-        month = next((i + 1 for i, name in enumerate(MONTHS) if re.search(rf"\b{name}\b", n)), None)
-        year_m = re.search(r"\b(19\d\d|20\d\d)\b", n)
-        day_m = re.search(r"\b([0-3]?\d)\b(?!\s*(?:19|20)\d\d$)", re.sub(r"\b(19|20)\d\d\b", "", n))
-        year = int(year_m.group(1)) if year_m else None
-        if month:
-            day = int(day_m.group(1)) if day_m and 1 <= int(day_m.group(1)) <= 31 else 1
-            if year is None:  # no year said: the most recent such month that is not in the future
-                year = today.year if date(today.year, month, 1) <= today else today.year - 1
-            try:
-                found = date(year, month, day)
-            except ValueError:
-                return Parsed(False, reason="not_a_date")
-        elif year:
-            found = date(year, 6, 30)
+    elif year_m := re.search(r"\b(19\d\d|20\d\d)\b", n):
+        found = date(int(year_m.group(1)), 6, 30)
     if found is None:
         return Parsed(False, reason="not_a_date")
     if found > today:
