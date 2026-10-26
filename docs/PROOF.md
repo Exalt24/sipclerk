@@ -3,7 +3,7 @@ type: reference
 updated: 2026-10-26
 ---
 
-*Everything here was run on one Windows 11 PC on 2026-10-25 and 2026-10-26 (the spoken suite, its latency figures and the SIPp run were measured before the two review rounds' fixes; the unit suite, the guards and the probes after them): an RTX 5070 Ti shared with other work, Python 3.13.14, Pipecat 1.6.0, faster-whisper `small.en` on the GPU (float16), Kokoro through onnxruntime on the CPU, Ollama with `qwen3.5:4b`, and SIPp 3.6.1 from the Debian `sip-tester` package in Docker. Firms, callers, numbers and voices are invented. Each claim names the command that produced it.*
+*Everything here was run on one Windows 11 PC on 2026-10-25 and 2026-10-26 (the latency figures and the SIPp run were measured before the three review rounds' fixes, and the SIPp record carries config version 2026.10.4, now 2026.10.6; the unit suite, the guards, the probes and a replay of the spoken suite after them): an RTX 5070 Ti shared with other work, Python 3.13.14, Pipecat 1.6.0, faster-whisper `small.en` on the GPU (float16), Kokoro through onnxruntime on the CPU, Ollama with `qwen3.5:4b`, and SIPp 3.6.1 from the Debian `sip-tester` package in Docker. Firms, callers, numbers and voices are invented. Each claim names the command that produced it.*
 
 ## 1. A real INVITE reaches the agent
 
@@ -38,7 +38,7 @@ The call: 4,367 RTP packets in and 4,365 out (679,844 bytes of G.711 and events 
 
 ```
 python -m pytest                    # 3824 passed, 25 deselected in 345 s
-python -m pytest -m voice           # 25 passed in 1472 s (24 minutes 32 seconds), before the review rounds in sections 7 and 8; not replayed since
+python -m pytest -m voice           # 25 passed in 1472 s (24 minutes 32 seconds) before the review rounds; replayed after sections 7 to 9: 23 passed in 1541 s with the machine busy, and the other two (barge in, caller correction) failed there and passed alone in 206 s
 python scripts/mutation_check.py --layer all --report docs/mutation_report.json   # 220 of 220 killed before the third review round, run in a copy of the repository
 python scripts/mutation_check.py --only <the 12 added in round 3> --report docs/mutation_report_round3.json   # 12 of 12 killed; 89 earlier rows in the changed files rerun, 89 of 89 killed
 ```

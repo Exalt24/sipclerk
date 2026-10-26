@@ -65,7 +65,7 @@ Third review round, six findings, each fixed as a class with a generated table. 
 
 ## A tenant is a file
 
-`tenants/*.yaml`, validated by pydantic models that forbid unknown keys, with a JSON schema exported from the same models. The SHA-256 of the canonical form (sorted keys, no whitespace) and the version are stamped on every record, so a call can be replayed against the exact configuration that handled it. Two firms are loaded at start and two firms with one number is a start-up error. A firm's questions, prompts, transfer destination, hours, recording rule, retention and roles never reach the other firm's call (a test in the voice suite asserts it with two simultaneous calls; it last ran before the review rounds).
+`tenants/*.yaml`, validated by pydantic models that forbid unknown keys, with a JSON schema exported from the same models. The SHA-256 of the canonical form (sorted keys, no whitespace) and the version are stamped on every record, so a call can be replayed against the exact configuration that handled it. Two firms are loaded at start and two firms with one number is a start-up error. A firm's questions, prompts, transfer destination, hours, recording rule, retention and roles never reach the other firm's call (a test in the voice suite asserts it with two simultaneous calls, and passed in the replay after the review rounds).
 
 ## Warm transfer is a bridged second call
 
