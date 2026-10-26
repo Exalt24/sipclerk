@@ -72,7 +72,9 @@ class ClerkServer:
         self._closing = True  # a call still waiting for its ACK must not start now
         for s in list(self.sessions.values()):
             s.finished.set()
-        await asyncio.sleep(0.05)
+        end = asyncio.get_running_loop().time() + 10.0
+        while self.sessions and asyncio.get_running_loop().time() < end:  # every call files its record and tears its pipeline down before the line stops
+            await asyncio.sleep(0.02)
         self._stop.set()
         if self._worker:
             await self._worker

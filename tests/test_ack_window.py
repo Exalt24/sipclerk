@@ -13,7 +13,10 @@ import pytest
 
 from sipclerk.sip.rtp import RtpSession
 from sipclerk.store import Actor
-from test_pipeline_fast import ASH, rig
+from fake_models import FakeModels
+from sipclerk.labrun import LabRig
+from sipclerk.voice.llm import Llm
+from test_pipeline_fast import ASH, KEY, rig
 
 
 class Udp(asyncio.DatagramProtocol):
@@ -233,3 +236,28 @@ def test_a_lab_left_the_instant_a_call_was_answered_ends_cleanly():
     except subprocess.TimeoutExpired:
         pytest.fail("the process hung at the end of the event loop: a voice pipeline outlived its call")
     assert p.returncode == 0 and "clean exit" in p.stdout, p.stdout[-300:] + p.stderr[-300:]
+
+
+class SlowSummary(Llm):
+    async def summarize(self, facts):
+        await asyncio.sleep(3.0)  # a call takes a moment to file its record
+        return None
+
+
+async def test_stopping_the_line_waits_for_every_live_call_to_file_its_record_and_leaves_no_pipeline_behind():
+    """`stop` waits until each call has filed its record and torn its voice pipeline down, so nothing outlives the line (a fixed 50 ms did not)."""
+    async with LabRig(FakeModels([]), master_key=KEY, llm_factory=lambda: SlowSummary(fail=True), timeout_scale=0.4) as r:
+        callers = [await Caller(r, f"+1415555018{i}").start() for i in range(3)]
+        for c in callers:
+            c.send("ACK")
+        assert await until(lambda: len(r.server.sessions) == 3, 5)
+        await r.server.stop()
+        try:
+            assert not r.server.sessions and len(r.results) == 3, (len(r.server.sessions), len(r.results))
+            assert not [t for t in asyncio.all_tasks() if "WorkerRunner" in t.get_coro().__qualname__], "a voice pipeline outlived the line"
+        finally:
+            for s in list(r.server.sessions.values()):  # when the line did not wait, end the calls here: a pipeline left running hangs the process at the end of the loop
+                s.finished.set()
+            await until(lambda: not r.server.sessions, 15)
+            for c in callers:
+                c.close()

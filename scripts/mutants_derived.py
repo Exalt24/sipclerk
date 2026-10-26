@@ -226,6 +226,8 @@ PIPELINE_DERIVED: list[DerivedMutant] = [
     D("pipe-ack-stopped-line-starts-no-call", SV, "_take_call", "negate the condition", "self._closing", "a line that was stopped while a call awaited its ACK starts the call afterwards", ACKWIN, layer="pipeline"),
     D("pipe-ack-early-hangup-starts-the-pipeline-first", CA, "run", "Lt -> GtE", "time.monotonic() < deadline", "a call that ends before its pipeline has started cancels nothing, and the process hangs at the end of the loop",
       ["tests/test_ack_window.py", "-k", "instant"], layer="pipeline"),
+    D("pipe-stop-waits-for-the-calls", SV, "stop", "Lt -> GtE", "time() < end", "the line stops before its live calls have filed their records and torn their pipelines down", ACKWIN, layer="pipeline"),
+    D("pipe-stop-ends-the-calls", SV, "stop", "delete the call statement", "s.finished.set()", "the line stops and leaves its live calls running", ACKWIN, layer="pipeline"),
     D("pipe-dialled-shapes", TN, "resolve", "negate the condition", "fullmatch", "a call dialled as ten digits is turned away",
       ["tests/test_dialled_number.py", "-k", "line_answers_each_shape"], layer="pipeline"),
 ]
