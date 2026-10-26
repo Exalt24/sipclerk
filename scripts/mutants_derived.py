@@ -80,6 +80,10 @@ STOPWORDS = ["tests/test_names_stopwords.py", "tests/test_names_unicode.py", "te
 CALLERS = ["tests/test_caller_number.py", "tests/test_anonymous_callers.py", "tests/test_guard.py", "tests/test_sip_stack.py"]
 RECEIVERS = ["tests/test_outcome_receivers.py", "tests/test_delivery.py", "tests/test_wiring.py", "tests/test_bridge_contract.py"]
 ACKWIN = ["tests/test_ack_window.py"]
+HOURS = ["tests/test_hours_time_zone.py", "tests/test_corpus_blind_3.py"]
+KEYPAD = ["tests/test_keypad_entry_length.py", "tests/test_corpus_blind_3.py"]
+EXISTING = ["tests/test_existing_client_after_no.py", "tests/test_corpus_blind_3.py"]
+DATE = ["tests/test_date_named_month.py", "tests/test_corpus_blind_3.py"]
 TENSE = ["tests/test_emergency_tense.py", "tests/test_guard.py", "tests/test_machine.py"]
 ANON = ["tests/test_anonymous_callers.py"]
 ROUTE = ["tests/test_route_set.py", "tests/test_sip_stack.py"]
@@ -92,6 +96,7 @@ CA, SK = "sipclerk/call.py", "sipclerk/sip/stack.py"
 PA = "sipclerk/intake/parsers.py"
 MS, TN = "sipclerk/sip/message.py", "sipclerk/tenants.py"
 GD = "sipclerk/guard.py"
+MA = "sipclerk/intake/machine.py"
 
 DERIVED_MUTANTS: list[DerivedMutant] = [
     # ---- retention: the purge itself (these two replace the typed rows store-retention and store-purge-audit)
@@ -195,6 +200,19 @@ DERIVED_MUTANTS: list[DerivedMutant] = [
     D("server-file-call-queues-the-receivers", SV, "file_call", "delete the call statement", "queue_call", "a finished call is stored and never queued for a receiver", RECEIVERS),
     D("machine-hangup-leaves-a-task", "sipclerk/intake/machine.py", "on_caller_hangup", "delete the call statement", "self.tasks.append", "a caller who hangs up mid intake leaves no callback task", RECEIVERS),
     D("machine-hangup-keeps-an-outcome", "sipclerk/intake/machine.py", "on_caller_hangup", "remove `not`", "not self.outcome", "a hang up overwrites the outcome a call already has", RECEIVERS),
+    # ---- output round 3: the clock of a call is the firm's zone, and the plain readers do not guess what a caller did not say
+    D("hours-clock-is-the-firms-zone", TN, "local", "return value -> None", "astimezone", "the wall clock at the firm is not read from its named zone", HOURS),
+    D("hours-a-naive-time-is-utc", TN, "local", "negate the condition", "utc_now.tzinfo is None", "a naive time is read in the machine's own zone, not as UTC", HOURS),
+    D("hours-the-end-is-closed", TN, "is_open", "Lt -> GtE", "start <= local.time() < end", "the minute the office closes still counts as open", HOURS),
+    D("keypad-closes-at-the-tenth-digit", MA, "on_dtmf", "10 -> 11", "10", "ten digits not starting with 1 wait for a pound that is not coming", KEYPAD),
+    D("keypad-a-leading-one-is-eleven-digits", MA, "on_dtmf", "negate the condition", "self.keypad.startswith('1')", "the eleven digit form is cut at ten or a ten digit number waits for eleven", KEYPAD),
+    D("machine-tells-the-guard-the-answer-was-no", MA, "screen", "Is -> IsNot", "asked.value is False", "the guard is told a caller said no when they said yes, or the other way round", EXISTING),
+    D("guard-existing-client-skipped-after-no", GD, "check_input", "remove `not`", "not not_a_client", "the existing client rule still runs on a caller who said they are not a client", EXISTING),
+    D("date-a-named-day-of-last-month", PA, "parse_date", "negate the condition", "(last|this) month", "the 5th of last month is last month's today", DATE),
+    D("date-a-relative-year-says-which-year", PA, "_years_back", "negate the condition", "last year", "last year after a named month is ignored", DATE),
+    D("date-may-the-verb-is-not-a-month", PA, "_named_month", "negate the condition", "_MAY_AFTER_PREPOSITION", "may have been in August is read as May", DATE),
+    D("date-the-day-is-the-one-beside-the-month", PA, "_day_beside", "and <-> or", "{name}", "5 pm on March 3rd is read as the 5th", DATE),
+    D("date-ordinal-words-are-days", PA, "_ordinal_days", "return value -> None", "re.sub", "the third of March is read as the first", DATE),
 ]
 
 
