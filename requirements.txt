@@ -3,6 +3,7 @@ numpy==2.2.6
 scipy==1.18.0
 pydantic==2.12.5
 PyYAML==6.0.3
+tzdata==2026.3
 cryptography==49.0.0
 httpx==0.28.1
 audioop-lts==0.2.2; python_version >= "3.13"

@@ -106,7 +106,7 @@ def test_normal_intake_is_complete_and_accurate(suite):
     assert v["incident_date"] == "2026-10-13" and "red light" in v["description"]
     assert r["fields"]["full_name"]["confirmed"] and r["fields"]["callback_number"]["confirmed"]
     assert played.no_response == 0 and played.ended_by_agent and r["ended_by"] == "agent:complete"
-    assert r["codec"] == "PCMU" and r["recording"] is True and r["config_version"] == "2026.10.2" and len(r["config_hash"]) == 64
+    assert r["codec"] == "PCMU" and r["recording"] is True and r["config_version"] == "2026.10.3" and len(r["config_hash"]) == 64
 
 
 def test_the_record_is_stored_encrypted_and_readable_only_through_the_audited_path(suite):
@@ -128,7 +128,7 @@ def test_the_record_is_stored_encrypted_and_readable_only_through_the_audited_pa
 def test_second_firm_runs_its_own_rules(suite):
     _, r, result = rec(suite, "normal_intake_second_firm")
     v = values(r)
-    assert r["tenant_id"] == "tidewaterquint" and r["config_version"] == "2026.10.4"
+    assert r["tenant_id"] == "tidewaterquint" and r["config_version"] == "2026.10.5"
     assert (v["full_name"], v["practice_area"], v["state"], v["urgent_deadline"]) == ("Dana Whitfield", "family_law", "Florida", True)
     assert v["callback_number"] == "+17865550147" and r["fields"]["email"]["skipped"]
     assert r["outcome"] == "intake_priority" and r["qualification"]["result"] == "priority" and r["recording"] is True

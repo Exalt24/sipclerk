@@ -1,7 +1,7 @@
 # Invented firm. Every name, number and rule below is made up for the lab.
 schema_version: 1
 tenant_id: tidewaterquint
-version: "2026.10.4"
+version: "2026.10.5"
 display_name: Tidewater Quint Law
 did: "+13055550102"
 language: en
@@ -11,7 +11,6 @@ jurisdiction:
   recording: notice
 hours:
   timezone: America/New_York
-  utc_offset_hours: -4
   weekly:
     mon: ["08:00", "18:00"]
     tue: ["08:00", "18:00"]

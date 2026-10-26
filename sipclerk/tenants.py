@@ -10,9 +10,10 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from datetime import time
+from datetime import datetime, time, timezone
 from pathlib import Path
 from typing import Literal
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
@@ -73,9 +74,22 @@ class Rule(Strict):
 
 
 class Hours(Strict):
-    timezone: str = "UTC"
-    utc_offset_hours: float = 0.0  # fixed offset: keeps the lab free of tzdata and makes tests exact
+    timezone: str  # an IANA name such as America/Los_Angeles: the clock of a call is the firm's own, daylight saving time included
     weekly: dict[str, tuple[str, str]]
+
+    @field_validator("timezone")
+    @classmethod
+    def _known_zone(cls, v: str) -> str:
+        try:
+            ZoneInfo(v)
+        except (ZoneInfoNotFoundError, ValueError, OSError) as e:
+            raise ValueError(f"unknown time zone {v}") from e
+        return v
+
+    def local(self, utc_now: datetime) -> datetime:
+        """The wall clock at the firm when it is `utc_now` in UTC (a naive datetime is read as UTC), as a naive datetime."""
+        aware = utc_now.replace(tzinfo=timezone.utc) if utc_now.tzinfo is None else utc_now
+        return aware.astimezone(ZoneInfo(self.timezone)).replace(tzinfo=None)
 
     @field_validator("weekly")
     @classmethod
@@ -170,18 +184,12 @@ class TenantConfig(Strict):
         return next((a for a in self.practice_areas if a.id == area_id), None)
 
     def is_open(self, utc_now) -> bool:
-        local = utc_now.replace(tzinfo=None) + _hours(self.hours.utc_offset_hours)
+        local = self.hours.local(utc_now)
         window = self.hours.weekly.get(DAYS[local.weekday()])
         if not window:
             return False
         start, end = (time.fromisoformat(w) for w in window)
         return start <= local.time() < end
-
-
-def _hours(h: float):
-    from datetime import timedelta
-
-    return timedelta(hours=h)
 
 
 def canonical_hash(raw: dict) -> str:

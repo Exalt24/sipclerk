@@ -63,14 +63,8 @@
       "additionalProperties": false,
       "properties": {
         "timezone": {
-          "default": "UTC",
           "title": "Timezone",
           "type": "string"
-        },
-        "utc_offset_hours": {
-          "default": 0.0,
-          "title": "Utc Offset Hours",
-          "type": "number"
         },
         "weekly": {
           "additionalProperties": {
@@ -91,6 +85,7 @@
         }
       },
       "required": [
+        "timezone",
         "weekly"
       ],
       "title": "Hours",

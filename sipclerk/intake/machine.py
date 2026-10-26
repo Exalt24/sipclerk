@@ -101,7 +101,7 @@ class IntakeMachine:
         self.call_id = call_id
         self.caller_number = caller_number
         self.started_at = now_utc
-        self.today: date = (now_utc + _offset(self.cfg.hours.utc_offset_hours)).date()
+        self.today: date = self.cfg.hours.local(now_utc).date()
         self.in_hours = self.cfg.is_open(now_utc)
         self.state = State.CONSENT
         self.index = 0
@@ -548,9 +548,3 @@ class IntakeMachine:
             "transfer": self.transfer,
             "events": self.events,
         }
-
-
-def _offset(hours: float):
-    from datetime import timedelta
-
-    return timedelta(hours=hours)
