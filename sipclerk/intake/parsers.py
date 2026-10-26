@@ -205,7 +205,7 @@ ORDINAL_DAYS = {w: i + 1 for i, w in enumerate(["first", "second", "third", "fou
                                                 "thirteenth", "fourteenth", "fifteenth", "sixteenth", "seventeenth", "eighteenth", "nineteenth", "twentieth"])}
 ORDINAL_DAYS.update({f"twenty {w}": 20 + i for i, w in enumerate(["first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth"], 1)})
 ORDINAL_DAYS.update({"thirtieth": 30, "thirty first": 31})
-_ORD = "|".join(sorted(ORDINAL_DAYS, key=len, reverse=True))
+_ORD = "|".join(ORDINAL_DAYS)
 _MONTH = "|".join(MONTHS)
 # Words that, in front of "may", say it is the month (`in may`, `since may`, `last may`).
 _MAY_AFTER_PREPOSITION = {"in", "of", "on", "since", "during", "early", "late", "mid", "until", "till", "by", "from", "last", "this", "around", "about",

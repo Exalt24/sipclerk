@@ -12,7 +12,7 @@ from sipclerk.intake import parsers as p
 MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
 ORDINALS = ["first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth", "eleventh", "twelfth", "thirteenth", "fourteenth",
             "fifteenth", "sixteenth", "seventeenth", "eighteenth", "nineteenth", "twentieth", "twenty first", "twenty second", "twenty third",
-            "twenty fourth", "twenty fifth", "twenty sixth", "twenty seventh", "twenty eighth"]
+            "twenty fourth", "twenty fifth", "twenty sixth", "twenty seventh", "twenty eighth", "twenty ninth", "thirtieth", "thirty first"]
 TODAYS = [date(2026, 10, 27), date(2026, 1, 15), date(2026, 3, 1), date(2027, 5, 5)]
 
 
@@ -24,7 +24,10 @@ def _expect(today: date, year: int | None, month: int, day: int) -> tuple[bool, 
     """What the parser must say for a month (and maybe a year) named: the most recent such month when no year was said."""
     if year is None:
         year = today.year if date(today.year, month, 1) <= today else today.year - 1
-    found = date(year, month, day)
+    try:
+        found = date(year, month, day)
+    except ValueError:  # the 30th of February
+        return False, "not_a_date"
     return (False, "in_the_future") if found > today else (True, found.isoformat())
 
 
@@ -44,11 +47,11 @@ def test_a_named_month_with_a_relative_year(today, month):
         _check(text, today, _expect(today, today.year - back, month, 1))
 
 
-# CLASS-TABLE: every month x every day of the month (1 to 28) x the ways a day is said beside a month, digits and words
+# CLASS-TABLE: every month x every day of the month (1 to 31) x the ways a day is said beside a month, digits and words
 @pytest.mark.parametrize("today,month", list(itertools.product(TODAYS, range(1, 13))))
 def test_a_named_month_and_day(today, month):
     name = MONTHS[month - 1]
-    for day in range(1, 29):
+    for day in range(1, 32):
         want = _expect(today, None, month, day)
         said = [f"{name} {day}", f"{name} {day}{_suffix(day)}", f"on {name} {day}{_suffix(day)}", f"{day} {name}", f"the {day}{_suffix(day)} of {name}",
                 f"around 5 pm on {name} {day}{_suffix(day)}", f"the {ORDINALS[day - 1]} of {name}", f"{name} {ORDINALS[day - 1]}",
@@ -58,6 +61,11 @@ def test_a_named_month_and_day(today, month):
         back_year = today.year - 1
         for text in (f"{name} {day}{_suffix(day)} last year", f"the {ORDINALS[day - 1]} of {name} last year"):
             _check(text, today, _expect(today, back_year, month, day))
+        if day >= 21:  # a hyphen between the two words of an ordinal is the same ordinal
+            tens, ones = ORDINALS[day - 1].split(" ") if " " in ORDINALS[day - 1] else (None, None)
+            if tens:
+                _check(f"the {tens}-{ones} of {name}", today, want)
+                _check(f"{name} {tens}-{ones}", today, want)
 
 
 # CLASS-TABLE: every day (1 to 28) x last month and this month, digits and words
@@ -72,6 +80,22 @@ def test_a_day_of_last_month_or_this_month(today):
             _check(text, today, (False, "in_the_future") if this > today else (True, this.isoformat()))
 
 
+# CLASS-TABLE: every month x every shape where a number other than a day stands in the answer: the month is read and the day is the 1st
+@pytest.mark.parametrize("today,month", list(itertools.product(TODAYS, range(1, 13))))
+def test_a_number_that_is_no_day_leaves_the_first_of_the_month(today, month):
+    name = MONTHS[month - 1]
+    for text in (f"in {name}, when I was 45", f"{name} 45", f"it was {name} and I was 60 years old"):
+        _check(text, today, _expect(today, None, month, 1))
+
+
+# CLASS-TABLE: every month x a sentence that ends on the month with a full stop
+@pytest.mark.parametrize("today,month", list(itertools.product(TODAYS, range(1, 13))))
+def test_a_month_followed_by_a_full_stop(today, month):
+    name = MONTHS[month - 1]
+    for text in (f"It was {name}.", f"{name}.", f"I think in {name}. Not sure"):
+        _check(text, today, _expect(today, None, month, 1))
+
+
 # CLASS-TABLE: every month x every sentence where "may" is the verb: the month is the other one, and a sentence with no other month is not a date
 @pytest.mark.parametrize("today,month", [(t, m) for t in TODAYS for m in range(1, 13) if m != 5])
 def test_may_the_verb_is_not_the_month(today, month):
@@ -79,7 +103,8 @@ def test_may_the_verb_is_not_the_month(today, month):
     for text in (f"It may have been in {name}", f"it may have been {name}", f"I may be wrong but I think {name}", f"may have been {name} sometime",
                  f"It may have happened in {name}", f"That may not be right, {name}"):
         _check(text, today, _expect(today, None, month, 1))
-    for text in ("It may have been a while", "I may not remember", "that may be wrong", "it may have been recent"):
+    for text in ("It may have been a while", "I may not remember", "that may be wrong", "it may have been recent", "it may be", "I may have", "I think it may be",
+                 "That may not"):
         assert p.parse_date(text, today).reason == "not_a_date", text
 
 
@@ -89,7 +114,8 @@ def test_may_the_month_is_read(today):
     for text, day, back in [("May", 1, None), ("in May", 1, None), ("It was May", 1, None), ("sometime in May", 1, None), ("early May", 1, None),
                             ("since May", 1, None), ("last May", 1, None), ("May 5th", 5, None), ("May fifth", 5, None), ("May of last year", 1, 1),
                             ("the 3rd of May", 3, None), ("the third of May", 3, None), ("May 2025", 1, "2025"), ("around may", 1, None),
-                            ("May of 2024", 1, "2024")]:
+                            ("May of 2024", 1, "2024"), ("May or June", 1, None), ("May and June", 1, None), ("May the 5th", 5, None), ("It was in May.", 1, None),
+                            ("may two years ago", 1, 2), ("May a year ago", 1, 1), ("May this year", 1, 0)]:
         year = None if back is None else (int(back) if isinstance(back, str) else today.year - back)
         _check(text, today, _expect(today, year, 5, day))
 
