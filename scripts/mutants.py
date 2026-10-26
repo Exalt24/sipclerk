@@ -115,6 +115,8 @@ MUTANTS: list[Mutant] = [
     M("parsers-too-old", PA, "    if max_age_days is not None and (today - found).days > max_age_days:", "    if False:", "an impossibly old date is accepted"),
     M("parsers-email-words-after-the-ending", PA, "    if not sep or len(words) < 2:\n        return n", "    if True:\n        return n", "words said after a spoken address are glued onto it",
       tests=["tests/test_email_and_date_shapes.py"]),
+    M("parsers-name-courtesy-after-the-name", PA, 'raw = NAME_TRAIL.sub("", NAME_LEAD.sub("", raw.strip()))', 'raw = NAME_LEAD.sub("", raw.strip())',
+      "a thank you said after a name is stored as part of it", tests=["tests/test_email_and_date_shapes.py"]),
     M("parsers-numeric-date-two-digit-year", PA, "year + 2000 if year < 100 else year", "year", "a two digit year in a numeric date is read as the year 24",
       tests=["tests/test_email_and_date_shapes.py"]),
     M("parsers-compound-ago-days-dropped", PA, "ago = _add_months(today, months) - timedelta(days=days)", "ago = _add_months(today, months)", "the weeks and days of a compound relative date are dropped",

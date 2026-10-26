@@ -82,3 +82,38 @@ def test_class_two_units_ago_are_both_counted():
         if not r.ok or r.value != want.isoformat():
             bad.append((said, r.value if r.ok else r.reason, want.isoformat()))
     assert not bad, bad[:6]
+
+
+# CLASS-TABLE: every way of saying a name, every courtesy that can follow it and every lead-in, stored as the name and nothing after it
+NAMES = ("Jordan Mitchell", "Mary Anne Reyes", "Daniel Alexis Cruz", "Siobhan O'Neill")
+COURTESY = ("", " please", " thanks", " thank you", " thank you very much", " that's it", " that is all", " okay")
+NAME_LEADS = ("", "my name is ", "this is ", "it's ")
+
+
+def test_class_courtesy_said_after_a_name_is_not_part_of_it():
+    bad = []
+    for name, courtesy, lead in itertools.product(NAMES, COURTESY, NAME_LEADS):
+        said = f"{lead}{name}{courtesy}"
+        r = parsers.parse_name(said)
+        if not r.ok or r.value != name:
+            bad.append((said, r.value if r.ok else r.reason))
+    assert not bad, bad[:8]
+
+
+# CLASS-TABLE: the property behind the three fixes above, over every spoken field: a courtesy said after an answer never changes what is stored
+FIELDS = {
+    "phone": (parsers.parse_phone, ("415 555 0100", "four one five five five five zero one zero zero", "(415) 555-0100")),
+    "name": (parsers.parse_name, ("Jordan Mitchell", "Mary Anne Reyes")),
+    "email": (parsers.parse_email, ("jordan at example dot com", "j reyes at gmail dot com")),
+    "date": (lambda t: parsers.parse_date(t, TODAY), ("last tuesday", "October 3rd 2025", "12/15/2023", "two years ago", "2025-03-04")),
+}
+
+
+def test_class_a_courtesy_after_any_answer_never_changes_what_is_stored():
+    bad = []
+    for (field, (parse, answers)), courtesy in itertools.product(FIELDS.items(), COURTESY[1:]):
+        for answer in answers:
+            plain, said = parse(answer), parse(answer + courtesy)
+            if not plain.ok or not said.ok or plain.value != said.value:
+                bad.append((field, answer + courtesy, said.value if said.ok else said.reason, plain.value if plain.ok else plain.reason))
+    assert not bad, bad[:8]

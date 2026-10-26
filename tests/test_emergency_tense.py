@@ -138,7 +138,7 @@ def test_a_real_emergency_in_the_middle_of_an_intake_still_gets_the_911_line_and
     assert any("911" in a.text for a in out if isinstance(a, Say)) and isinstance(out[-1], StartTransfer) and out[-1].reason == "emergency"
 
 
-OLD_EMERGENCY = [r"\b911\b", r"\bemergency\b", r"\bin (?:immediate )?danger\b", r"\b(?:is|are) (?:badly |seriously )?(?:hurt|bleeding|dying|unconscious)\b",
+OLD_EMERGENCY = [r"\b911\b", r"\bemergency\b", r"\bin (?:immediate )?danger\b", r"\b(?:is|are|am|['’]s|['’]re|['’]m) (?:badly |seriously )?(?:hurt|bleeding|dying|unconscious)\b",  # the contractions and `am` joined the baseline with tests/test_emergency_contractions.py
                  r"\b(?:unconscious|overdos\w*|bleeding (?:badly|heavily|out))\b", r"\bsuicid\w*|\bkill myself\b", r"\bnot breathing\b",
                  r"\bbeing (?:attacked|followed|threatened)\b"]
 WORDS = ["I", "he", "she", "was", "is", "are", "am", "I'm", "he's", "were", "had", "been", "call", "called", "calling", "911", "emergency", "room", "unconscious",

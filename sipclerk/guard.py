@@ -59,8 +59,8 @@ EMERGENCY = [
     r"ex parte|visitation|divorce|bail|court|session|extension|relocation|removal|proceedings?|consultations?|appointments?|meetings?)\b)",
     r"\bin (?:immediate )?danger\b(?! of (?:losing (?:my|our|his|her|their|the) (?:home|house|job|visa|custody|business|license|apartment|rights|status|car|"
     r"benefits|insurance|case|claim)|being (?:evicted|deported|fired|sued|arrested)|eviction|foreclosure|deportation|bankruptcy|defaulting)\b)",
-    r"\b(?:is|are) (?:badly |seriously )?(?:bleeding|dying|unconscious)\b",
-    r"\b(?:is|are) (?:badly |seriously )?hurt\b",
+    r"\b(?:is|are|am|['’]s|['’]re|['’]m) (?:badly |seriously )?(?:bleeding|dying|unconscious)\b",
+    r"\b(?:is|are|am|['’]s|['’]re|['’]m) (?:badly |seriously )?hurt\b",
     r"\b(?:unconscious|overdos\w*|bleeding (?:badly|heavily|out))\b",
     r"\bsuicid\w*|\bkill myself\b",
     r"\bnot breathing\b",

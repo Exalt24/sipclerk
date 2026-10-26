@@ -123,7 +123,7 @@ PREVIOUS_EMERGENCY = [
     r"\bemergency\b(?! (?:rooms?|departments?|dept|ward|surgery|surgeries|contacts?|care|services?|vehicles?|personnel|crews?|responders?|medical|"
     r"technicians?|treatment|visits?|doctors?|physicians?|staff|lane|brakes?|exits?|lights?|stop|fund|calls?|bills?|transport|helicopter|workers?)\b)",
     r"\bin (?:immediate )?danger\b",
-    r"\b(?:is|are) (?:badly |seriously )?(?:hurt|bleeding|dying|unconscious)\b",
+    r"\b(?:is|are|am|['’]s|['’]re|['’]m) (?:badly |seriously )?(?:hurt|bleeding|dying|unconscious)\b",  # the contractions and `am` joined the baseline with tests/test_emergency_contractions.py
     r"\b(?:unconscious|overdos\w*|bleeding (?:badly|heavily|out))\b",
     r"\bsuicid\w*|\bkill myself\b",
     r"\bnot breathing\b",

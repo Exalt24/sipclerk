@@ -86,6 +86,7 @@ def parse_yesno(text: str) -> Parsed:
 
 NAME_LEAD = re.compile(r"^(?:(?:uh|um|well|yes|yeah|hi|hello|hey|sure|okay|ok)[,\s]+)*"
                        r"(?:my (?:full )?name(?: is|'s)|this is|it is|it's|its|i am|i'm|name is|name's|call me|they call me)\s+", re.I)
+NAME_TRAIL = re.compile(r"(?:[,.\s]+(?:please|thanks|thank you(?: very much)?|that's it|that is it|that's all|that is all|okay|ok))+[.!\s]*$", re.I)  # courtesy said after the name
 NAME_STOP = {"yes", "no", "the", "and", "but", "not", "what", "why", "how", "please", "sorry", "hello", "hi", "um", "uh",
              "skip", "lawyer", "attorney", "client", "person", "someone", "phone", "number", "accident", "injured",
              "is", "was", "are", "were", "my", "i", "need", "want", "help", "have", "has", "had", "with", "for", "at",
@@ -98,7 +99,7 @@ NAME_AMBIGUOUS = {"an", "to", "case", "hurt"}
 def parse_name(text: str, *, named: bool = False) -> Parsed:
     """`named` is for text that is already a name (what the model extracted): the capital letter is then not needed to read An, To, Case or Hurt as part of it."""
     raw = _squash(unicodedata.normalize("NFC", text).replace("’", "'"), "'-", digits=False)
-    raw = NAME_LEAD.sub("", raw.strip())
+    raw = NAME_TRAIL.sub("", NAME_LEAD.sub("", raw.strip()))
     tokens = [t.strip("-'") for t in raw.split() if t.strip("-'")]
     if not tokens:
         return Parsed(False, reason="empty")
@@ -286,7 +287,7 @@ def _whole_date(year: int, month: int, day: int, today: date, max_age_days: int 
 
 
 def parse_date(text: str, today: date, max_age_days: int | None = None) -> Parsed:
-    iso = re.fullmatch(r"\s*(\d{4})-(\d{2})-(\d{2})\s*", text)  # the date the model fallback hands back: a whole date, never a bare year
+    iso = re.search(r"(?<![\d-])(\d{4})-(\d{2})-(\d{2})(?![\d-])", text)  # the date the model fallback hands back: a whole date, never a bare year
     if iso:
         return _whole_date(int(iso.group(1)), int(iso.group(2)), int(iso.group(3)), today, max_age_days)
     us = re.search(r"(?<![\d/-])(\d{1,2})[/-](\d{1,2})[/-](\d{4}|\d{2})(?![\d/-])", text)  # `12/15/2023`, month first as a US caller writes it
