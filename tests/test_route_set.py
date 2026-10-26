@@ -190,3 +190,148 @@ async def test_only_responses_that_make_a_dialog_carry_the_record_route():
     finally:
         sender.close()
         await stack.stop()
+
+
+# ---- the class, enumerated: how many proxies record-routed x whether the nearest one is a loose or a strict router x which side of the call placed it
+#
+# GROUNDING (docs/DECISIONS.md): "The line echoes the INVITE's Record-Route headers in its provisional and 2xx responses unchanged and in order (RFC 3261 12.1.1), keeps them as
+# the dialog's route set, and sends its BYE with a Route header per entry and the peer's Contact as the Request-URI" and "The first version dropped Record-Route and sent its BYE
+# straight to a private Contact, so the carrier never saw the hang-up."
+# WHY: a firm's carrier puts one, two or three proxies on the path of an ordinary call. The caller hangs up, the line sends its BYE to the private Contact, the carrier never
+# sees it and keeps billing the leg and holding the channel open.
+import itertools
+import re
+
+DESK_CONTACT = "sip:desk@10.9.9.9:5060"
+LOOSE_PROXIES = ["<sip:p1.example;lr>", "<sip:p2.example;lr;ftag=zz>", "<sip:p3.example;lr>"]
+STRICT_PROXY = "<sip:strict.example>"
+COUNTS = [0, 1, 2, 3]
+FIRST_KINDS = ["loose", "strict"]
+
+
+def route_entries(values) -> list[str]:
+    """The entries of Record-Route or Route header values, written here so the table does not lean on the helper under test."""
+    return re.findall(r'(?:"[^"]*"\s*)?<[^>]*>', ",".join(values))
+
+
+def route_cells():
+    for count, kind in itertools.product(COUNTS, FIRST_KINDS):
+        if count == 0 and kind == "strict":
+            continue  # no proxy, no router kind
+        yield count, kind
+
+
+def recorded(count: int, first_kind: str) -> list[str]:
+    """The Record-Route entries, the first one being the router the request meets first."""
+    entries = list(LOOSE_PROXIES[:count])
+    if count and first_kind == "strict":
+        entries[0] = STRICT_PROXY
+    return entries
+
+
+async def until_seen(sock, found, timeout=3.0):
+    """Read datagrams from `sock` until `found(messages)` is true: no fixed wait, the answer comes the moment it arrives."""
+    loop = asyncio.get_running_loop()
+    got, end = [], loop.time() + timeout
+    while loop.time() < end:
+        try:
+            got.append(sm.parse(sock.recv(8192)))
+        except BlockingIOError:
+            await asyncio.sleep(0.01)
+            continue
+        if found(got):
+            break
+    return got
+
+
+def expected_request(route_set: list[str], contact: str) -> tuple[str, list[str]]:
+    """RFC 3261 12.2.1.1 stated again by hand: with no route set the Contact; a loose first router keeps the Contact and every route; a strict one takes the Request-URI."""
+    if not route_set:
+        return contact, []
+    if re.search(r";lr(?:[;=>]|$)", route_set[0], re.I):
+        return contact, list(route_set)
+    return re.search(r"<([^>]*)>", route_set[0]).group(1), [*route_set[1:], f"<{contact}>"]
+
+
+# CLASS-TABLE: a dialog that ignores the route set of a proxy, for every count of record-routing proxies and either kind of nearest router
+async def test_class_every_count_of_proxies_and_either_kind_of_router_is_followed_by_the_200_ok_and_the_bye_on_the_answering_side():
+    wrong = []
+    cells = list(route_cells())
+    for count, kind in cells:
+        rr = recorded(count, kind)
+        line = Line()
+        await line.stack.start()
+        sender = udp()
+        try:
+            sender.sendto(invite(sender.getsockname()[1], rr, f"rr-{count}-{kind}@x").encode(), ("127.0.0.1", line.stack.port))
+            got = await until_seen(sender, lambda ms: any(m.status_code == 200 for m in ms))
+            ok = next((m for m in got if m.status_code == 200), None)
+            if ok is None:
+                wrong.append((count, kind, "no 200 OK"))
+                continue
+            if route_entries(ok.get_all("record-route")) != rr:
+                wrong.append((count, kind, "200 OK Record-Route", route_entries(ok.get_all("record-route"))))
+            bye_task = asyncio.get_running_loop().create_task(line.dialog.bye(timeout=0.8))
+            seen = await until_seen(sender, lambda ms: any(m.method == "BYE" for m in ms))
+            bye = next((m for m in seen if m.method == "BYE"), None)
+            if bye is not None:
+                sender.sendto(sm.make_response(bye, 200, "OK").encode(), ("127.0.0.1", line.stack.port))  # the carrier answers, so the BYE ends at once
+            await bye_task
+            if bye is None:
+                wrong.append((count, kind, "no BYE"))
+                continue
+            want_uri, want_routes = expected_request(rr, CONTACT)
+            if (bye.request_uri, route_entries(bye.get_all("route"))) != (want_uri, want_routes):
+                wrong.append((count, kind, "BYE", bye.request_uri, route_entries(bye.get_all("route"))))
+        finally:
+            sender.close()
+            await line.stack.stop()
+    assert not wrong, f"{len(wrong)} faults in {len(cells)} cells ignored the route set: {wrong}"
+
+
+async def test_class_every_count_of_proxies_and_either_kind_of_router_is_followed_by_the_ack_and_the_bye_of_a_call_the_line_places():
+    wrong = []
+    cells = list(route_cells())
+    for count, kind in cells:
+        in_2xx = recorded(count, kind)[::-1]  # the 2xx lists the proxies in the order the response met them; the line reads it backwards
+        route_set = in_2xx[::-1]
+        desk, seen = udp(), []
+        stack = SipStack("127.0.0.1", 0)
+        await stack.start()
+
+        async def uas():
+            loop = asyncio.get_running_loop()
+            while True:
+                data, addr = await loop.sock_recvfrom(desk, 8192)
+                msg = sm.parse(data)
+                seen.append(msg)
+                if msg.method == "INVITE":
+                    resp = sm.make_response(msg, 200, "OK", to_tag="d1", contact=DESK_CONTACT, body=sm.build_sdp("127.0.0.1", 40002, [audio.PCMU]))
+                    if in_2xx:
+                        resp.headers.insert(1, ("Record-Route", ", ".join(in_2xx)))
+                    desk.sendto(resp.encode(), addr)
+                elif msg.method == "BYE":
+                    desk.sendto(sm.make_response(msg, 200, "OK").encode(), addr)
+                    return
+
+        task = asyncio.get_running_loop().create_task(uas())
+        try:
+            res = await stack.invite(f"sip:desk@127.0.0.1:{desk.getsockname()[1]}", "sip:line@127.0.0.1", sm.build_sdp("127.0.0.1", 40003, [audio.PCMU]), timeout=5)
+            if res.dialog is None:
+                wrong.append((count, kind, "no dialog"))
+                continue
+            end = asyncio.get_running_loop().time() + 2
+            while not any(m.method == "ACK" for m in seen) and asyncio.get_running_loop().time() < end:
+                await asyncio.sleep(0.01)
+            await res.dialog.bye(timeout=1.0)
+            await asyncio.wait_for(task, 3)
+            want_uri, want_routes = expected_request(route_set, DESK_CONTACT)
+            for name in ("ACK", "BYE"):
+                m = next((x for x in seen if x.method == name), None)
+                if m is None or (m.request_uri, route_entries(m.get_all("route"))) != (want_uri, want_routes):
+                    wrong.append((count, kind, name, None if m is None else (m.request_uri, route_entries(m.get_all("route")))))
+        finally:
+            task.cancel()
+            desk.close()
+            await stack.stop()
+    assert not wrong, f"{len(wrong)} faults in {len(cells)} cells ignored the route set: {wrong}"
