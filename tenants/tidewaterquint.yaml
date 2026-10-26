@@ -1,7 +1,7 @@
 # Invented firm. Every name, number and rule below is made up for the lab.
 schema_version: 1
 tenant_id: tidewaterquint
-version: "2026.10.5"
+version: "2026.10.6"
 display_name: Tidewater Quint Law
 did: "+13055550102"
 language: en
@@ -34,7 +34,7 @@ practice_areas:
     keywords: [visa, green card, citizenship, deportation, asylum, immigration, work permit, naturalization]
   - id: estate_planning
     label: estate planning
-    keywords: [will, trust, estate, probate, inheritance, power of attorney, guardianship, beneficiary]
+    keywords: [a will, my will, the will, his will, her will, their will, our will, last will, living will, will and testament, dad's will, mom's will, mother's will, father's will, husband's will, wife's will, trust, estate, probate, inheritance, power of attorney, guardianship, beneficiary]
 questions:
   - id: full_name
     type: name

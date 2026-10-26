@@ -128,7 +128,7 @@ def test_the_record_is_stored_encrypted_and_readable_only_through_the_audited_pa
 def test_second_firm_runs_its_own_rules(suite):
     _, r, result = rec(suite, "normal_intake_second_firm")
     v = values(r)
-    assert r["tenant_id"] == "tidewaterquint" and r["config_version"] == "2026.10.5"
+    assert r["tenant_id"] == "tidewaterquint" and r["config_version"] == "2026.10.6"
     assert (v["full_name"], v["practice_area"], v["state"], v["urgent_deadline"]) == ("Dana Whitfield", "family_law", "Florida", True)
     assert v["callback_number"] == "+17865550147" and r["fields"]["email"]["skipped"]
     assert r["outcome"] == "intake_priority" and r["qualification"]["result"] == "priority" and r["recording"] is True
