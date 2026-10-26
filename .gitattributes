@@ -1,0 +1,3 @@
+# The SIPp container and anything it runs is read by Linux: keep LF whatever the checkout machine does.
+tools/sipp/** text eol=lf
+* text=auto

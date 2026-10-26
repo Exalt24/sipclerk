@@ -10,3 +10,5 @@ recordings/
 .env
 scratch/
 tools/sipp/media/
+docs/sipp_messages.log
+*.log
