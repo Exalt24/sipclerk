@@ -3,7 +3,7 @@ type: reference
 updated: 2026-10-26
 ---
 
-*Everything here was run on one Windows 11 PC on 2026-10-25 and 2026-10-26 (the latency figures and the SIPp run were measured before the three review rounds' fixes, and the SIPp record carries config version 2026.10.4, now 2026.10.6, and `integration_run.txt` and `codec_proof.txt` also come from before the fixes; the unit suite, the guards, the probes and a replay of the spoken suite after them): an RTX 5070 Ti shared with other work, Python 3.13.14, Pipecat 1.6.0, faster-whisper `small.en` on the GPU (float16), Kokoro through onnxruntime on the CPU, Ollama with `qwen3.5:4b`, and SIPp 3.6.1 from the Debian `sip-tester` package in Docker (the image is not pinned: that is the version as built on 2026-10-25). Firms, callers, numbers and voices are invented. Most claims name the command that produced them; section 5 and the cost table do not.*
+*Everything here was run on one Windows 11 PC on 2026-10-25 and 2026-10-26 (the latency figures and the SIPp run were measured before the three review rounds' fixes, and the SIPp record carries config version 2026.10.4, now 2026.10.6, and `integration_run.txt` and `codec_proof.txt` also come from before the fixes; the unit suite, the guards, the probes and a replay of the spoken suite after them): an RTX 5070 Ti shared with other work, Python 3.13.14, Pipecat 1.6.0, faster-whisper `small.en` on the GPU (float16), Kokoro through onnxruntime on the CPU, Ollama with `qwen3.5:4b`, and SIPp 3.6.1 from the Debian `sip-tester` package in Docker (the image is not pinned: that is the version as built on 2026-10-25, read from the container by hand and not saved). Firms, callers, numbers and voices are invented. Most claims name the command that produced them; section 5 and the cost table do not.*
 
 ## 1. A real INVITE reaches the agent
 
@@ -17,7 +17,7 @@ python scripts/make_sipp_media.py scratch/ref.json tools/sipp/media/call.pcap
 python scripts/sipp_demo.py --out docs/sipp_run.json                    # writes over the committed record, use another --out to keep it; SIPp exit 0 means every message it expected arrived
 ```
 
-What the line saw ([`docs/sipp_run.json`](sipp_run.json), full messages, copied by hand from `scratch/sipp_logs/messages.log`, in [`docs/test-runs/sipp_messages.txt`](test-runs/sipp_messages.txt)):
+What the line saw ([`docs/sipp_run.json`](sipp_run.json), the first five messages in full, copied by hand from `scratch/sipp_logs/messages.log`, in [`docs/test-runs/sipp_messages.txt`](test-runs/sipp_messages.txt); the OPTIONS and the BYE are start lines and times only):
 
 | Seconds | Direction | Message |
 |---|---|---|
@@ -37,10 +37,10 @@ The call: 4,367 RTP packets in and 4,365 out (679,844 bytes of G.711 and events 
 ## 2. Tests
 
 ```
-python -m pytest                    # 3851 passed, 25 deselected (3,848 and 3 skipped without the sibling bridge checkout; about 6 minutes, not saved)
+python -m pytest                    # 3852 passed, 25 deselected (3,849 and 3 skipped without the sibling bridge checkout; about 6 minutes, not saved)
 python -m pytest -m voice           # 25 passed in 1472 s (24 minutes 32 seconds) before the review rounds; replayed after sections 7 to 9: 23 passed in 1541 s with the machine busy, and the other two (barge in, caller correction) failed there and passed alone in 206 s; that output was not kept, and `pytest -m voice` rewrites `docs/voice_suite_run.json`, so a rerun overwrites the evidence of the earlier run
 python scripts/mutation_check.py --layer all --report docs/mutation_report.json   # writes over the committed report, use another --report to keep it; 220 of 220 killed before the third review round, run in a copy of the repository
-python scripts/mutation_check.py --only <the ids in `results` of docs/mutation_report_round3.json> --report docs/mutation_report_round3.json   # 12 of 12 killed; 89 earlier rows in the changed files rerun, 89 of 89 killed (the 232 rows are 220 in docs/mutation_report.json plus 12 in docs/mutation_report_round3.json; the 89 reruns were not saved)
+python scripts/mutation_check.py --only <the ids in `results` of docs/mutation_report_round3.json> --report docs/mutation_report_round3.json   # 12 of 12 killed; 89 earlier rows in the changed files rerun, 89 of 89 killed, before the last `parse_date` change (the 234 rows are 220 in docs/mutation_report.json, 12 in docs/mutation_report_round3.json and 2 new in docs/mutation_report_final.json; the 89 reruns were not saved)
 ```
 
 | File | Tests | What it pins |
@@ -79,6 +79,7 @@ python scripts/mutation_check.py --only <the ids in `results` of docs/mutation_r
 | `test_ack_window.py` | 10 | the wait for the caller's ACK, a call whose ACK never comes recorded, a redial behind an unconfirmed call |
 | `test_date_from_the_model.py` | 7 | a whole date the model reads, stored as that date for every month of three years (a year alone had been stored as 30 June), refused dates, and the model fallback end to end |
 | `test_doc_links.py` | 2 | every relative link in the README and the docs resolves from the folder of the file that holds it, and the guard fails on a link written from the wrong folder |
+| `test_mutants_apply.py` | 1 | every mutant of every layer still applies exactly once to the code it breaks (the documented mutation command had exited 2 on two date rows after the last parser change) |
 | `test_bridge_contract.py` | 3 | our delivery against the real verification code of `clio-matter-bridge` (skipped without node and the sibling checkout) |
 | `test_voice_suite.py` | 25 | the spoken scenarios below |
 
@@ -141,7 +142,7 @@ Tokens and seconds, not dollars: nothing here is billed.
 
 ## 4. The mutation check
 
-232 deliberate breaks, one at a time (194 in the unit layer, 38 through the real line with stand-in models), run in a temporary copy of the repository so the working tree is never edited. A mutant counts as killed only when pytest ran and a test failed; a crash or a collection error does not count. The report with the test that killed each one is [`docs/mutation_report.json`](mutation_report.json). The report holds the 220 rows that existed before the third review round (the 12 added in it are in [`docs/mutation_report_round3.json`](mutation_report_round3.json)) and merges one full run of all the unit rows with a second run, on the final code, of every pipeline row and the unit rows on `call.py` (the first run was made before a three line change to `call.py` was dropped again). Rows in `scripts/mutants_derived.py` (120 of them) take their edit from the code's syntax tree with `scripts/mutate_ast.py` (a function, a kind of change and a snippet of the code at that site), so rewording a line moves the site instead of leaving a typed old text that matches nowhere.
+234 deliberate breaks, one at a time (196 in the unit layer, 38 through the real line with stand-in models), run in a temporary copy of the repository so the working tree is never edited. A mutant counts as killed only when pytest ran and a test failed; a crash or a collection error does not count. The report with the test that killed each one is [`docs/mutation_report.json`](mutation_report.json). The report holds the 220 rows that existed before the third review round (the 12 added in it are in [`docs/mutation_report_round3.json`](mutation_report_round3.json); the last `parse_date` change re-anchored the two typed date rows and added two for the whole-date branch, and those four ran after it: [`docs/mutation_report_final.json`](mutation_report_final.json)) and merges one full run of all the unit rows with a second run, on the final code, of every pipeline row and the unit rows on `call.py` (the first run was made before a three line change to `call.py` was dropped again). Rows in `scripts/mutants_derived.py` (120 of them) take their edit from the code's syntax tree with `scripts/mutate_ast.py` (a function, a kind of change and a snippet of the code at that site), so rewording a line moves the site instead of leaving a typed old text that matches nowhere.
 
 Every guard rule, every branch of the state machine that decides something, every field parser check, every tenant, storage and delivery rule, and the barge-in, silence, keypad, recording, transfer and routing paths in the pipeline each have a mutant. The check found seven test gaps while it was being built, each now closed: an unclear recording answer (the test sent "I don't know", which the parser reads as a no), an unsupported practice area never driven through the machine, the callback task of a failed transfer never asserted, duplicate RTP packets, a recording gate that a second gate hid (found by timing how much of the greeting was in the recording), a failed transcription that the test did not require an answer to, and the refusal of a call with no common codec. One mutant was written and dropped as equivalent (`scripts/mutants_found.py` says why), and a branch that could not be reached was deleted instead of tested.
 
@@ -227,4 +228,4 @@ Left alone on purpose, each scored 3 or less by the lead: `No problem` or `No, t
 
 ## 10. Class tables for the first two rounds
 
-Every class the first two review rounds fixed also has a test marked `CLASS-TABLE:` that runs the whole class from a table generated in code: 18 tests, about 37 s together (the writer's timing, not saved), 3,851 tests in all. Each table was run in a copy with the pre-fix behaviour put back (the code of the commit before the fix, or the old lines restored by hand), and the counts are the writer's, not re-run by the lead: for example 130 of 182 outbox cells, 192 of 192 store cells, 1,536 caller id cells and 24 route set faults failed there, while the ordinary rows passed. One real edge was found and left alone: `TenantStore.purge` raises on a `meta.json` whose `saved_at` carries a UTC offset (a two fault corner, since both clocks default to naive time), listed in DECISIONS.
+Every class the first two review rounds fixed also has a test marked `CLASS-TABLE:` that runs the whole class from a table generated in code: 18 tests, about 37 s together (the writer's timing, not saved), 3,852 tests in all. Each table was run in a copy with the pre-fix behaviour put back (the code of the commit before the fix, or the old lines restored by hand), and the counts are the writer's, not re-run by the lead: for example 130 of 182 outbox cells, 192 of 192 store cells, 1,536 caller id cells and 24 route set faults failed there, while the ordinary rows passed. One real edge was found and left alone: `TenantStore.purge` raises on a `meta.json` whose `saved_at` carries a UTC offset (a two fault corner, since both clocks default to naive time), listed in DECISIONS.

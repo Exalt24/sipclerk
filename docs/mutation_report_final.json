@@ -1,0 +1,50 @@
+{
+  "killed": 4,
+  "total": 4,
+  "results": [
+    {
+      "id": "parsers-future-date",
+      "file": "sipclerk/intake/parsers.py",
+      "desc": "a date in the future is accepted",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_parsers.py::test_date_future_and_too_old_and_garbage"
+      ],
+      "seconds": 7.3
+    },
+    {
+      "id": "parsers-too-old",
+      "file": "sipclerk/intake/parsers.py",
+      "desc": "an impossibly old date is accepted",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_parsers.py::test_date_future_and_too_old_and_garbage"
+      ],
+      "seconds": 7.1
+    },
+    {
+      "id": "parsers-iso-future-date",
+      "file": "sipclerk/intake/parsers.py",
+      "desc": "a whole date from the model, in the future, is accepted",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_date_from_the_model.py::test_class_a_whole_date_from_the_model_is_stored_as_that_date_in_every_month"
+      ],
+      "seconds": 4.0
+    },
+    {
+      "id": "parsers-iso-too-old",
+      "file": "sipclerk/intake/parsers.py",
+      "desc": "a whole date from the model, impossibly old, is accepted",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_date_from_the_model.py::test_a_whole_date_older_than_the_question_allows_is_too_old"
+      ],
+      "seconds": 3.8
+    }
+  ]
+}
