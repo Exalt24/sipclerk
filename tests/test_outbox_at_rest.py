@@ -192,3 +192,101 @@ def test_an_entry_needs_a_firm_because_its_body_is_encrypted_under_that_firms_ke
         ob.enqueue("bridge", "k", {"a": 1}, tenant_id="")
     with pytest.raises(TypeError):
         ob.enqueue("bridge", "k", {"a": 1})  # type: ignore[call-arg]
+
+
+# ---- the class, enumerated: every firm x every state an entry can rest in x every piece of caller data
+#
+# GROUNDING (docs/DECISIONS.md): "the file holds no readable caller data in any state." and "so an operator who turns on INFO gets lengths and timings, never words."
+# WHY: a firm's intake staff hands the machine to a contractor for disk backup on an ordinary day; the outbox file is in that backup. If a waiting, dead or
+# delivered entry keeps a caller's name, number, email or injury story readable, the firm's client is exposed by a backup nobody thought of as a data store.
+import itertools
+import logging
+
+FIRMS = ["ashgrovepell", "tidewaterquint"]
+STATES = ["pending", "dead_refused", "dead_exhausted", "delivered", "requeued", "restarted_while_pending", "old_plaintext_file_read"]
+# every piece of what the caller said or the line read back, as the staff would see it
+PIECES = [NAME, "Zelda", "Quimby", PHONE, PHONE[1:], "4155550123", EMAIL, "zelda.quimby", "Harbor Street", "forklift", "left foot", "warehouse",
+          "crushed my left foot"]
+HOLDS_A_BODY = {"pending", "requeued", "restarted_while_pending", "old_plaintext_file_read", "dead_refused", "dead_exhausted"}
+
+
+async def rest_in_state(base, tenant, state):
+    """Put one firm's two entries in `state`, return (raw bytes of the file, text of every log record made on the way, bodies a working receiver then got)."""
+    now = {"t": 5_000_000.0}
+    folder = base / f"{tenant}-{state}"
+    path = folder / "outbox.jsonl"
+    records: list[logging.LogRecord] = []
+
+    class Grab(logging.Handler):
+        def emit(self, record):
+            records.append(record)
+
+    grab = Grab(level=logging.DEBUG)
+    root = logging.getLogger()
+    old_level = root.level
+    root.addHandler(grab)
+    root.setLevel(logging.DEBUG)
+    try:
+        if state == "old_plaintext_file_read":
+            rec = record(tenant, "old-call")
+            lines = [{"key": f"k-{t}", "target": t, "payload": p, "attempts": 1, "next_at": 0.0, "status": "pending", "last": "503 down", "history": ["1:503"],
+                      "tenant_id": tenant, "call_id": "old-call"}
+                     for t, p in (("bridge", d.build_bridge_payload(rec, f"{NAME} called about {STORY}.")), ("console", d.build_console_payload(rec, TRANSCRIPT, 60, "Firm")))]
+            folder.mkdir(parents=True)
+            path.write_text("".join(json.dumps(x) + "\n" for x in lines), encoding="utf-8")
+            ob = make(folder, Receiver(503), now)
+        elif state in ("dead_refused", "requeued"):
+            ob = make(folder, Receiver(422), now)
+            queue_both(ob, tenant, "c1")
+            await ob.deliver_due()
+            if state == "requeued":
+                assert ob.requeue() == 2
+        elif state == "dead_exhausted":
+            ob = make(folder, Receiver(503), now)
+            queue_both(ob, tenant, "c1")
+            for _ in range(60):
+                if not ob.pending:
+                    break
+                now["t"] = max(now["t"], min(e.next_at for e in ob.pending))
+                await ob.deliver_due()
+        else:
+            ob = make(folder, Receiver(200 if state == "delivered" else 503), now)
+            queue_both(ob, tenant, "c1")
+            await ob.deliver_due()
+            if state == "restarted_while_pending":
+                ob = make(folder, Receiver(503), now)  # a new process: nothing but the file
+                now["t"] += 30
+                await ob.deliver_due()
+    finally:
+        root.removeHandler(grab)
+        root.setLevel(old_level)
+    blob, logs, stats = raw(path), "\n".join(r.getMessage() for r in records), ob.stats()  # the file as it rests in this state, before anything is sent again
+    got = Receiver(200)
+    again = make(folder, got, now)
+    now["t"] += 10 * DAY
+    again.requeue()  # a dead entry keeps its encrypted body so staff can send it again
+    await again.deliver_due()
+    return blob, logs, got.bodies, stats
+
+
+# CLASS-TABLE: caller data in the clear in the outbox file or the logs, in any state, for any firm
+async def test_class_no_firm_in_no_state_leaves_a_piece_of_caller_data_readable_in_the_outbox_file_or_the_logs(tmp_path):
+    expected_status = {"pending": "pending", "restarted_while_pending": "pending", "requeued": "pending", "old_plaintext_file_read": "pending",
+                       "dead_refused": "dead", "dead_exhausted": "dead", "delivered": "delivered"}
+    built = {}
+    for tenant, state in itertools.product(FIRMS, STATES):
+        built[(tenant, state)] = await rest_in_state(tmp_path, tenant, state)
+        stats = built[(tenant, state)][3]
+        assert stats[expected_status[state]] == 2 and sum(stats.values()) == 2, (tenant, state, stats)  # the state really is the state it names
+    leaks = [(tenant, state, piece, where) for (tenant, state, piece) in itertools.product(FIRMS, STATES, PIECES) for where in ("file", "logs")
+             if piece.encode() in (built[(tenant, state)][0] if where == "file" else built[(tenant, state)][1].encode())]
+    assert not leaks, f"{len(leaks)} cells hold readable caller data: {leaks[:12]}"
+    # the cells that must still work: an entry that holds a body is delivered in full when its receiver comes back, a delivered one has nothing left to send
+    for tenant, state in itertools.product(FIRMS, STATES):
+        bodies = built[(tenant, state)][2]
+        if state in HOLDS_A_BODY:
+            joined = b"".join(bodies)
+            assert len(bodies) == 2 and NAME.encode() in joined and EMAIL.encode() in joined and b"forklift" in joined, (tenant, state, len(bodies))
+        else:
+            assert bodies == [], (tenant, state)
+
