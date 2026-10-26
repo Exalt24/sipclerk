@@ -84,7 +84,7 @@ docker build -t sipclerk-sipp tools/sipp
 python scripts/replay.py sipp_reference --json scratch/ref.json
 python tools/sipp/make_scenario.py
 python scripts/make_sipp_media.py scratch/ref.json tools/sipp/media/call.pcap
-python scripts/sipp_demo.py --out docs/sipp_run.json  # writes over the committed record: use another --out
+python scripts/sipp_demo.py --out scratch/sipp_run.json  # the committed record is docs/sipp_run.json
 ```
 
 ## Tests
@@ -94,9 +94,9 @@ python scripts/sipp_demo.py --out docs/sipp_run.json  # writes over the committe
 | Unit and property | `python -m pytest` | tenant files, parsers, names in any language, the guard, the state machine (examples plus 160 seeded random calls), storage, retention and access, the outbox, the dialled number and the caller id, the ACK window, route sets, SIP, SDP, RTP, the language model fences, the office hours, and the 59 cases of the third review round replayed from `tests/corpus` | 3,852 |
 | The line with stand-in models | included in the above | real SIP and RTP over UDP, real voice activity detection and Pipecat, with Whisper and Kokoro replaced: routing, barge-in, silence, keypad, recording consent, transfer and bridge, an abandoned transfer, anonymous callers, a full intake | 18 |
 | Spoken scenarios | `python -m pytest -m voice` | 25 tests over 20 scenarios replayed as WAV through real SIP, Whisper, the model and Kokoro (about 25 minutes; rewrites `docs/voice_suite_run.json`, copy it first) | 25 |
-| Mutation check | `python scripts/mutation_check.py --layer all` | 234 deliberate breaks, one at a time, each must fail a named test | 234 distinct rows in three reports (the first holds two superseded ones); 12 of the 101 round 3 reruns and the 4 after the last change are saved, all killed; a round 3 sweep killed 276 of 281 (PROOF section 9) |
+| Mutation check | `python scripts/mutation_check.py --layer all` | 234 deliberate breaks, one at a time (about 45 minutes), each must fail a named test | 234 distinct rows in three reports (the first holds two superseded ones); 12 of the 101 round 3 reruns and the 4 after the last change are saved, all killed; a round 3 sweep killed 276 of 281 (PROOF section 9) |
 
-Rows in `scripts/mutants_derived.py` take their edit from the syntax tree, not typed text, so rewording a line cannot break them. The check found seven test gaps while it was built, listed in [`docs/PROOF.md`](docs/PROOF.md); one mutant was dropped as equivalent.
+Rows in `scripts/mutants_derived.py` take their edit from the syntax tree, not typed text. The check found seven test gaps (PROOF section 4); one mutant was dropped as equivalent.
 
 ## Limits
 
@@ -109,7 +109,7 @@ Rows in `scripts/mutants_derived.py` take their edit from the syntax tree, not t
 - **Latency is this machine's.** A GPU shared with other work, one event loop for the line and the test caller, a model of 4 billion parameters, and spoken scenarios run with halved question timeouts. Hours are one window a day: no holidays, split or overnight shifts. Nothing here says what a production deployment would measure.
 - **Case management is not Clio.** No Clio record is written: a Clio developer trial token answered 401 when tried (not recorded here; the trial ended in August 2026). The intake goes to the verification code of the sibling repo `Exalt24/clio-matter-bridge` as a Clio-shaped delivery and to a local `Exalt24/clinic-call-console` API (neither is needed for the tests; `docs/integration_run.txt` needs the console built locally), whose reasons are clinic ones, so every intake maps to `OTHER`.
 - **No conflict check, no booking, no calendar.** A caller who says they are an existing client is handed to a person in office hours; nothing checks a conflict list.
-- **Scripts and tests only.** No server command starts the line: it runs inside `replay.py`, `sipp_demo.py` and the tests. Three bridge tests skip without node and a `clio-matter-bridge` checkout beside this repo (or `CLIO_BRIDGE_DIR`): 3,849 passed and 3 skipped on a fresh clone.
+- **Scripts and tests only.** The suite can stall at exit on a loaded machine (Ctrl-C, rerun). No server command starts the line: it runs inside `replay.py`, `sipp_demo.py` and the tests. Three bridge tests skip without node and a `clio-matter-bridge` checkout beside this repo (or `CLIO_BRIDGE_DIR`): 3,849 passed and 3 skipped on a fresh clone.
 - **No staff screen, two calls at once.** Nothing reads a stored record back (`TenantStore.read` has no caller, as `tests/test_wiring.py` says), and two simultaneous calls were run, not twenty.
 
 ## Layout

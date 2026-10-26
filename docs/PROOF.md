@@ -14,7 +14,7 @@ docker build -t sipclerk-sipp tools/sipp
 python scripts/replay.py sipp_reference --json scratch/ref.json         # the reference call, with a softphone that waits for the agent
 python tools/sipp/make_scenario.py
 python scripts/make_sipp_media.py scratch/ref.json tools/sipp/media/call.pcap
-python scripts/sipp_demo.py --out docs/sipp_run.json                    # writes over the committed record, use another --out to keep it; SIPp exit 0 means every message it expected arrived
+python scripts/sipp_demo.py --out scratch/sipp_run.json                  # the committed record is docs/sipp_run.json, and `--out docs/sipp_run.json` writes over it; SIPp exit 0 means every message it expected arrived
 ```
 
 What the line saw ([`docs/sipp_run.json`](sipp_run.json), the first five messages in full, copied by hand from `scratch/sipp_logs/messages.log`, in [`docs/test-runs/sipp_messages.txt`](test-runs/sipp_messages.txt); the OPTIONS and the BYE are start lines and times only):
