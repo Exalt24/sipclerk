@@ -10,7 +10,7 @@ A voice intake line for invented law firms: a real SIP call comes in, the dialle
 
 **Proof, run on this machine on 2026-10-25 and 2026-10-26:** 3,851 tests pass (3,848 and 3 skipped without the sibling bridge checkout) and the 101 of 232 deliberate breaks rerun after the third review round are all caught by a failing test. The 25 spoken tests over 20 scenarios (real SIP and RTP through Whisper, a local language model and Kokoro) were replayed after the review rounds: 23 passed, barge-in and a caller's correction failed once on a busy machine and passed alone (the replay output was not kept, and `pytest -m voice` overwrites `docs/voice_suite_run.json`). The first audio of the agent's answer arrived 619 ms (median) and 1611 ms (95th percentile) after the caller stopped talking in the earlier run, also on a shared machine. Every figure and command is in [`docs/PROOF.md`](docs/PROOF.md).
 
-> **A lab, not a service.** Two invented firms, synthetic callers and voices, no real phone number, no production traffic and no customer. The biggest untested leg is a real phone number from a carrier, because that is the part that costs money. [Limits](#limits) lists the rest.
+> **A lab, not a service.** Two invented firms, synthetic callers and voices, no real phone number, no production traffic and no customer. The main untested leg is a real carrier phone number, because that is the part that costs money. [Limits](#limits) lists the rest.
 
 ## What it is
 
