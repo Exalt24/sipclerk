@@ -396,7 +396,9 @@ class IntakeMachine:
             return self.on_parsed(parsers.validate_phone_digits(digits), source="keypad")
         if digit.isdigit():
             self.keypad += digit
-            if len(self.keypad) >= 11:  # more than a phone number: finish now so the caller is told
+            # A US number is ten digits, and no area code starts with 1, so ten digits not starting with 1 are complete and a caller who forgets pound
+            # is not left waiting; a number that starts with 1 is the eleven digit form.
+            if len(self.keypad) == (11 if self.keypad.startswith("1") else 10):
                 digits, self.keypad = self.keypad, ""
                 return self.on_parsed(parsers.validate_phone_digits(digits), source="keypad")
         return []

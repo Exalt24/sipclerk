@@ -212,13 +212,14 @@ def test_dtmf_zero_is_a_person_at_any_moment(ashgrove):
         assert isinstance(acts[-1], StartTransfer) and acts[-1].reason == "dtmf_zero"
 
 
-def test_dtmf_digits_fill_the_phone_field_and_pound_ends_the_entry(ashgrove):
+def test_dtmf_digits_fill_the_phone_field_and_the_tenth_digit_ends_the_entry(ashgrove):
     m, _ = new(ashgrove)
     run(m, "yes", "Jordan Reyes", "yes")
-    for d in "4155550123":
+    for d in "415555012":
         assert m.on_dtmf(d) == []
-    acts = m.on_dtmf("#")
+    acts = m.on_dtmf("3")
     assert "four one five, five five five, zero one two three" in says(acts)[0]
+    assert m.on_dtmf("#") == []  # the pound that follows a complete number has nothing left to end
     run(m, "yes")
     assert m.fields["callback_number"].value == "+14155550123" and m.fields["callback_number"].source == "keypad"
 
@@ -247,13 +248,21 @@ def test_dtmf_never_lands_in_the_event_log(ashgrove):
     assert "digit': 'x'" in logged and "'4'" not in logged and "'5'" not in logged
 
 
-def test_overlong_keypad_entry_is_cut_off_with_an_answer(ashgrove):
+def test_pound_ends_a_short_keypad_entry_with_an_answer(ashgrove):
+    m, _ = new(ashgrove)
+    run(m, "yes", "Jordan Reyes", "yes")
+    for d in "415555012":
+        m.on_dtmf(d)
+    assert "I only caught 9 digits" in says(m.on_dtmf("#"))[0]
+
+
+def test_an_entry_longer_than_a_number_is_answered_at_the_tenth_digit(ashgrove):
     m, _ = new(ashgrove)
     run(m, "yes", "Jordan Reyes", "yes")
     acts = []
     for d in "41555501239":
         acts += m.on_dtmf(d)
-    assert "more digits" in says(acts)[0]
+    assert "four one five, five five five, zero one two three" in says(acts)[0] and m.keypad == ""
 
 
 def test_silence_reprompts_then_ends_the_call_with_a_callback_task(ashgrove):
