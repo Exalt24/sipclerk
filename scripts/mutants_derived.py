@@ -223,6 +223,9 @@ PIPELINE_DERIVED: list[DerivedMutant] = [
     D("pipe-ack-unconfirmed-call-is-on-the-line", SV, "_already_on_this_line", "Add= -> Sub=", "open_here", "a caller answered and not yet confirmed can be answered a second time", ACKWIN, layer="pipeline"),
     D("pipe-ack-unconfirmed-call-is-for-its-firm", SV, "_already_on_this_line", "Eq -> NotEq", "t == tenant_id", "an unconfirmed call blocks the other firm's line or none", ACKWIN, layer="pipeline"),
     D("pipe-ack-unconfirmed-call-is-forgotten", SV, "on_invite", "delete the call statement", "_answering.pop", "a call that ended without a session still blocks its number", ACKWIN, layer="pipeline"),
+    D("pipe-ack-stopped-line-starts-no-call", SV, "_take_call", "negate the condition", "self._closing", "a line that was stopped while a call awaited its ACK starts the call afterwards", ACKWIN, layer="pipeline"),
+    D("pipe-ack-early-hangup-starts-the-pipeline-first", CA, "run", "Lt -> GtE", "self.started", "a call that ends in its first second cancels a pipeline that has not started, and the process hangs at the end of the loop",
+      ["tests/test_ack_window.py", "-k", "instant"], layer="pipeline"),
     D("pipe-dialled-shapes", TN, "resolve", "negate the condition", "fullmatch", "a call dialled as ten digits is turned away",
       ["tests/test_dialled_number.py", "-k", "line_answers_each_shape"], layer="pipeline"),
 ]

@@ -207,3 +207,29 @@ async def test_a_caller_who_has_been_answered_and_not_yet_confirmed_blocks_a_sec
         assert await until(lambda: sum(1 for _, d in p.log if d.startswith(b"SIP/2.0 200")) >= 1, 3)
         t.close()
         c.close()
+
+
+async def test_stopping_the_line_while_a_call_waits_for_its_ack_starts_no_call():
+    """The ACK wait is as long as the stack takes an ACK, so a line that is stopped in the middle of it must not start the call afterwards."""
+    async with rig(["yes"]) as r:
+        c = await Caller(r, "+14155550177").start()
+        c.send("ACK")
+        await r.server.stop()
+        assert r.server.counters["answered"] == 0 and not r.server.sessions
+        assert not [t for t in asyncio.all_tasks() if "WorkerRunner" in t.get_coro().__qualname__], "a voice pipeline was started after the line stopped"
+        c.close()
+
+
+def test_a_lab_left_the_instant_a_call_was_answered_ends_cleanly():
+    """The pipeline of a call that ended in its first moments is not left running: the whole process exits instead of hanging at the end of the event loop."""
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    here = Path(__file__).resolve().parent
+    try:
+        p = subprocess.run([sys.executable, str(here / "teardown_after_instant_hangup.py")], cwd=here.parent, capture_output=True, text=True, timeout=45,
+                           env={**__import__("os").environ, "PYTHONPATH": f"{here.parent}{__import__('os').pathsep}{here}"})
+    except subprocess.TimeoutExpired:
+        pytest.fail("the process hung at the end of the event loop: a voice pipeline outlived its call")
+    assert p.returncode == 0 and "clean exit" in p.stdout, p.stdout[-300:] + p.stderr[-300:]

@@ -46,6 +46,7 @@ class ClerkServer:
         self.faults = faults or Faults()
         self.on_finished = on_finished
         self.sessions: dict[str, CallSession] = {}
+        self._closing = False
         self._answering: dict[str, tuple[str, str]] = {}  # SIP Call-ID -> (caller, firm) of an INVITE being answered, before its ACK makes it a session
         self.results: list[CallResult] = []
         self.counters = {"answered": 0, "wrong_number": 0, "blocked_caller": 0, "duplicate_call": 0, "busy": 0, "no_codec": 0,
@@ -68,6 +69,7 @@ class ClerkServer:
         self._retention_task = loop.create_task(self._retention_loop())
 
     async def stop(self) -> None:
+        self._closing = True  # a call still waiting for its ACK must not start now
         for s in list(self.sessions.values()):
             s.finished.set()
         await asyncio.sleep(0.05)
@@ -200,6 +202,10 @@ class ClerkServer:
             await rtp.close()
             if got == "lost":
                 await self._record_unacknowledged_call(tenant, inv, codec)
+            return
+        if self._closing:
+            await rtp.close()
+            await dialog.bye(timeout=1.0)
             return
         rtp.start()
         call_id = secrets.token_hex(6)

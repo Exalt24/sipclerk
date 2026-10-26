@@ -240,6 +240,8 @@ class CallSession:
         watcher = asyncio.get_running_loop().create_task(self._watch_caller_bye())
         try:
             await self.finished.wait()
+            if time.monotonic() - self.started < 1.0:  # ended in its first second: the runner may not have started the pipeline yet, and a cancel before that is lost
+                await asyncio.sleep(0.3)
             log.info("call %s finished (ended_by=%s)", self.call_id, self.ended_by)
         finally:
             watcher.cancel()
