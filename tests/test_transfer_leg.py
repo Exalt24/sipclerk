@@ -231,3 +231,66 @@ async def test_a_2xx_that_crosses_our_cancel_is_acknowledged_and_hung_up():
         desk_task.cancel()
         server.close()
         await stack.stop()
+
+
+# ---- the class, enumerated: the moment the caller hangs up against what the desk leg is doing at that moment
+#
+# GROUNDING (docs/DECISIONS.md): "so the end of the call (the caller's BYE, the desk phone's, a shutdown) cancels it wherever it is" and "a receptionist could answer a
+# call that was already over and hear the whisper while the line kept sending RTP to her phone".
+# WHY: a caller asks for a person, the desk phone rings, and the caller gives up and hangs up. If the desk INVITE is not cancelled the receptionist picks up a dead
+# call and hears a whisper to nobody, and one socket and one task leak for every such call until the line restarts.
+import itertools
+
+HANG_UP_AFTER_S = [0.0, 0.2, 0.7]  # after the transfer started: before the desk phone has rung, while it rings, after it answered
+DESK_LEGS = [("answers after 0.4 s, long whisper", dict(answer_delay=0.4, models=LongWhisper())),
+             ("answers after 0.4 s, short whisper", dict(answer_delay=0.4, models=None)),
+             ("rings and is never answered", dict(staff_mode="no_answer", answer_delay=0.0, models=None))]
+
+
+async def hang_up_during_the_leg(hang_up_after: float, leg: dict) -> list[str]:
+    """One cell: the caller hangs up `hang_up_after` seconds into a transfer to a desk phone that behaves as `leg` says. Returns what outlived the call."""
+    problems: list[str] = []
+    async with Rig(**leg) as r:
+        call, session = await r.call()
+        transfer = asyncio.get_running_loop().create_task(session._transfer("dtmf_zero"))
+        await r.wait(lambda: r.staff.invites)
+        await asyncio.sleep(hang_up_after)
+        await call.hangup()
+        await r.end_of_call(session)
+        await asyncio.sleep(max(0.0, 0.4 - hang_up_after) + 0.5)  # past the moment the desk phone would have answered a call that is over
+        if not all(c.dialog.terminated.is_set() for c in r.staff.calls):
+            problems.append("a desk call is still up")
+        for c in r.staff.calls:
+            before = c.rtp.packets_in
+            await asyncio.sleep(0.2)
+            if c.rtp.packets_in != before:
+                problems.append("media still arriving at the desk phone")
+        if hang_up_after < 0.4 and leg.get("staff_mode", "answer") == "answer" and r.staff.calls:
+            problems.append("the desk phone answered a call that was already over")
+        if r.staff.invites and not r.staff.invites[-1].cancelled.is_set() and not r.staff.calls:
+            problems.append("the desk INVITE was never cancelled")
+        sockets, tasks = r.leaks()
+        if sockets or tasks:
+            problems.append(f"leaked {len(sockets)} socket(s) and {len(tasks)} task(s)")
+        if not transfer.done():
+            problems.append("the transfer task is still running")
+    return problems
+
+
+# CLASS-TABLE: a transfer leg that outlives the call, for every moment of hang-up and every state of the desk leg
+async def test_class_whenever_the_caller_hangs_up_and_whatever_the_desk_leg_is_doing_nothing_of_the_leg_outlives_the_call():
+    cells = list(itertools.product(HANG_UP_AFTER_S, DESK_LEGS))
+    bad = {}
+    for h, (label, leg) in cells:
+        problems = await hang_up_during_the_leg(h, leg)
+        if problems:
+            bad[(h, label)] = problems
+    assert not bad, f"{len(bad)} of {len(cells)} cells left a leg behind: {bad}"
+    # the row that must pass: nobody hangs up during the leg, so the leg is the connected call it should be and is not torn down
+    async with Rig(answer_delay=0.4) as r:
+        call, session = await r.call()
+        ok, _detail = await asyncio.wait_for(session._transfer("dtmf_zero"), 20)
+        desk = r.staff.calls[-1]
+        assert ok and session.bridged_at is not None and not desk.dialog.terminated.is_set()
+        await call.hangup()
+        await r.end_of_call(session)
