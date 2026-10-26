@@ -210,3 +210,62 @@ async def test_the_dead_count_is_in_the_servers_status_and_the_hourly_pass_says_
         server.run_retention_pass()
     assert any("dead delivery" in x.getMessage() and "requeue_dead" in x.getMessage() for x in caplog.records)
     json.dumps(server.status())  # it is plain data: a health endpoint can send it as it is
+
+
+# ---- the class, enumerated: every outage an ordinary day has against the schedule's own attempt positions
+#
+# GROUNDING (docs/PROOF.md): "a receiver down for ten minutes still gets the delivery, dead only after the 23 hour schedule" and (README.md) "retries last about 23 hours".
+# WHY: the firm's case management bridge restarts for an update during the afternoon or its host has a bad night; the delivery of a finished intake is the
+# only copy of the caller's details outside the encrypted store. A retry window of half a minute drops that intake silently, the firm never calls the person back.
+import itertools
+
+# outages an ordinary week has (the receiver is down this long after the entry was queued), each shorter than the promised day
+ORDINARY_OUTAGES_S = [("a restart", 30), ("a ten minute deploy", 600), ("an hour", HOUR), ("an afternoon", 5 * HOUR), ("a night", 12 * HOUR), ("most of a day", 20 * HOUR),
+                      ("just under the day", 22 * HOUR)]
+EDGES_S = [-1, 0, 1]  # the receiver is back a second early, exactly on the second, a second late
+LONG_OUTAGES_S = [("a day and a half", 36 * HOUR), ("two days", 48 * HOUR)]
+SCHEDULE_AT = [sum(d.BACKOFF_S[:i]) for i in range(d.MAX_ATTEMPTS)]  # when attempt 1, 2, 3 ... is made, counted from the queueing
+
+
+async def one_delivery(tmp_path, outage_s, tag):
+    now = {"t": 10_000.0}
+    r = Receiver(now, up_at=10_000.0 + outage_s)
+    ob = make(tmp_path / tag, r, now)
+    ob.enqueue("bridge", "k1", {"a": 1}, tenant_id=TENANT)
+    await run_until_done(ob, now)
+    return ob, r, ob.entries["bridge:k1"]
+
+
+# CLASS-TABLE: a delivery given up inside a short retry window, for every outage and every position in the schedule
+async def test_class_a_receiver_that_returns_after_any_ordinary_outage_still_gets_the_delivery_once_and_one_that_never_does_is_dead_and_loud(tmp_path, caplog):
+    cells = list(itertools.product(ORDINARY_OUTAGES_S, EDGES_S))
+    failed = []
+    for ((label, base), edge), n in zip(cells, itertools.count()):
+        outage = base + edge
+        ob, r, e = await one_delivery(tmp_path, outage, f"o{n}")
+        keys = {h["idempotency-key"] for _t, h in r.attempts}
+        if not (e.status == "delivered" and keys == {"k1"} and len(r.attempts) == e.attempts and r.attempts[-1][0] >= 10_000.0 + outage and ob.stats()["dead"] == 0):
+            failed.append((label, outage, e.status, e.attempts))
+    assert not failed, f"{len(failed)} of {len(cells)} outages lost the delivery: {failed}"
+    # the rows that must be refused: no receiver within the schedule is a dead letter, said once at WARNING, counted, and sent again by requeue
+    for (label, base), n in zip(LONG_OUTAGES_S, itertools.count(100)):
+        caplog.clear()
+        with caplog.at_level(logging.WARNING, logger="sipclerk.delivery"):
+            ob, r, e = await one_delivery(tmp_path, base, f"long{n}")
+        assert e.status == "dead" and e.attempts == len(r.attempts) and ob.stats() == {"pending": 0, "delivered": 0, "dead": 1}, label
+        assert sum("is dead after" in x.getMessage() and x.levelno == logging.WARNING for x in caplog.records) == 1, label
+        assert ob.requeue() == 1 and ob.stats()["pending"] == 1, label
+
+
+async def test_class_every_position_in_the_schedule_delivers_when_the_receiver_returns_at_it_and_only_the_second_after_the_last_is_dead(tmp_path):
+    """The schedule's own attempt times, a second before, on and a second after each: delivered while an attempt is still to come, dead after the last."""
+    wrong = []
+    for (i, at), edge in itertools.product(enumerate(SCHEDULE_AT), EDGES_S):
+        outage = at + edge
+        if outage < 0:
+            continue
+        _ob, _r, e = await one_delivery(tmp_path, outage, f"p{i}_{edge}")
+        want = "delivered" if outage <= SCHEDULE_AT[-1] else "dead"
+        if e.status != want:
+            wrong.append((i, edge, outage, e.status, want))
+    assert not wrong, wrong
