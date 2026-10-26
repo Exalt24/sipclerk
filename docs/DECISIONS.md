@@ -25,7 +25,7 @@ The pipeline is `RtpInput, Vad, Stt, Intake, Tts, RtpOutput`, all Pipecat frame 
 
 Pipecat's streaming resampler was tried first for 8 kHz to 16 kHz and swallowed speech that followed a long stretch of digital silence (found with a 12 second lead of zeros before a clip). `audio.StreamUpsampler` resamples each 20 ms frame together with the tail of the earlier ones and costs 2 ms. A test pins that it matches a whole-signal resample and leaves no click at a frame edge.
 
-Fixed prompts are rendered once, sentence by sentence, and cached: a long line is several cached sentences plus the one sentence that changes ("I have Jordan Reyes."). The numbers report cached and rendered turns separately.
+Fixed prompts are rendered once, sentence by sentence, and cached: a long line is several cached sentences plus the one sentence that changes ("I have Jordan Reyes."). The numbers report cached and rendered turns separately, and the rendered-turn row is empty (n=0).
 
 ## The model never drives the call
 

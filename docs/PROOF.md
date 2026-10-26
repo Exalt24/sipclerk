@@ -28,7 +28,7 @@ What the line saw ([`docs/sipp_run.json`](sipp_run.json), full messages, copied 
 | 15 to 75 | in | `OPTIONS` every 15 s from SIPp, answered `200` (keeps Docker Desktop's UDP mapping open, see below) |
 | 87.32 | out | `BYE` from the line when the intake finished, answered `200` |
 
-The call: 4,367 RTP packets in and 4,365 out (679,844 bytes of G.711 and events received), 11 keypad events (ten digits and the pound) made the phone number (`callback_number` came from the keypad, not from speech), five fields were spoken (name, practice area, state, urgent deadline, description) and email was skipped, the outcome was `intake_priority`, and the record carries tenant `tidewaterquint`, config version `2026.10.4` and config hash `75569928f389...`.
+The call: 4,367 RTP packets in and 4,365 out (679,844 bytes of G.711 and events received), 10 logged keypad events (the scenario sends eleven characters, ten digits and the pound) made the phone number (`callback_number` came from the keypad, not from speech), five fields were spoken (name, practice area, state, urgent deadline, description) and email was skipped, the outcome was `intake_priority`, and the record carries tenant `tidewaterquint`, config version `2026.10.4` and config hash `75569928f389...`.
 
 **Where the audio goes.** G.711 on the wire is 160 bytes per 20 ms packet, 64 kbit/s, SNR after a round trip about 37 dB for both codecs; decoded to 8 kHz linear; upsampled to 16 kHz in 20 ms frames for the voice activity detector and Whisper (relative error against a whole-signal resample 0.0000, 2 ms delay); Kokoro's 24 kHz output is resampled 3 to 1 to 8 kHz and encoded back. [`docs/codec_proof.txt`](codec_proof.txt) is the output of `python scripts/codec_proof.py`.
 
@@ -37,7 +37,7 @@ The call: 4,367 RTP packets in and 4,365 out (679,844 bytes of G.711 and events 
 ## 2. Tests
 
 ```
-python -m pytest                    # 3842 passed, 25 deselected (3,839 and 3 skipped without the sibling bridge checkout; about 6 minutes, not saved)
+python -m pytest                    # 3844 passed, 25 deselected (3,841 and 3 skipped without the sibling bridge checkout; about 6 minutes, not saved)
 python -m pytest -m voice           # 25 passed in 1472 s (24 minutes 32 seconds) before the review rounds; replayed after sections 7 to 9: 23 passed in 1541 s with the machine busy, and the other two (barge in, caller correction) failed there and passed alone in 206 s; that output was not kept, and `pytest -m voice` rewrites `docs/voice_suite_run.json`, so a rerun overwrites the evidence of the earlier run
 python scripts/mutation_check.py --layer all --report docs/mutation_report.json   # writes over the committed report, use another --report to keep it; 220 of 220 killed before the third review round, run in a copy of the repository
 python scripts/mutation_check.py --only <the ids in `results` of docs/mutation_report_round3.json> --report docs/mutation_report_round3.json   # 12 of 12 killed; 89 earlier rows in the changed files rerun, 89 of 89 killed (the 232 rows are 220 in docs/mutation_report.json plus 12 in docs/mutation_report_round3.json; the 89 reruns were not saved)
@@ -77,6 +77,7 @@ python scripts/mutation_check.py --only <the ids in `results` of docs/mutation_r
 | `test_emergency_report.py` | 44 | a hurt body part, an emergency hearing and the other legal phrases never reaching the 911 line, next to the same words said as a real alarm |
 | `test_scope_confirmed_area.py` | 7 | a word in the description not turning away a caller whose area the firm takes |
 | `test_ack_window.py` | 10 | the wait for the caller's ACK, a call whose ACK never comes recorded, a redial behind an unconfirmed call |
+| `test_doc_links.py` | 2 | every relative link in the README and the docs resolves from the folder of the file that holds it, and the guard fails on a link written from the wrong folder |
 | `test_bridge_contract.py` | 3 | our delivery against the real verification code of `clio-matter-bridge` (skipped without node and the sibling checkout) |
 | `test_voice_suite.py` | 25 | the spoken scenarios below |
 
@@ -109,6 +110,8 @@ Each scenario is text in `voice_scripts/scenarios.py`, rendered to WAV with Koko
 
 ### Latency, measured at the caller
 
+*From the run before the review rounds (commit 9cbffff); `docs/voice_suite_run.json` carries no commit or date.*
+
 | | Turns | Median | 95th percentile |
 |---|---|---|---|
 | All turns, as the caller hears them | 141 | 619 ms | 1611 ms |
@@ -118,6 +121,8 @@ Each scenario is text in `voice_scripts/scenarios.py`, rendered to WAV with Koko
 Measured from the last RTP packet of the caller's sentence to the first loud RTP frame of the agent's reply. The silence that ends a turn is part of the figure (0.5 s for a yes or a name, 1.0 s for a number, 1.2 s for a story), so the median is mostly waiting, not compute. This machine was running other work, and the line and the test caller share one event loop; treat the numbers as this machine's and no one else's.
 
 ### What one call costs, measured
+
+*From the same earlier run.*
 
 Mean over 13 completed intake calls:
 
@@ -221,4 +226,4 @@ Left alone on purpose, each scored 3 or less by the lead: `No problem` or `No, t
 
 ## 10. Class tables for the first two rounds
 
-Every class the first two review rounds fixed also has a test marked `CLASS-TABLE:` that runs the whole class from a table generated in code: 18 tests, about 37 s together, 3,842 tests in all. Each table was run in a copy with the pre-fix behaviour put back (the code of the commit before the fix, or the old lines restored by hand), and the counts are the writer's, not re-run by the lead: for example 130 of 182 outbox cells, 192 of 192 store cells, 1,536 caller id cells and 24 route set faults failed there, while the ordinary rows passed. One real edge was found and left alone: `TenantStore.purge` raises on a `meta.json` whose `saved_at` carries a UTC offset (a two fault corner, since both clocks default to naive time), listed in DECISIONS.
+Every class the first two review rounds fixed also has a test marked `CLASS-TABLE:` that runs the whole class from a table generated in code: 18 tests, about 37 s together (the writer's timing, not saved), 3,844 tests in all. Each table was run in a copy with the pre-fix behaviour put back (the code of the commit before the fix, or the old lines restored by hand), and the counts are the writer's, not re-run by the lead: for example 130 of 182 outbox cells, 192 of 192 store cells, 1,536 caller id cells and 24 route set faults failed there, while the ordinary rows passed. One real edge was found and left alone: `TenantStore.purge` raises on a `meta.json` whose `saved_at` carries a UTC offset (a two fault corner, since both clocks default to naive time), listed in DECISIONS.
