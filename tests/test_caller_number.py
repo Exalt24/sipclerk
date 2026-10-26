@@ -53,6 +53,7 @@ def tenant(blocked):
 
 def server(open_calls):
     s = ClerkServer.__new__(ClerkServer)
+    s._answering = {}
     s.sessions = {f"s{i}": types.SimpleNamespace(caller=c, cfg=types.SimpleNamespace(tenant_id=t)) for i, (c, t) in enumerate(open_calls)}
     return s
 

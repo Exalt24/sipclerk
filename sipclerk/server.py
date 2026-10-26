@@ -46,6 +46,7 @@ class ClerkServer:
         self.faults = faults or Faults()
         self.on_finished = on_finished
         self.sessions: dict[str, CallSession] = {}
+        self._answering: dict[str, tuple[str, str]] = {}  # SIP Call-ID -> (caller, firm) of an INVITE being answered, before its ACK makes it a session
         self.results: list[CallResult] = []
         self.counters = {"answered": 0, "wrong_number": 0, "blocked_caller": 0, "duplicate_call": 0, "busy": 0, "no_codec": 0,
                          "no_offer": 0, "no_ack": 0}
@@ -143,8 +144,9 @@ class ClerkServer:
         (A retransmitted INVITE never gets here: the stack answers it from the first one's response.)"""
         if sm.caller_is_withheld(caller):
             return False
-        open_here = [s.caller for s in self.sessions.values() if s.cfg.tenant_id == tenant_id and not sm.caller_is_withheld(s.caller)]
-        return bool(sm.match_number(caller, open_here))
+        open_here = [s.caller for s in self.sessions.values() if s.cfg.tenant_id == tenant_id]
+        open_here += [c for c, t in self._answering.values() if t == tenant_id]  # answered and waiting for the ACK: already on the line
+        return bool(sm.match_number(caller, [c for c in open_here if not sm.caller_is_withheld(c)]))
 
     async def on_invite(self, inv: IncomingInvite) -> None:
         tenant = self.registry.resolve(inv.candidates)
@@ -180,6 +182,14 @@ class ClerkServer:
             inv.reject(488, "Not Acceptable Here")
             return
         codec, _offered_pt = pick
+        self._answering[inv.req.call_id] = (inv.caller, tenant.config.tenant_id)  # from here to the session, with nothing in between that can yield
+        try:
+            await self._take_call(inv, tenant, offer, codec)
+        finally:
+            self._answering.pop(inv.req.call_id, None)
+
+    async def _take_call(self, inv: IncomingInvite, tenant, offer, codec: str) -> None:
+        """Answer the INVITE, wait for its ACK and start the call."""
         rtp = await RtpSession.open(self.rtp_host, 0, codec, offer.dtmf_pt)
         rtp.set_remote(offer.host, offer.port)  # replaced by the first packet's source if the caller is behind NAT
         inv.provisional(180, "Ringing")

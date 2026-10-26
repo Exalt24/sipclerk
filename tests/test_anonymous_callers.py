@@ -12,7 +12,8 @@ ASH, TIDE = "ashgrovepell", "tidewaterquint"
 
 
 def server(registry, open_calls):
-    s = ClerkServer.__new__(ClerkServer)  # the rule needs only the open sessions
+    s = ClerkServer.__new__(ClerkServer)
+    s._answering = {}  # the rule needs only the open sessions
     s.sessions = {f"s{i}": types.SimpleNamespace(caller=caller, cfg=types.SimpleNamespace(tenant_id=tenant)) for i, (caller, tenant) in enumerate(open_calls)}
     return s
 

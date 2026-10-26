@@ -177,3 +177,33 @@ def test_the_resend_rule_is_the_rfc_one():
     from sipclerk.sip.stack import T1, SipStack
 
     assert T1 == 0.5 and SipStack("127.0.0.1", 0).t1 == 0.5 and 64 * T1 == 32
+
+
+async def test_a_caller_redialling_the_instant_after_its_ack_is_still_one_caller():
+    """The line now waits for an ACK for as long as the stack takes one, so a caller who is answered and not yet confirmed already counts as on the line:
+    a second INVITE from the same number right behind the first one's ACK gets 486, as it does a moment later."""
+    async with rig(["yes"]) as r:
+        c = await Caller(r, "+14155550175").start()
+        c.send("ACK")
+        t, p, lport = await udp()
+        t.sendto(invite(c.sport, lport, c.rport, "+14155550175", f"second-{secrets.token_hex(4)}@127.0.0.1"), ("127.0.0.1", c.sport))  # the same tick as the ACK
+        assert await until(lambda: any(d.startswith(b"SIP/2.0 486") or d.startswith(b"SIP/2.0 200") for _, d in p.log), 3)
+        first_answer = next(d for _, d in p.log if d.startswith(b"SIP/2.0 486") or d.startswith(b"SIP/2.0 200")).split(b"\r\n")[0]
+        assert first_answer == b"SIP/2.0 486 Busy Here", first_answer
+        assert r.server.counters["duplicate_call"] == 1
+        t.close()
+        c.close()
+
+
+async def test_a_caller_who_has_been_answered_and_not_yet_confirmed_blocks_a_second_call_from_the_same_number():
+    async with rig([]) as r:
+        r.server.stack.t1 = 0.05
+        c = await Caller(r, "+14155550176").start()  # answered, ACK withheld
+        t, p, lport = await udp()
+        t.sendto(invite(c.sport, lport, c.rport, "+14155550176;cpc=ordinary", f"second-{secrets.token_hex(4)}@127.0.0.1"), ("127.0.0.1", c.sport))
+        assert await until(lambda: any(d.startswith(b"SIP/2.0 486") for _, d in p.log), 3), [d[:20] for _, d in p.log]
+        assert await until(lambda: r.server.counters["no_ack"] == 1, 6)
+        t.sendto(invite(c.sport, lport, c.rport, "+14155550176", f"third-{secrets.token_hex(4)}@127.0.0.1"), ("127.0.0.1", c.sport))  # the lost call is over: the number is free again
+        assert await until(lambda: sum(1 for _, d in p.log if d.startswith(b"SIP/2.0 200")) >= 1, 3)
+        t.close()
+        c.close()
