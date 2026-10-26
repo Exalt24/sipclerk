@@ -39,8 +39,8 @@ The call: 4,367 RTP packets in and 4,365 out (679,844 bytes of G.711 and events 
 ```
 python -m pytest                    # 3852 passed, 25 deselected (3,849 and 3 skipped without the sibling bridge checkout; about 6 minutes, not saved)
 python -m pytest -m voice           # 25 passed in 1472 s (24 minutes 32 seconds) before the review rounds; replayed after sections 7 to 9: 23 passed in 1541 s with the machine busy, and the other two (barge in, caller correction) failed there and passed alone in 206 s; that output was not kept, and `pytest -m voice` rewrites `docs/voice_suite_run.json`, so a rerun overwrites the evidence of the earlier run
-python scripts/mutation_check.py --layer all --report docs/mutation_report.json   # writes over the committed report, use another --report to keep it; 220 of 220 killed before the third review round, run in a copy of the repository
-python scripts/mutation_check.py --only <the ids in `results` of docs/mutation_report_round3.json> --report docs/mutation_report_round3.json   # 12 of 12 killed; 89 earlier rows in the changed files rerun, 89 of 89 killed, before the last `parse_date` change (the 234 rows are 220 in docs/mutation_report.json, 12 in docs/mutation_report_round3.json and 2 new in docs/mutation_report_final.json; the 89 reruns were not saved)
+python scripts/mutation_check.py --layer all --report scratch/mutation_report.json   # the committed report is docs/mutation_report.json, and `--report docs/...` writes over it; 220 of 220 killed before the third review round, run in a copy of the repository
+python scripts/mutation_check.py --only <the ids in `results` of docs/mutation_report_round3.json> --report scratch/mutation_report_round3.json   # the committed report is docs/mutation_report_round3.json; 12 of 12 killed; 89 earlier rows in the changed files rerun, 89 of 89 killed, before the last `parse_date` change (the 234 rows are 220 in docs/mutation_report.json, 12 in docs/mutation_report_round3.json and 2 new in docs/mutation_report_final.json; the 89 reruns were not saved)
 ```
 
 | File | Tests | What it pins |
