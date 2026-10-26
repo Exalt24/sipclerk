@@ -80,3 +80,51 @@ def test_a_description_that_names_a_charge_after_a_crash_completes_the_intake(as
     m = to_description(ashgrove, "a car accident")
     m.handle_text("He rear ended me at a red light and the cops arrested him for DUI")
     assert m.outcome == "intake_complete"
+
+
+# ---- the class, enumerated: every area the caller confirmed x every out of scope word of that firm x where in the description the word stands
+#
+# GROUNDING (docs/DECISIONS.md): "A confirmed practice area is not overturned by a word in the description." and "a personal injury caller whose description said the other
+# driver was arrested for DUI was told the firm does not take the matter."
+# WHY: a person hit by a drunk driver phones a personal injury firm, confirms the firm takes car accidents, and says the other driver was arrested. The line tells them it
+# is not an area the firm handles and sends them away, so the firm loses a client it wanted.
+import itertools
+
+DESCRIPTION_FRAMES = [
+    ("at the start", lambda w: f"{w.capitalize()} is what the police wrote down and then my whole life changed in March"),
+    ("in the middle", lambda w: f"the police report mentions {w} and then my whole life changed in March"),
+    ("at the end", lambda w: f"everything started with what the other side called {w}"),
+]
+UNKNOWN_AREAS = [None, "other", "not_an_area"]  # skipped, a model's `other`, an id the firm does not list
+ORDINARY_DESCRIPTIONS = ["A truck ran a red light and hit my car on Main Street", "I was rear ended and my neck has hurt ever since"]
+
+
+# CLASS-TABLE: the description overriding a practice area the caller confirmed, for every confirmed area, every out of scope word and every position of the word
+def test_class_a_word_anywhere_in_the_description_never_turns_away_a_confirmed_area_but_still_turns_away_an_unknown_one(registry):
+    confirmed_wrong, unknown_wrong, rows = [], [], 0
+    for t in registry.all:
+        tenant_id = t.config.tenant_id
+        for (area_id, said), word, (where, frame) in itertools.product(AREA_SAYING[tenant_id].items(), t.config.guard.out_of_scope_keywords, DESCRIPTION_FRAMES):
+            m = to_description(t, said)
+            assert m.fields["practice_area"].value == area_id, (tenant_id, said)
+            m.handle_text(frame(word))
+            rows += 1
+            if m.outcome == "declined_out_of_scope" or not m.fields["description"].value:
+                confirmed_wrong.append((tenant_id, area_id, word, where, m.outcome))
+        said_any = next(iter(AREA_SAYING[tenant_id].values()))
+        for value, word, (where, frame) in itertools.product(UNKNOWN_AREAS, t.config.guard.out_of_scope_keywords, DESCRIPTION_FRAMES):
+            m = to_description(t, said_any)
+            m.fields["practice_area"].value = value
+            m.handle_text(frame(word))
+            rows += 1
+            if m.outcome != "declined_out_of_scope":
+                unknown_wrong.append((tenant_id, value, word, where, m.outcome))
+        for (area_id, said), text in itertools.product(AREA_SAYING[tenant_id].items(), ORDINARY_DESCRIPTIONS):
+            m = to_description(t, said)
+            m.handle_text(text)
+            rows += 1
+            if m.outcome == "declined_out_of_scope" or m.fields["description"].value != text:
+                confirmed_wrong.append((tenant_id, area_id, text[:20], "ordinary", m.outcome))
+    assert rows > 250, rows
+    assert not confirmed_wrong, f"{len(confirmed_wrong)} confirmed-area cells were turned away: {confirmed_wrong[:6]}"
+    assert not unknown_wrong, f"{len(unknown_wrong)} unknown-area cells were let through: {unknown_wrong[:6]}"
