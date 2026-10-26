@@ -37,6 +37,7 @@ def test_an_answer_or_a_filler_is_still_not_a_name(said):
     assert not p.parse_name(said).ok, said
 
 
+# CLASS-TABLE: a stop word vetoing a word of a real name, for each of the four ambiguous words with every name word in every position
 def test_class_each_of_the_four_words_is_a_name_in_every_position_when_capitalised_and_still_a_filler_when_not():
     for word, other in itertools.product(sorted(p.NAME_AMBIGUOUS), NAME_WORDS):
         w = word.title()
@@ -48,6 +49,7 @@ def test_class_each_of_the_four_words_is_a_name_in_every_position_when_capitalis
             assert p.parse_name(said, named=True).ok, said  # unless the text is already a name
 
 
+# CLASS-TABLE: every word of the stop list still vetoing a name in every position, so the fix did not loosen the rest
 def test_class_every_word_of_the_stop_list_still_vetoes_a_name_wherever_it_stands():
     for word, other in itertools.product(sorted(p.NAME_STOP), NAME_WORDS[:3]):
         for said in (f"{other} {word.title()}", f"{word.title()} {other}", f"{other} {word} {NAME_WORDS[3]}"):
