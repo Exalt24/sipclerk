@@ -224,7 +224,7 @@ async def test_stopping_the_line_while_a_call_waits_for_its_ack_starts_no_call()
 
 
 def test_a_lab_left_the_instant_a_call_was_answered_ends_cleanly():
-    """The pipeline of a call that ended in its first moments is not left running: the whole process exits instead of hanging at the end of the event loop."""
+    """The pipeline of a call answered a moment ago is ended by the lab's stop: the whole process exits instead of hanging at the end of the event loop."""
     import subprocess
     import sys
     from pathlib import Path
@@ -234,7 +234,7 @@ def test_a_lab_left_the_instant_a_call_was_answered_ends_cleanly():
         p = subprocess.run([sys.executable, str(here / "teardown_after_instant_hangup.py")], cwd=here.parent, capture_output=True, text=True, timeout=45,
                            env={**__import__("os").environ, "PYTHONPATH": f"{here.parent}{__import__('os').pathsep}{here}"})
     except subprocess.TimeoutExpired:
-        pytest.fail("the process hung at the end of the event loop: a voice pipeline outlived its call")
+        pytest.fail("the process hung at the end of the event loop: a voice pipeline outlived the line")
     assert p.returncode == 0 and "clean exit" in p.stdout, p.stdout[-300:] + p.stderr[-300:]
 
 
