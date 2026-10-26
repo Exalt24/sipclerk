@@ -3,7 +3,7 @@ type: reference
 updated: 2026-10-26
 ---
 
-*Everything here was run on one Windows 11 PC on 2026-10-25 and 2026-10-26 (the spoken suite, its latency figures and the SIPp run were measured before the review round's fixes; the unit suite, the guards and the probes after them): an RTX 5070 Ti shared with other work, Python 3.13.14, Pipecat 1.6.0, faster-whisper `small.en` on the GPU (float16), Kokoro through onnxruntime on the CPU, Ollama with `qwen3.5:4b`, and SIPp 3.6.1 from the Debian `sip-tester` package in Docker. Firms, callers, numbers and voices are invented. Each claim names the command that produced it.*
+*Everything here was run on one Windows 11 PC on 2026-10-25 and 2026-10-26 (the spoken suite, its latency figures and the SIPp run were measured before the two review rounds' fixes; the unit suite, the guards and the probes after them): an RTX 5070 Ti shared with other work, Python 3.13.14, Pipecat 1.6.0, faster-whisper `small.en` on the GPU (float16), Kokoro through onnxruntime on the CPU, Ollama with `qwen3.5:4b`, and SIPp 3.6.1 from the Debian `sip-tester` package in Docker. Firms, callers, numbers and voices are invented. Each claim names the command that produced it.*
 
 ## 1. A real INVITE reaches the agent
 
@@ -17,7 +17,7 @@ python scripts/make_sipp_media.py scratch/ref.json tools/sipp/media/call.pcap
 python scripts/sipp_demo.py --out docs/sipp_run.json                    # SIPp exit 0 means every message it expected arrived
 ```
 
-What the line saw ([`docs/sipp_run.json`](docs/sipp_run.json), full messages in [`docs/sipp_messages.log`](docs/sipp_messages.log)):
+What the line saw ([`docs/sipp_run.json`](docs/sipp_run.json), full messages in [`docs/test-runs/sipp_messages.txt`](docs/test-runs/sipp_messages.txt)):
 
 | Seconds | Direction | Message |
 |---|---|---|
@@ -37,9 +37,9 @@ The call: 4,367 RTP packets in and 4,365 out (679,844 bytes of G.711 and events 
 ## 2. Tests
 
 ```
-python -m pytest                    # 857 passed, 25 deselected in 292 s
-python -m pytest -m voice           # 25 passed in 1472 s (24 minutes 32 seconds), before the review round in section 7; not replayed since
-python scripts/mutation_check.py --layer all --report docs/mutation_report.json   # 177 of 177 killed, run in a copy of the repository
+python -m pytest                    # 1718 passed, 25 deselected in 346 s
+python -m pytest -m voice           # 25 passed in 1472 s (24 minutes 32 seconds), before the review rounds in sections 7 and 8; not replayed since
+python scripts/mutation_check.py --layer all --report docs/mutation_report.json   # 220 of 220 killed, run in a copy of the repository
 ```
 
 | File | Tests | What it pins |
@@ -121,11 +121,11 @@ Tokens and seconds, not dollars: nothing here is billed.
 
 ## 4. The mutation check
 
-177 deliberate breaks, one at a time (156 in the unit layer, 21 through the real line with stand-in models), run in a temporary copy of the repository so the working tree is never edited. A mutant counts as killed only when pytest ran and a test failed; a crash or a collection error does not count. The report with the test that killed each one is [`docs/mutation_report.json`](docs/mutation_report.json). Rows in `scripts/mutants_derived.py` (62 of them) take their edit from the code's syntax tree with `scripts/mutate_ast.py` (a function, a kind of change and a snippet of the code at that site), so rewording a line moves the site instead of leaving a typed old text that matches nowhere.
+220 deliberate breaks, one at a time (182 in the unit layer, 38 through the real line with stand-in models), run in a temporary copy of the repository so the working tree is never edited. A mutant counts as killed only when pytest ran and a test failed; a crash or a collection error does not count. The report with the test that killed each one is [`docs/mutation_report.json`](docs/mutation_report.json). The report merges one full run of all the unit rows with a second run, on the final code, of every pipeline row and the unit rows on `call.py` (the first run was made before a three line change to `call.py` was dropped again). Rows in `scripts/mutants_derived.py` (108 of them) take their edit from the code's syntax tree with `scripts/mutate_ast.py` (a function, a kind of change and a snippet of the code at that site), so rewording a line moves the site instead of leaving a typed old text that matches nowhere.
 
 Every guard rule, every branch of the state machine that decides something, every field parser check, every tenant, storage and delivery rule, and the barge-in, silence, keypad, recording, transfer and routing paths in the pipeline each have a mutant. The check found seven test gaps while it was being built, each now closed: an unclear recording answer (the test sent "I don't know", which the parser reads as a no), an unsupported practice area never driven through the machine, the callback task of a failed transfer never asserted, duplicate RTP packets, a recording gate that a second gate hid (found by timing how much of the greeting was in the recording), a failed transcription that the test did not require an answer to, and the refusal of a call with no common codec. One mutant was written and dropped as equivalent (`scripts/mutants_found.py` says why), and a branch that could not be reached was deleted instead of tested.
 
-Not covered: the mutants break code, not configuration, and the voice scenarios are not part of the mutation loop (a mutant that needs a 25 minute run is not a check anyone reruns).
+Not covered: a mutant whose failing test leaves a call open can hang the test process instead of failing (the run is then reported as an error after its timeout, and was rerun on its own: it was killed each time); the mutants break code, not configuration, and the voice scenarios are not part of the mutation loop (a mutant that needs a 25 minute run is not a check anyone reruns).
 
 ## 5. The two receivers
 
@@ -162,3 +162,24 @@ A reviewer who read the files instead of the code, and ran probes against a copy
 Left alone on purpose, with the reason: a torn last line of the audit file (needs a crash during an append), a new SSRC with a random sequence number, a redial 0.3 s after a dropped call, a 30 ms packet time, date guesses without a read back, and the group of DTMF, SDP and memory items, each scored low by the review; and every limit in the README.
 
 The spoken suite (section 3) was not replayed after this round. The phrasings it speaks are all in the text replay used for the impact check: the machine and guard fed the 21 scenario scripts and 25 everyday utterances give the same answers before and after.
+
+## 8. The second review round
+
+A second reviewer, who had not seen the first one's findings, ran probes against a copy of the repository after the first round's fixes and found eight more things that mattered on an ordinary day (the rest of its list was scored low and left alone, below). Each fix has a test that fails on the old code, a table or property test over the class, and mutation rows that are killed. What was measured, from the reviewer's own probe scripts replayed against this repository:
+
+| Finding | Before | After |
+|---|---|---|
+| `my back is hurt`, `my kids are hurt too` | the 911 line and a transfer (after hours the intake was cut short) | the intake goes on; `he is badly hurt`, `my son is hurt, please help`, `he is not breathing` still escalate (`test_emergency_report.py`) |
+| `an emergency hearing`, `an emergency protective order`, `kind of an emergency` | the 911 line and a transfer | the intake goes on; `this is an emergency` still escalates |
+| An ACK at 6 seconds, or never | no session, no media, no BYE, no record; 11 resent 200 OKs and a silent drop | the call starts on the late ACK; with none, BYE after 64*T1, media freed, a `dropped_no_ack` record with a callback task (`test_ack_window.py`, T1 shortened to 0.05 s and 0.2 s) |
+| A caller who hangs up mid intake, or during a transfer | a stored callback task and a console delivery only | the bridge gets it too, as `intake.incomplete` with the task (`test_outcome_receivers.py`, every outcome the machine can assign) |
+| A blocked number sent as ten digits | answered with 200 OK while the `+1` form got 603 | 603 (`test_caller_number.py`) |
+| `+14155550142;cpc=ordinary` as the caller id | stored as an empty number, skipped the block list and the one call per number rule | stored as `+14155550142`, counted as one caller |
+| `An Nguyen`, `Thi An Tran`, `Kevin Case`, `Mary Hurt`, `Daniel To` | refused twice, then a transfer | read back and confirmed (`test_names_stopwords.py`, model fallback included) |
+| A personal injury caller whose description said the other driver was arrested for DUI | declined as not an area the firm handles | the intake completes (`test_scope_confirmed_area.py`) |
+
+The RFC text behind the ACK fix is 3261 section 13.3.1.4: the 2xx is resent from T1 up to T2 until the ACK arrives, and "if the server retransmits the 2xx response for 64*T1 seconds without receiving an ACK, the dialog is confirmed, but the session SHOULD be terminated", with a BYE. Two things the longer ACK wait made easy to hit were fixed with it and are pinned in `test_ack_window.py`: the one call per number rule now counts an answered, unconfirmed caller as on the line (a redial behind the first call's ACK was answered), and a line that is stopped no longer leaves a voice pipeline running (`stop` waits for its live calls to file their records, and closes one that comes out of its ACK wait) (a mutation guard on the blocked caller check found it, because the test process hung at the end of the event loop instead of failing).
+
+Impact check, over inputs an ordinary day brings: every text row of both kept corpora, the 21 scenario scripts through the machine, 25 everyday utterances and 25 more written for the check (through the guard of both firms and the name reader), and 25 whole calls. Run against a copy of the code before the fixes and one after: 203 inputs, 179 identical, 24 different, none of the 24 a new refusal; the 24 are the findings above (a refusal the code no longer makes, or a name it now reads) and two whole calls whose description named a visa or a divorce after a confirmed car accident, which are now taken instead of declined. The corpus rows the old code already handled as expected (6 with a stated expectation) did not change. The emergency rule's seeded comparison (6,000 random utterances and every pinned phrasing) shows it fires on strictly fewer inputs than before and on none it did not fire on before, and every pinned live phrasing (19 plus the two the reviewer tested) still fires.
+
+Left alone on purpose: a mid call re-INVITE to a new media port is answered with the old SDP, `October 30th` said on October 26th reads as the future, a CANCEL right behind the INVITE, a burst of INVITEs past `max_calls`, the SIP stack's maps that are never pruned, a negated `call 911` ("I did not call 911") that still fires, and `fifteen days ago` or `eighteen months ago` in the plain date parser (the model fallback reads them). Sibling phrasings of the emergency class found by sweeping the rule and not fixed are listed in DECISIONS.md, with `someone is attacking me`, which the rule misses. The spoken suite was not replayed after this round; the impact check above is the text replay of what it speaks.

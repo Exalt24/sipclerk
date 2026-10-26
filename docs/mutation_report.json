@@ -1,6 +1,6 @@
 {
-  "killed": 177,
-  "total": 177,
+  "killed": 220,
+  "total": 220,
   "results": [
     {
       "id": "guard-emergency",
@@ -11,7 +11,7 @@
       "killed_by": [
         "tests/test_guard.py::test_emergency_is_its_own_verdict[this"
       ],
-      "seconds": 6.2
+      "seconds": 10.2
     },
     {
       "id": "guard-existing-client",
@@ -22,7 +22,7 @@
       "killed_by": [
         "tests/test_guard.py::test_existing_client_escalates[I'm"
       ],
-      "seconds": 6.4
+      "seconds": 9.1
     },
     {
       "id": "guard-human-request",
@@ -33,7 +33,7 @@
       "killed_by": [
         "tests/test_guard.py::test_human_request_escalates[I"
       ],
-      "seconds": 6.3
+      "seconds": 8.9
     },
     {
       "id": "guard-legal-advice-request",
@@ -44,7 +44,7 @@
       "killed_by": [
         "tests/test_guard.py::test_legal_advice_request_is_deflected[Do"
       ],
-      "seconds": 6.2
+      "seconds": 8.9
     },
     {
       "id": "guard-out-of-scope",
@@ -55,7 +55,7 @@
       "killed_by": [
         "tests/test_guard.py::test_out_of_scope_is_only_checked_when_asked_and_in_scope_words_win"
       ],
-      "seconds": 6.4
+      "seconds": 9.0
     },
     {
       "id": "guard-in-scope-wins",
@@ -66,18 +66,7 @@
       "killed_by": [
         "tests/test_guard.py::test_out_of_scope_is_only_checked_when_asked_and_in_scope_words_win"
       ],
-      "seconds": 6.2
-    },
-    {
-      "id": "guard-blocked-caller",
-      "file": "sipclerk/guard.py",
-      "desc": "the blocked caller list is ignored",
-      "layer": "unit",
-      "status": "KILLED",
-      "killed_by": [
-        "tests/test_guard.py::test_blocked_caller_is_refused_before_answering"
-      ],
-      "seconds": 6.4
+      "seconds": 9.2
     },
     {
       "id": "guard-promised-outcome",
@@ -88,7 +77,7 @@
       "killed_by": [
         "tests/test_guard.py::test_output_rules_block_and_replace[You"
       ],
-      "seconds": 6.3
+      "seconds": 8.0
     },
     {
       "id": "guard-legal-advice-out",
@@ -99,7 +88,7 @@
       "killed_by": [
         "tests/test_guard.py::test_output_rules_block_and_replace[You"
       ],
-      "seconds": 6.6
+      "seconds": 6.7
     },
     {
       "id": "guard-attorney-client",
@@ -110,7 +99,7 @@
       "killed_by": [
         "tests/test_guard.py::test_output_rules_block_and_replace[You're"
       ],
-      "seconds": 6.5
+      "seconds": 6.6
     },
     {
       "id": "guard-unmade-commitment",
@@ -121,7 +110,7 @@
       "killed_by": [
         "tests/test_guard.py::test_output_rules_block_and_replace[I"
       ],
-      "seconds": 6.5
+      "seconds": 6.2
     },
     {
       "id": "guard-output-off",
@@ -132,7 +121,7 @@
       "killed_by": [
         "tests/test_guard.py::test_output_rules_block_and_replace[You"
       ],
-      "seconds": 6.5
+      "seconds": 6.2
     },
     {
       "id": "guard-no-replacement",
@@ -143,7 +132,7 @@
       "killed_by": [
         "tests/test_guard.py::test_output_rules_block_and_replace[You"
       ],
-      "seconds": 6.5
+      "seconds": 6.4
     },
     {
       "id": "machine-retry-limit-off-by-one",
@@ -154,7 +143,7 @@
       "killed_by": [
         "tests/test_machine.py::test_invalid_answers_retry_then_escalate_a_required_field"
       ],
-      "seconds": 6.6
+      "seconds": 6.4
     },
     {
       "id": "machine-required-never-escalates",
@@ -165,7 +154,7 @@
       "killed_by": [
         "tests/test_machine.py::test_invalid_answers_retry_then_escalate_a_required_field"
       ],
-      "seconds": 6.5
+      "seconds": 7.0
     },
     {
       "id": "machine-no-readback",
@@ -176,7 +165,7 @@
       "killed_by": [
         "tests/test_machine.py::test_full_intake_completes_with_qualified_record_and_one_submit"
       ],
-      "seconds": 6.3
+      "seconds": 8.4
     },
     {
       "id": "machine-confirm-not-recorded",
@@ -187,7 +176,7 @@
       "killed_by": [
         "tests/test_machine.py::test_full_intake_completes_with_qualified_record_and_one_submit"
       ],
-      "seconds": 6.4
+      "seconds": 8.4
     },
     {
       "id": "machine-correction-ignored",
@@ -198,7 +187,7 @@
       "killed_by": [
         "tests/test_machine.py::test_caller_correction_inside_the_no_is_taken_and_read_back_again"
       ],
-      "seconds": 6.4
+      "seconds": 8.5
     },
     {
       "id": "machine-unclear-confirm-forever",
@@ -209,7 +198,7 @@
       "killed_by": [
         "tests/test_machine.py::test_unclear_confirm_is_asked_once_more_then_counts_as_no"
       ],
-      "seconds": 6.2
+      "seconds": 8.7
     },
     {
       "id": "machine-unclear-consent-records",
@@ -220,7 +209,7 @@
       "killed_by": [
         "tests/test_machine.py::test_consent_unclear_twice_means_no_recording"
       ],
-      "seconds": 6.3
+      "seconds": 8.2
     },
     {
       "id": "machine-consent-no-records",
@@ -231,7 +220,7 @@
       "killed_by": [
         "tests/test_machine.py::test_consent_yes_starts_recording_and_no_does_not"
       ],
-      "seconds": 6.2
+      "seconds": 8.3
     },
     {
       "id": "machine-consent-yes-not-recorded",
@@ -242,7 +231,7 @@
       "killed_by": [
         "tests/test_machine.py::test_consent_yes_starts_recording_and_no_does_not"
       ],
-      "seconds": 6.4
+      "seconds": 7.9
     },
     {
       "id": "machine-all-party-records-at-start",
@@ -253,7 +242,7 @@
       "killed_by": [
         "tests/test_machine.py::test_begin_gives_greeting_and_both_disclosures_and_asks_for_consent"
       ],
-      "seconds": 6.3
+      "seconds": 7.1
     },
     {
       "id": "machine-dtmf-zero-ignored",
@@ -264,7 +253,7 @@
       "killed_by": [
         "tests/test_machine.py::test_dtmf_zero_is_a_person_at_any_moment"
       ],
-      "seconds": 6.3
+      "seconds": 6.7
     },
     {
       "id": "machine-dtmf-zero-in-number",
@@ -275,7 +264,7 @@
       "killed_by": [
         "tests/test_machine.py::test_dtmf_digits_fill_the_phone_field_and_pound_ends_the_entry"
       ],
-      "seconds": 6.7
+      "seconds": 6.3
     },
     {
       "id": "machine-dtmf-logged",
@@ -297,7 +286,7 @@
       "killed_by": [
         "tests/test_machine.py::test_partial_digits_are_not_kept_forever_and_a_keypad_entry_is_never_completed_by_speech"
       ],
-      "seconds": 6.3
+      "seconds": 6.4
     },
     {
       "id": "machine-dtmf-star",
@@ -308,7 +297,7 @@
       "killed_by": [
         "tests/test_machine.py::test_dtmf_is_ignored_where_the_question_does_not_take_it_and_star_repeats"
       ],
-      "seconds": 6.3
+      "seconds": 8.1
     },
     {
       "id": "machine-silence-limit",
@@ -319,7 +308,7 @@
       "killed_by": [
         "tests/test_machine.py::test_silence_reprompts_then_ends_the_call_with_a_callback_task"
       ],
-      "seconds": 6.5
+      "seconds": 9.1
     },
     {
       "id": "machine-silence-not-reset",
@@ -330,7 +319,7 @@
       "killed_by": [
         "tests/test_machine.py::test_an_answer_resets_the_silence_count"
       ],
-      "seconds": 6.2
+      "seconds": 9.1
     },
     {
       "id": "machine-existing-client-flag",
@@ -341,7 +330,7 @@
       "killed_by": [
         "tests/test_machine.py::test_full_intake_completes_with_qualified_record_and_one_submit"
       ],
-      "seconds": 6.2
+      "seconds": 8.8
     },
     {
       "id": "machine-advice-repeat",
@@ -352,7 +341,7 @@
       "killed_by": [
         "tests/test_machine.py::test_legal_advice_request_is_deflected_then_asks_again_and_a_repeat_escalates"
       ],
-      "seconds": 6.3
+      "seconds": 9.1
     },
     {
       "id": "machine-unsupported-area",
@@ -363,7 +352,7 @@
       "killed_by": [
         "tests/test_machine.py::test_a_practice_area_the_firm_does_not_list_is_declined_even_when_a_model_named_it"
       ],
-      "seconds": 6.3
+      "seconds": 9.5
     },
     {
       "id": "machine-after-hours-transfer",
@@ -374,7 +363,7 @@
       "killed_by": [
         "tests/test_machine.py::test_after_hours_says_so_and_a_person_request_becomes_a_callback_not_a_transfer"
       ],
-      "seconds": 6.3
+      "seconds": 9.2
     },
     {
       "id": "machine-qualification-order",
@@ -385,7 +374,7 @@
       "killed_by": [
         "tests/test_machine.py::test_a_decline_outranks_a_priority_flag_when_both_rules_fail"
       ],
-      "seconds": 6.3
+      "seconds": 9.2
     },
     {
       "id": "machine-missing-field-passes",
@@ -396,7 +385,7 @@
       "killed_by": [
         "tests/test_machine.py::test_qualification_rules_read_missing_fields_as_failed"
       ],
-      "seconds": 6.2
+      "seconds": 9.0
     },
     {
       "id": "machine-boundary-days",
@@ -407,7 +396,7 @@
       "killed_by": [
         "tests/test_machine.py::test_the_three_year_window_includes_its_last_day_and_excludes_the_next"
       ],
-      "seconds": 6.3
+      "seconds": 9.2
     },
     {
       "id": "machine-key-ignores-call",
@@ -418,7 +407,7 @@
       "killed_by": [
         "tests/test_machine.py::test_record_is_stamped_with_tenant_version_and_hash_and_a_stable_key"
       ],
-      "seconds": 6.3
+      "seconds": 8.9
     },
     {
       "id": "machine-stamp-missing",
@@ -429,7 +418,7 @@
       "killed_by": [
         "tests/test_machine.py::test_record_is_stamped_with_tenant_version_and_hash_and_a_stable_key"
       ],
-      "seconds": 6.3
+      "seconds": 8.4
     },
     {
       "id": "machine-no-inactive-guard",
@@ -440,7 +429,7 @@
       "killed_by": [
         "tests/test_machine_property.py::test_invariants_hold_over_a_random_call[0]"
       ],
-      "seconds": 6.3
+      "seconds": 8.7
     },
     {
       "id": "machine-no-submit",
@@ -451,7 +440,7 @@
       "killed_by": [
         "tests/test_machine.py::test_full_intake_completes_with_qualified_record_and_one_submit"
       ],
-      "seconds": 6.3
+      "seconds": 7.1
     },
     {
       "id": "machine-optional-skip",
@@ -462,7 +451,7 @@
       "killed_by": [
         "tests/test_machine.py::test_optional_field_is_skipped_after_the_limit_and_when_the_caller_declines"
       ],
-      "seconds": 6.2
+      "seconds": 7.0
     },
     {
       "id": "machine-transfer-failed-no-task",
@@ -473,7 +462,7 @@
       "killed_by": [
         "tests/test_machine.py::test_transfer_result_connected_hands_the_call_over_and_failed_leaves_a_callback"
       ],
-      "seconds": 6.3
+      "seconds": 6.8
     },
     {
       "id": "parsers-nanp",
@@ -484,7 +473,7 @@
       "killed_by": [
         "tests/test_parsers.py::test_phone_rejected[012"
       ],
-      "seconds": 6.4
+      "seconds": 7.1
     },
     {
       "id": "parsers-country-code",
@@ -495,7 +484,7 @@
       "killed_by": [
         "tests/test_parsers.py::test_phone_ok[one"
       ],
-      "seconds": 6.4
+      "seconds": 6.9
     },
     {
       "id": "parsers-future-date",
@@ -506,7 +495,7 @@
       "killed_by": [
         "tests/test_parsers.py::test_date_future_and_too_old_and_garbage"
       ],
-      "seconds": 6.5
+      "seconds": 7.1
     },
     {
       "id": "parsers-too-old",
@@ -517,7 +506,7 @@
       "killed_by": [
         "tests/test_parsers.py::test_date_future_and_too_old_and_garbage"
       ],
-      "seconds": 6.5
+      "seconds": 7.0
     },
     {
       "id": "parsers-last-name",
@@ -528,7 +517,7 @@
       "killed_by": [
         "tests/test_machine.py::test_invalid_answers_retry_then_escalate_a_required_field"
       ],
-      "seconds": 6.3
+      "seconds": 6.9
     },
     {
       "id": "parsers-name-length",
@@ -539,7 +528,7 @@
       "killed_by": [
         "tests/test_parsers.py::test_name_rejected[yes-not_a_name]"
       ],
-      "seconds": 6.4
+      "seconds": 7.1
     },
     {
       "id": "parsers-skip-required",
@@ -550,7 +539,7 @@
       "killed_by": [
         "tests/test_parsers.py::test_skip_only_for_optional_questions"
       ],
-      "seconds": 6.4
+      "seconds": 7.3
     },
     {
       "id": "parsers-email",
@@ -561,7 +550,7 @@
       "killed_by": [
         "tests/test_machine.py::test_optional_field_is_skipped_after_the_limit_and_when_the_caller_declines"
       ],
-      "seconds": 6.2
+      "seconds": 7.2
     },
     {
       "id": "parsers-yesno-ambiguity",
@@ -572,7 +561,7 @@
       "killed_by": [
         "tests/test_parsers.py::test_yesno_ambiguous_and_unclear"
       ],
-      "seconds": 6.4
+      "seconds": 9.4
     },
     {
       "id": "parsers-area-ambiguity",
@@ -583,7 +572,7 @@
       "killed_by": [
         "tests/test_parsers.py::test_area_by_keyword_and_ambiguity"
       ],
-      "seconds": 6.4
+      "seconds": 9.7
     },
     {
       "id": "parsers-min-words",
@@ -594,7 +583,7 @@
       "killed_by": [
         "tests/test_parsers.py::test_option_and_text"
       ],
-      "seconds": 6.5
+      "seconds": 9.4
     },
     {
       "id": "parsers-mask",
@@ -605,7 +594,7 @@
       "killed_by": [
         "tests/test_parsers.py::test_masking_for_the_console_copy"
       ],
-      "seconds": 6.4
+      "seconds": 9.4
     },
     {
       "id": "tenants-duplicate-did",
@@ -616,7 +605,7 @@
       "killed_by": [
         "tests/test_tenants.py::test_two_tenants_cannot_answer_the_same_number"
       ],
-      "seconds": 6.7
+      "seconds": 9.7
     },
     {
       "id": "tenants-extra-fields",
@@ -627,7 +616,7 @@
       "killed_by": [
         "tests/test_tenants.py::test_bad_configs_are_refused_with_a_reason[<lambda>-unknown_field]"
       ],
-      "seconds": 6.6
+      "seconds": 9.4
     },
     {
       "id": "tenants-hours-end",
@@ -638,7 +627,7 @@
       "killed_by": [
         "tests/test_tenants.py::test_opening_hours_follow_the_firms_own_clock"
       ],
-      "seconds": 6.8
+      "seconds": 9.8
     },
     {
       "id": "tenants-hash-order",
@@ -649,7 +638,7 @@
       "killed_by": [
         "tests/test_tenants.py::test_hash_follows_content_not_formatting"
       ],
-      "seconds": 6.5
+      "seconds": 9.1
     },
     {
       "id": "tenants-rule-field",
@@ -660,7 +649,7 @@
       "killed_by": [
         "tests/test_tenants.py::test_bad_configs_are_refused_with_a_reason[<lambda>-unknown"
       ],
-      "seconds": 6.6
+      "seconds": 9.7
     },
     {
       "id": "store-shared-key",
@@ -671,7 +660,7 @@
       "killed_by": [
         "tests/test_store.py::test_a_file_moved_to_another_call_or_tenant_will_not_decrypt"
       ],
-      "seconds": 7.0
+      "seconds": 10.1
     },
     {
       "id": "store-no-aad",
@@ -682,7 +671,7 @@
       "killed_by": [
         "tests/test_store.py::test_a_file_moved_to_another_call_or_tenant_will_not_decrypt"
       ],
-      "seconds": 7.0
+      "seconds": 9.7
     },
     {
       "id": "store-tenant-check",
@@ -693,7 +682,7 @@
       "killed_by": [
         "tests/test_store.py::test_another_firms_staff_cannot_read_even_with_a_matching_role"
       ],
-      "seconds": 6.7
+      "seconds": 10.2
     },
     {
       "id": "store-recording-roles",
@@ -704,7 +693,7 @@
       "killed_by": [
         "tests/test_store.py::test_least_privilege_staff_cannot_play_recordings"
       ],
-      "seconds": 6.9
+      "seconds": 10.4
     },
     {
       "id": "store-audit-read",
@@ -715,7 +704,7 @@
       "killed_by": [
         "tests/test_store.py::test_every_read_leaves_one_audit_line_and_denials_are_audited_too"
       ],
-      "seconds": 6.8
+      "seconds": 10.0
     },
     {
       "id": "store-audit-denied",
@@ -726,7 +715,7 @@
       "killed_by": [
         "tests/test_store.py::test_every_read_leaves_one_audit_line_and_denials_are_audited_too"
       ],
-      "seconds": 6.9
+      "seconds": 9.6
     },
     {
       "id": "store-audit-chain",
@@ -737,7 +726,7 @@
       "killed_by": [
         "tests/test_store.py::test_every_read_leaves_one_audit_line_and_denials_are_audited_too"
       ],
-      "seconds": 6.9
+      "seconds": 9.3
     },
     {
       "id": "store-call-id",
@@ -748,7 +737,7 @@
       "killed_by": [
         "tests/test_store.py::test_bad_inputs_are_refused"
       ],
-      "seconds": 6.8
+      "seconds": 8.7
     },
     {
       "id": "store-master-key",
@@ -759,7 +748,7 @@
       "killed_by": [
         "tests/test_store.py::test_keys_differ_per_tenant_and_master_must_be_long_enough"
       ],
-      "seconds": 6.8
+      "seconds": 8.3
     },
     {
       "id": "delivery-duplicate-enqueue",
@@ -770,7 +759,7 @@
       "killed_by": [
         "tests/test_delivery.py::test_enqueue_is_idempotent_per_target_and_key"
       ],
-      "seconds": 7.3
+      "seconds": 8.6
     },
     {
       "id": "delivery-5xx-not-retried",
@@ -781,7 +770,7 @@
       "killed_by": [
         "tests/test_delivery.py::test_server_error_retries_with_backoff_and_the_call_is_untouched"
       ],
-      "seconds": 7.1
+      "seconds": 8.3
     },
     {
       "id": "delivery-attempt-limit",
@@ -792,7 +781,7 @@
       "killed_by": [
         "tests/test_delivery.py::test_gives_up_after_the_attempt_limit"
       ],
-      "seconds": 7.2
+      "seconds": 7.8
     },
     {
       "id": "delivery-no-backoff",
@@ -803,7 +792,7 @@
       "killed_by": [
         "tests/test_delivery.py::test_server_error_retries_with_backoff_and_the_call_is_untouched"
       ],
-      "seconds": 7.2
+      "seconds": 8.3
     },
     {
       "id": "delivery-bridge-signature",
@@ -814,7 +803,7 @@
       "killed_by": [
         "tests/test_delivery.py::test_bridge_payload_is_clio_shaped_and_signature_verifies"
       ],
-      "seconds": 7.2
+      "seconds": 7.9
     },
     {
       "id": "delivery-console-signature",
@@ -825,7 +814,7 @@
       "killed_by": [
         "tests/test_delivery.py::test_console_signature_follows_the_documented_header"
       ],
-      "seconds": 9.3
+      "seconds": 10.2
     },
     {
       "id": "delivery-key-header",
@@ -836,7 +825,7 @@
       "killed_by": [
         "tests/test_delivery.py::test_server_error_retries_with_backoff_and_the_call_is_untouched"
       ],
-      "seconds": 7.4
+      "seconds": 9.4
     },
     {
       "id": "delivery-console-mask",
@@ -847,7 +836,7 @@
       "killed_by": [
         "tests/test_delivery.py::test_console_payload_matches_the_documented_ingest_contract"
       ],
-      "seconds": 9.2
+      "seconds": 12.3
     },
     {
       "id": "sip-dtmf-dedupe",
@@ -858,7 +847,7 @@
       "killed_by": [
         "tests/test_sip_stack.py::test_call_audio_dtmf_and_bye_over_udp"
       ],
-      "seconds": 10.5
+      "seconds": 12.7
     },
     {
       "id": "sip-retransmit",
@@ -869,7 +858,7 @@
       "killed_by": [
         "tests/test_sip_stack.py::test_a_retransmitted_invite_gets_the_same_answer_not_a_second_call"
       ],
-      "seconds": 12.2
+      "seconds": 13.4
     },
     {
       "id": "sip-codec-order",
@@ -880,7 +869,7 @@
       "killed_by": [
         "tests/test_sip_stack.py::test_sdp_roundtrip_and_codec_negotiation"
       ],
-      "seconds": 9.2
+      "seconds": 11.1
     },
     {
       "id": "sip-bye",
@@ -891,7 +880,7 @@
       "killed_by": [
         "tests/test_sip_stack.py::test_call_audio_dtmf_and_bye_over_udp"
       ],
-      "seconds": 12.6
+      "seconds": 13.6
     },
     {
       "id": "sip-dedupe-seq",
@@ -902,7 +891,7 @@
       "killed_by": [
         "tests/test_sip_stack.py::test_a_duplicate_or_late_rtp_packet_is_not_decoded_twice"
       ],
-      "seconds": 12.2
+      "seconds": 13.4
     },
     {
       "id": "delivery-unqualified-record",
@@ -913,7 +902,7 @@
       "killed_by": [
         "tests/test_machine_property.py::test_every_record_a_random_call_can_produce_can_be_delivered[0]"
       ],
-      "seconds": 6.4
+      "seconds": 7.3
     },
     {
       "id": "proc-submit-error",
@@ -924,7 +913,7 @@
       "killed_by": [
         "tests/test_processors.py::test_a_failing_submit_is_recorded_and_the_call_still_ends"
       ],
-      "seconds": 13.2
+      "seconds": 14.8
     },
     {
       "id": "proc-transfer-error",
@@ -935,7 +924,7 @@
       "killed_by": [
         "tests/test_processors.py::test_a_transfer_that_raises_becomes_a_failed_transfer_with_the_callback_line"
       ],
-      "seconds": 13.6
+      "seconds": 17.1
     },
     {
       "id": "proc-junk-filter",
@@ -946,7 +935,7 @@
       "killed_by": [
         "tests/test_processors.py::test_phantom_words_are_not_passed_on_as_the_callers_answer[You-0.8-0.1-False]"
       ],
-      "seconds": 12.6
+      "seconds": 16.8
     },
     {
       "id": "proc-no-speech",
@@ -957,7 +946,7 @@
       "killed_by": [
         "tests/test_processors.py::test_phantom_words_are_not_passed_on_as_the_callers_answer[Jordan"
       ],
-      "seconds": 13.0
+      "seconds": 17.5
     },
     {
       "id": "proc-backchannel",
@@ -968,7 +957,7 @@
       "killed_by": [
         "tests/test_processors.py::test_a_backchannel_gets_a_kind_word_and_does_not_count_as_an_answer"
       ],
-      "seconds": 13.3
+      "seconds": 18.6
     },
     {
       "id": "proc-guard-before-model",
@@ -979,7 +968,7 @@
       "killed_by": [
         "tests/test_processors.py::test_the_guard_screens_the_words_before_the_model_is_asked"
       ],
-      "seconds": 12.5
+      "seconds": 16.8
     },
     {
       "id": "llm-outage",
@@ -990,7 +979,7 @@
       "killed_by": [
         "tests/test_llm.py::test_every_job_returns_none_when_the_provider_is_down"
       ],
-      "seconds": 12.3
+      "seconds": 16.7
     },
     {
       "id": "llm-area-list",
@@ -1001,7 +990,7 @@
       "killed_by": [
         "tests/test_llm.py::test_classify_accepts_other_and_refuses_anything_outside_the_list"
       ],
-      "seconds": 12.2
+      "seconds": 16.2
     },
     {
       "id": "llm-timeout",
@@ -1012,7 +1001,7 @@
       "killed_by": [
         "tests/test_llm.py::test_a_slow_provider_is_cut_off_at_the_time_limit"
       ],
-      "seconds": 14.2
+      "seconds": 19.3
     },
     {
       "id": "llm-ack-length",
@@ -1023,7 +1012,7 @@
       "killed_by": [
         "tests/test_llm.py::test_acknowledgement_is_one_short_sentence_or_nothing"
       ],
-      "seconds": 12.5
+      "seconds": 15.6
     },
     {
       "id": "machine-endpointing-by-type",
@@ -1034,7 +1023,7 @@
       "killed_by": [
         "tests/test_processors.py::test_the_voice_activity_detector_waits_longer_while_the_caller_tells_a_story_or_says_a_number"
       ],
-      "seconds": 43.8
+      "seconds": 47.4
     },
     {
       "id": "proc-endpointing-follows-machine",
@@ -1045,7 +1034,7 @@
       "killed_by": [
         "tests/test_processors.py::test_the_voice_activity_detector_waits_longer_while_the_caller_tells_a_story_or_says_a_number"
       ],
-      "seconds": 43.8
+      "seconds": 49.7
     },
     {
       "id": "machine-partial-forgotten",
@@ -1056,7 +1045,7 @@
       "killed_by": [
         "tests/test_machine.py::test_phone_digits_heard_so_far_are_kept_and_only_the_rest_is_asked_for"
       ],
-      "seconds": 6.3
+      "seconds": 8.8
     },
     {
       "id": "machine-partial-limit",
@@ -1067,7 +1056,7 @@
       "killed_by": [
         "tests/test_machine.py::test_partial_digits_are_not_kept_forever_and_a_keypad_entry_is_never_completed_by_speech"
       ],
-      "seconds": 6.2
+      "seconds": 8.4
     },
     {
       "id": "machine-partial-keypad",
@@ -1078,7 +1067,7 @@
       "killed_by": [
         "tests/test_machine.py::test_partial_digits_are_not_kept_forever_and_a_keypad_entry_is_never_completed_by_speech"
       ],
-      "seconds": 6.2
+      "seconds": 9.9
     },
     {
       "id": "store-retention",
@@ -1089,7 +1078,7 @@
       "killed_by": [
         "tests/test_store.py::test_retention_deletes_only_expired_calls_per_tenant_setting"
       ],
-      "seconds": 3.6
+      "seconds": 5.1
     },
     {
       "id": "store-purge-audit",
@@ -1100,7 +1089,7 @@
       "killed_by": [
         "tests/test_store.py::test_retention_deletes_only_expired_calls_per_tenant_setting"
       ],
-      "seconds": 3.6
+      "seconds": 4.9
     },
     {
       "id": "store-purge-unreadable-counted",
@@ -1111,7 +1100,7 @@
       "killed_by": [
         "tests/test_store.py::test_a_half_written_call_folder_does_not_stop_the_purge_for_either_firm"
       ],
-      "seconds": 3.7
+      "seconds": 5.0
     },
     {
       "id": "store-purge-delete-failure-counted",
@@ -1122,7 +1111,7 @@
       "killed_by": [
         "tests/test_store.py::test_a_folder_that_cannot_be_deleted_is_counted_and_the_rest_go"
       ],
-      "seconds": 3.8
+      "seconds": 5.5
     },
     {
       "id": "store-purge-list-failure-counted",
@@ -1133,7 +1122,7 @@
       "killed_by": [
         "tests/test_store.py::test_a_firm_whose_calls_folder_cannot_be_listed_does_not_stop_the_other_firm"
       ],
-      "seconds": 3.9
+      "seconds": 5.6
     },
     {
       "id": "server-retention-at-start",
@@ -1144,7 +1133,7 @@
       "killed_by": [
         "tests/test_retention.py::test_the_first_pass_runs_at_start_with_the_default_interval"
       ],
-      "seconds": 6.2
+      "seconds": 7.9
     },
     {
       "id": "server-retention-loop",
@@ -1155,7 +1144,7 @@
       "killed_by": [
         "tests/test_retention.py::test_a_call_older_than_its_firms_retention_is_gone_after_the_loop_ran_and_each_firm_keeps_its_own_window"
       ],
-      "seconds": 11.0
+      "seconds": 12.9
     },
     {
       "id": "server-retention-failure-counted",
@@ -1166,7 +1155,7 @@
       "killed_by": [
         "tests/test_retention.py::test_a_failing_pass_is_logged_and_the_next_interval_tries_again"
       ],
-      "seconds": 6.4
+      "seconds": 8.3
     },
     {
       "id": "server-retention-failure-logged",
@@ -1177,7 +1166,7 @@
       "killed_by": [
         "tests/test_retention.py::test_a_failing_pass_is_logged_and_the_next_interval_tries_again"
       ],
-      "seconds": 6.3
+      "seconds": 8.1
     },
     {
       "id": "outbox-body-never-written",
@@ -1188,7 +1177,7 @@
       "killed_by": [
         "tests/test_outbox_at_rest.py::test_no_plaintext_caller_data_in_the_file_in_any_state[ashgrovepell]"
       ],
-      "seconds": 3.5
+      "seconds": 4.9
     },
     {
       "id": "outbox-needs-a-firm",
@@ -1199,7 +1188,7 @@
       "killed_by": [
         "tests/test_outbox_at_rest.py::test_no_plaintext_caller_data_in_the_file_in_any_state[ashgrovepell]"
       ],
-      "seconds": 3.4
+      "seconds": 4.8
     },
     {
       "id": "outbox-body-bound-to-its-call",
@@ -1210,7 +1199,7 @@
       "killed_by": [
         "tests/test_outbox_at_rest.py::test_a_body_is_bound_to_its_firm_call_and_target_so_a_moved_body_is_never_sent"
       ],
-      "seconds": 3.6
+      "seconds": 4.9
     },
     {
       "id": "outbox-purge-window",
@@ -1221,7 +1210,7 @@
       "killed_by": [
         "tests/test_outbox_at_rest.py::test_dead_and_delivered_entries_are_purged_at_their_firms_retention_and_a_waiting_one_never_is"
       ],
-      "seconds": 3.6
+      "seconds": 4.9
     },
     {
       "id": "outbox-purge-spares-waiting",
@@ -1232,7 +1221,7 @@
       "killed_by": [
         "tests/test_outbox_at_rest.py::test_dead_and_delivered_entries_are_purged_at_their_firms_retention_and_a_waiting_one_never_is"
       ],
-      "seconds": 3.6
+      "seconds": 4.9
     },
     {
       "id": "outbox-unopenable-dies",
@@ -1243,7 +1232,7 @@
       "killed_by": [
         "tests/test_outbox_at_rest.py::test_a_body_is_bound_to_its_firm_call_and_target_so_a_moved_body_is_never_sent"
       ],
-      "seconds": 3.6
+      "seconds": 4.8
     },
     {
       "id": "outbox-bad-line-counted",
@@ -1254,7 +1243,7 @@
       "killed_by": [
         "tests/test_outbox_at_rest.py::test_a_line_of_the_file_that_cannot_be_read_does_not_stop_the_rest_from_loading"
       ],
-      "seconds": 3.6
+      "seconds": 5.0
     },
     {
       "id": "delivery-4xx-retried",
@@ -1265,7 +1254,7 @@
       "killed_by": [
         "tests/test_outbox_at_rest.py::test_no_plaintext_caller_data_in_the_file_in_any_state[ashgrovepell]"
       ],
-      "seconds": 3.5
+      "seconds": 4.8
     },
     {
       "id": "delivery-backoff-index",
@@ -1276,7 +1265,7 @@
       "killed_by": [
         "tests/test_delivery_window.py::test_the_old_six_attempt_window_would_have_been_dead_after_31_seconds_and_this_one_is_not"
       ],
-      "seconds": 6.6
+      "seconds": 9.3
     },
     {
       "id": "delivery-window-off-by-one",
@@ -1287,7 +1276,7 @@
       "killed_by": [
         "tests/test_delivery_window.py::test_a_receiver_down_for_ten_minutes_still_receives_the_delivery_when_it_comes_back"
       ],
-      "seconds": 6.6
+      "seconds": 9.2
     },
     {
       "id": "delivery-dead-is-warned",
@@ -1298,7 +1287,7 @@
       "killed_by": [
         "tests/test_delivery_window.py::test_a_dead_entry_is_loud_counted_and_can_be_requeued"
       ],
-      "seconds": 6.9
+      "seconds": 9.2
     },
     {
       "id": "delivery-requeue-selective",
@@ -1309,7 +1298,7 @@
       "killed_by": [
         "tests/test_delivery_window.py::test_a_dead_entry_is_loud_counted_and_can_be_requeued"
       ],
-      "seconds": 6.8
+      "seconds": 9.2
     },
     {
       "id": "delivery-requeue-history",
@@ -1320,7 +1309,7 @@
       "killed_by": [
         "tests/test_delivery_window.py::test_a_dead_entry_is_loud_counted_and_can_be_requeued"
       ],
-      "seconds": 6.8
+      "seconds": 9.2
     },
     {
       "id": "delivery-requeue-request-consumed",
@@ -1331,7 +1320,7 @@
       "killed_by": [
         "tests/test_delivery_window.py::test_the_script_asks_the_running_line_to_requeue_and_can_edit_a_stopped_files"
       ],
-      "seconds": 6.9
+      "seconds": 9.3
     },
     {
       "id": "server-dead-reminder",
@@ -1342,7 +1331,7 @@
       "killed_by": [
         "tests/test_delivery_window.py::test_the_dead_count_is_in_the_servers_status_and_the_hourly_pass_says_so"
       ],
-      "seconds": 7.0
+      "seconds": 9.4
     },
     {
       "id": "script-requeue-now-or-ask",
@@ -1353,7 +1342,7 @@
       "killed_by": [
         "tests/test_delivery_window.py::test_the_script_asks_the_running_line_to_requeue_and_can_edit_a_stopped_files"
       ],
-      "seconds": 7.0
+      "seconds": 9.4
     },
     {
       "id": "call-end-transfer-cancels",
@@ -1364,7 +1353,7 @@
       "killed_by": [
         "tests/test_transfer_leg.py::test_the_caller_hanging_up_while_the_desk_phone_rings_cancels_the_desk_invite"
       ],
-      "seconds": 11.3
+      "seconds": 12.3
     },
     {
       "id": "call-drop-leg-hangs-up-the-desk",
@@ -1375,7 +1364,7 @@
       "killed_by": [
         "tests/test_transfer_leg.py::test_the_caller_hanging_up_while_the_desk_phone_hears_the_whisper_ends_the_desk_call_and_its_media"
       ],
-      "seconds": 11.8
+      "seconds": 12.8
     },
     {
       "id": "call-caller-bye-ends-an-unbridged-call",
@@ -1386,7 +1375,7 @@
       "killed_by": [
         "tests/test_transfer_leg.py::test_the_caller_hanging_up_while_the_desk_phone_rings_cancels_the_desk_invite"
       ],
-      "seconds": 11.2
+      "seconds": 12.3
     },
     {
       "id": "stack-cancel-is-sent",
@@ -1397,7 +1386,7 @@
       "killed_by": [
         "tests/test_transfer_leg.py::test_the_caller_hanging_up_while_the_desk_phone_rings_cancels_the_desk_invite"
       ],
-      "seconds": 8.2
+      "seconds": 10.4
     },
     {
       "id": "stack-cancel-crossing-2xx",
@@ -1408,7 +1397,7 @@
       "killed_by": [
         "tests/test_transfer_leg.py::test_a_2xx_that_crosses_our_cancel_is_acknowledged_and_hung_up"
       ],
-      "seconds": 32.8
+      "seconds": 35.5
     },
     {
       "id": "stack-invite-task-ends-with-the-dialog",
@@ -1419,7 +1408,7 @@
       "killed_by": [
         "tests/test_transfer_leg.py::test_the_caller_hanging_up_while_the_desk_phone_rings_cancels_the_desk_invite"
       ],
-      "seconds": 9.4
+      "seconds": 11.2
     },
     {
       "id": "parsers-squash-keeps-letters",
@@ -1430,7 +1419,7 @@
       "killed_by": [
         "tests/test_names_unicode.py::test_a_real_name_comes_out_exactly_as_written[Jos\\xe9"
       ],
-      "seconds": 3.5
+      "seconds": 5.0
     },
     {
       "id": "parsers-squash-digits-flag",
@@ -1441,7 +1430,7 @@
       "killed_by": [
         "tests/test_names_unicode.py::test_a_real_name_comes_out_exactly_as_written[Jos\\xe9"
       ],
-      "seconds": 3.5
+      "seconds": 4.6
     },
     {
       "id": "parse-name-digits-are-not-letters",
@@ -1452,7 +1441,7 @@
       "killed_by": [
         "tests/test_names_unicode.py::test_class_every_ascii_input_reads_exactly_as_the_old_parser_read_it"
       ],
-      "seconds": 3.5
+      "seconds": 4.8
     },
     {
       "id": "dial-plus-sign",
@@ -1463,7 +1452,7 @@
       "killed_by": [
         "tests/test_dialled_number.py::test_every_shape_of_the_request_uri_finds_the_first_firm[sip:0014155550101@h]"
       ],
-      "seconds": 5.9
+      "seconds": 6.2
     },
     {
       "id": "dial-00-prefix",
@@ -1474,7 +1463,7 @@
       "killed_by": [
         "tests/test_dialled_number.py::test_every_shape_of_the_request_uri_finds_the_first_firm[sip:0014155550101@h]"
       ],
-      "seconds": 5.9
+      "seconds": 6.4
     },
     {
       "id": "dial-eleven-digits",
@@ -1485,7 +1474,7 @@
       "killed_by": [
         "tests/test_dialled_number.py::test_every_shape_of_the_request_uri_finds_the_first_firm[sip:14155550101@h]"
       ],
-      "seconds": 5.9
+      "seconds": 6.4
     },
     {
       "id": "dial-candidates-distinct",
@@ -1496,7 +1485,7 @@
       "killed_by": [
         "tests/test_dialled_number.py::test_every_shape_of_the_request_uri_finds_the_first_firm[sip:+14155550101@h]"
       ],
-      "seconds": 5.9
+      "seconds": 6.3
     },
     {
       "id": "tenants-resolve-international",
@@ -1507,7 +1496,7 @@
       "killed_by": [
         "tests/test_dialled_number.py::test_every_shape_of_the_request_uri_finds_the_first_firm[sip:+14155550101@h]"
       ],
-      "seconds": 6.0
+      "seconds": 6.1
     },
     {
       "id": "tenants-resolve-national-ten-digits",
@@ -1518,7 +1507,7 @@
       "killed_by": [
         "tests/test_dialled_number.py::test_every_shape_of_the_request_uri_finds_the_first_firm[sip:4155550101@h]"
       ],
-      "seconds": 5.9
+      "seconds": 6.2
     },
     {
       "id": "tenants-resolve-national-unique",
@@ -1529,7 +1518,7 @@
       "killed_by": [
         "tests/test_dialled_number.py::test_every_shape_of_the_request_uri_finds_the_first_firm[sip:4155550101@h]"
       ],
-      "seconds": 5.9
+      "seconds": 6.0
     },
     {
       "id": "stack-400-needs-the-five-headers",
@@ -1540,7 +1529,7 @@
       "killed_by": [
         "tests/test_dialled_number.py::test_an_invite_the_stack_cannot_parse_gets_a_400_and_garbage_is_still_dropped"
       ],
-      "seconds": 7.6
+      "seconds": 7.9
     },
     {
       "id": "stack-400-only-for-an-invite",
@@ -1551,7 +1540,7 @@
       "killed_by": [
         "tests/test_dialled_number.py::test_an_invite_the_stack_cannot_parse_gets_a_400_and_garbage_is_still_dropped"
       ],
-      "seconds": 7.7
+      "seconds": 8.2
     },
     {
       "id": "message-record-route-echo",
@@ -1562,7 +1551,7 @@
       "killed_by": [
         "tests/test_route_set.py::test_the_200_ok_echoes_every_record_route_in_order_and_the_bye_follows_them"
       ],
-      "seconds": 4.5
+      "seconds": 4.7
     },
     {
       "id": "message-record-route-not-on-refusals",
@@ -1573,7 +1562,7 @@
       "killed_by": [
         "tests/test_route_set.py::test_the_200_ok_echoes_every_record_route_in_order_and_the_bye_follows_them"
       ],
-      "seconds": 4.5
+      "seconds": 4.6
     },
     {
       "id": "message-loose-router-test",
@@ -1584,7 +1573,7 @@
       "killed_by": [
         "tests/test_route_set.py::test_a_loose_router_is_the_one_with_the_lr_parameter"
       ],
-      "seconds": 3.4
+      "seconds": 3.5
     },
     {
       "id": "message-list-header-quoted-comma",
@@ -1595,7 +1584,7 @@
       "killed_by": [
         "tests/test_route_set.py::test_a_list_header_is_split_into_its_entries_in_order[values0-entries0]"
       ],
-      "seconds": 3.4
+      "seconds": 3.5
     },
     {
       "id": "stack-no-route-set-no-route",
@@ -1606,7 +1595,7 @@
       "killed_by": [
         "tests/test_route_set.py::test_the_200_ok_echoes_every_record_route_in_order_and_the_bye_follows_them"
       ],
-      "seconds": 4.9
+      "seconds": 4.8
     },
     {
       "id": "stack-loose-router-first",
@@ -1617,7 +1606,7 @@
       "killed_by": [
         "tests/test_route_set.py::test_the_200_ok_echoes_every_record_route_in_order_and_the_bye_follows_them"
       ],
-      "seconds": 4.8
+      "seconds": 5.1
     },
     {
       "id": "stack-next-hop-is-the-first-route",
@@ -1628,7 +1617,7 @@
       "killed_by": [
         "tests/test_route_set.py::test_the_200_ok_echoes_every_record_route_in_order_and_the_bye_follows_them"
       ],
-      "seconds": 4.8
+      "seconds": 4.9
     },
     {
       "id": "server-withheld-caller-is-not-a-duplicate",
@@ -1637,9 +1626,9 @@
       "layer": "unit",
       "status": "KILLED",
       "killed_by": [
-        "tests/test_anonymous_callers.py::test_a_withheld_caller_id_is_never_a_duplicate_of_another_withheld_one[]"
+        "tests/test_anonymous_callers.py::test_a_real_number_already_in_a_call_on_the_same_line_is_a_duplicate[+14155550192]"
       ],
-      "seconds": 5.7
+      "seconds": 6.2
     },
     {
       "id": "server-duplicate-needs-the-same-firm",
@@ -1650,7 +1639,7 @@
       "killed_by": [
         "tests/test_anonymous_callers.py::test_a_real_number_already_in_a_call_on_the_same_line_is_a_duplicate[+14155550192]"
       ],
-      "seconds": 5.7
+      "seconds": 5.9
     },
     {
       "id": "message-withheld-placeholder-numbers",
@@ -1661,7 +1650,7 @@
       "killed_by": [
         "tests/test_anonymous_callers.py::test_a_withheld_caller_id_is_never_a_duplicate_of_another_withheld_one[]"
       ],
-      "seconds": 5.8
+      "seconds": 6.1
     },
     {
       "id": "message-withheld-zeros",
@@ -1672,7 +1661,7 @@
       "killed_by": [
         "tests/test_anonymous_callers.py::test_a_withheld_caller_id_is_never_a_duplicate_of_another_withheld_one[0]"
       ],
-      "seconds": 5.7
+      "seconds": 6.0
     },
     {
       "id": "guard-emergency-account-dropped",
@@ -1683,7 +1672,7 @@
       "killed_by": [
         "tests/test_emergency_tense.py::test_an_account_of_something_that_happened_is_not_an_emergency[I"
       ],
-      "seconds": 3.4
+      "seconds": 3.5
     },
     {
       "id": "guard-emergency-present-verb-is-live",
@@ -1694,7 +1683,7 @@
       "killed_by": [
         "tests/test_emergency_tense.py::test_an_account_of_something_that_happened_is_not_an_emergency[I"
       ],
-      "seconds": 3.4
+      "seconds": 3.5
     },
     {
       "id": "guard-emergency-now-before-the-hit",
@@ -1705,7 +1694,7 @@
       "killed_by": [
         "tests/test_emergency_tense.py::test_an_account_of_something_that_happened_is_not_an_emergency[I"
       ],
-      "seconds": 3.4
+      "seconds": 3.6
     },
     {
       "id": "guard-emergency-past-clause",
@@ -1719,6 +1708,303 @@
       "seconds": 3.5
     },
     {
+      "id": "guard-report-is-checked",
+      "file": "sipclerk/guard.py",
+      "desc": "a report of an injury is taken for an alarm and an alarm is dropped as a report",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_emergency_report.py::test_an_injury_or_a_deadline_being_reported_is_not_an_emergency[I"
+      ],
+      "seconds": 3.5
+    },
+    {
+      "id": "guard-report-body-part",
+      "file": "sipclerk/guard.py",
+      "desc": "`my back is hurt` is an alarm and `my husband is hurt` is a report",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_emergency_report.py::test_an_injury_or_a_deadline_being_reported_is_not_an_emergency[my"
+      ],
+      "seconds": 3.5
+    },
+    {
+      "id": "guard-report-hedge",
+      "file": "sipclerk/guard.py",
+      "desc": "`kind of an emergency` is an alarm",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_emergency_report.py::test_an_injury_or_a_deadline_being_reported_is_not_an_emergency[my"
+      ],
+      "seconds": 3.5
+    },
+    {
+      "id": "guard-report-asks-for-help",
+      "file": "sipclerk/guard.py",
+      "desc": "`my son is hurt, please help` is dropped as a report",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_emergency_report.py::test_an_injury_or_a_deadline_being_reported_is_not_an_emergency[my"
+      ],
+      "seconds": 3.6
+    },
+    {
+      "id": "guard-report-badly-hurt",
+      "file": "sipclerk/guard.py",
+      "desc": "`my husband is badly hurt` is dropped as a report",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_emergency_report.py::test_an_injury_or_a_deadline_being_reported_is_not_an_emergency[my"
+      ],
+      "seconds": 3.6
+    },
+    {
+      "id": "machine-confirmed-area-wins",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "a word in the description turns away a caller whose area the firm takes",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_scope_confirmed_area.py::test_a_confirmed_in_scope_area_is_not_turned_away_by_a_word_in_the_description"
+      ],
+      "seconds": 3.8
+    },
+    {
+      "id": "machine-area-must-be-one-the-firm-takes",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "an area the firm does not list counts as confirmed in scope",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_scope_confirmed_area.py::test_a_confirmed_in_scope_area_is_not_turned_away_by_a_word_in_the_description"
+      ],
+      "seconds": 3.8
+    },
+    {
+      "id": "machine-unknown-area-keeps-the-check",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "a skipped area counts as confirmed and the word check is dropped",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_scope_confirmed_area.py::test_a_confirmed_in_scope_area_is_not_turned_away_by_a_word_in_the_description"
+      ],
+      "seconds": 3.7
+    },
+    {
+      "id": "parse-name-ambiguous-words-are-listed",
+      "file": "sipclerk/intake/parsers.py",
+      "desc": "An, To, Case and Hurt are not read as parts of a name",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_names_stopwords.py::test_a_real_name_that_contains_a_filler_word_is_read_as_a_name[Will"
+      ],
+      "seconds": 3.9
+    },
+    {
+      "id": "parse-name-ambiguous-needs-a-capital",
+      "file": "sipclerk/intake/parsers.py",
+      "desc": "a lower case an, to, case or hurt is read as part of a name, or a capitalised one is not",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_names_stopwords.py::test_a_real_name_that_contains_a_filler_word_is_read_as_a_name[My"
+      ],
+      "seconds": 3.9
+    },
+    {
+      "id": "parse-name-lone-ambiguous-word",
+      "file": "sipclerk/intake/parsers.py",
+      "desc": "`to` or `an` on its own is taken for a name",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_names_stopwords.py::test_a_real_name_that_contains_a_filler_word_is_read_as_a_name[My"
+      ],
+      "seconds": 3.8
+    },
+    {
+      "id": "proc-model-name-is-a-name",
+      "file": "sipclerk/voice/processors.py",
+      "desc": "the model's extracted name is rejected by the capital letter check",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_names_stopwords.py::test_the_model_fallback_is_not_rejected_by_the_same_check[it"
+      ],
+      "seconds": 4.0
+    },
+    {
+      "id": "guard-blocked-caller",
+      "file": "sipclerk/guard.py",
+      "desc": "the blocked caller list is ignored",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_caller_number.py::test_a_blocked_number_is_blocked_whichever_way_the_firm_wrote_it_and_the_carrier_sends_it[<sip:+14155550142@carrier.example>;tag=1-+14155550142-+14155550142]"
+      ],
+      "seconds": 8.4
+    },
+    {
+      "id": "caller-number-reads-uris",
+      "file": "sipclerk/sip/message.py",
+      "desc": "a From header with sip, sips or tel in it is read as a bare number",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_caller_number.py::test_every_shape_of_a_caller_id_reads_as_the_same_number[<sip:+14155550142@carrier.example>;tag=1-+14155550142]"
+      ],
+      "seconds": 8.4
+    },
+    {
+      "id": "caller-number-uri-form",
+      "file": "sipclerk/sip/message.py",
+      "desc": "a caller id written as a URI reads as nobody",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_caller_number.py::test_every_shape_of_a_caller_id_reads_as_the_same_number[<sip:+14155550142@carrier.example>;tag=1-+14155550142]"
+      ],
+      "seconds": 8.3
+    },
+    {
+      "id": "caller-number-bare-form",
+      "file": "sipclerk/sip/message.py",
+      "desc": "a number written without a scheme, as a firm writes its block list, reads as nobody",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_caller_number.py::test_a_blocked_number_is_blocked_whichever_way_the_firm_wrote_it_and_the_carrier_sends_it[<sip:+14155550142@carrier.example>;tag=1-+14155550142-+14155550142]"
+      ],
+      "seconds": 8.6
+    },
+    {
+      "id": "match-number-needs-the-input",
+      "file": "sipclerk/sip/message.py",
+      "desc": "an empty caller matches an empty entry",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_caller_number.py::test_a_blocked_number_is_blocked_whichever_way_the_firm_wrote_it_and_the_carrier_sends_it[<sip:+14155550142@carrier.example>;tag=1-+14155550142-+14155550142]"
+      ],
+      "seconds": 8.3
+    },
+    {
+      "id": "match-number-national-suffix",
+      "file": "sipclerk/sip/message.py",
+      "desc": "a ten digit caller is never matched to an international number that ends with it",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_caller_number.py::test_a_blocked_number_is_blocked_whichever_way_the_firm_wrote_it_and_the_carrier_sends_it[<sip:4155550142@carrier.example>;tag=1-4155550142-+14155550142]"
+      ],
+      "seconds": 8.7
+    },
+    {
+      "id": "match-number-national-unique",
+      "file": "sipclerk/sip/message.py",
+      "desc": "a ten digit number two countries share is taken for one of them",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_caller_number.py::test_a_blocked_number_is_blocked_whichever_way_the_firm_wrote_it_and_the_carrier_sends_it[<sip:4155550142@carrier.example>;tag=1-4155550142-+14155550142]"
+      ],
+      "seconds": 8.3
+    },
+    {
+      "id": "server-duplicate-uses-match-number",
+      "file": "sipclerk/server.py",
+      "desc": "a caller already in a call is never recognised",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_caller_number.py::test_the_one_call_per_number_rule_sees_through_every_pairing_of_shapes[<sip:+14155550142@carrier.example>;tag=1-<sip:+14155550142@carrier.example>;tag=1]"
+      ],
+      "seconds": 8.0
+    },
+    {
+      "id": "server-duplicate-ignores-withheld-open-calls",
+      "file": "sipclerk/server.py",
+      "desc": "a withheld open call is compared with the new caller",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_caller_number.py::test_the_one_call_per_number_rule_sees_through_every_pairing_of_shapes[<sip:+14155550142@carrier.example>;tag=1-<sip:+14155550142@carrier.example>;tag=1]"
+      ],
+      "seconds": 8.9
+    },
+    {
+      "id": "queue-call-bridge-needs-a-task",
+      "file": "sipclerk/delivery.py",
+      "desc": "a call that carries no task is queued for the case-management bridge",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_outcome_receivers.py::test_class_a_stored_task_has_an_outbox_entry_for_each_receiver[a"
+      ],
+      "seconds": 9.7
+    },
+    {
+      "id": "queue-call-console-gets-every-call",
+      "file": "sipclerk/delivery.py",
+      "desc": "a call is not queued for the console",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_outcome_receivers.py::test_class_a_stored_task_has_an_outbox_entry_for_each_receiver[a"
+      ],
+      "seconds": 8.3
+    },
+    {
+      "id": "queue-call-only-names-a-receiver",
+      "file": "sipclerk/delivery.py",
+      "desc": "the early bridge entry is queued for no receiver or for both",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_outcome_receivers.py::test_class_a_stored_task_has_an_outbox_entry_for_each_receiver[a"
+      ],
+      "seconds": 8.8
+    },
+    {
+      "id": "server-file-call-queues-the-receivers",
+      "file": "sipclerk/server.py",
+      "desc": "a finished call is stored and never queued for a receiver",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_outcome_receivers.py::test_class_a_stored_task_has_an_outbox_entry_for_each_receiver[a"
+      ],
+      "seconds": 8.4
+    },
+    {
+      "id": "machine-hangup-leaves-a-task",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "a caller who hangs up mid intake leaves no callback task",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_outcome_receivers.py::test_class_a_stored_task_has_an_outbox_entry_for_each_receiver[a"
+      ],
+      "seconds": 10.0
+    },
+    {
+      "id": "machine-hangup-keeps-an-outcome",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "a hang up overwrites the outcome a call already has",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_outcome_receivers.py::test_class_a_stored_task_has_an_outbox_entry_for_each_receiver[a"
+      ],
+      "seconds": 10.3
+    },
+    {
       "id": "pipe-barge-in",
       "file": "sipclerk/voice/processors.py",
       "desc": "talking over the agent does not interrupt it",
@@ -1727,7 +2013,7 @@
       "killed_by": [
         "tests/test_pipeline_fast.py::test_barge_in_silences_the_agent_within_a_second"
       ],
-      "seconds": 9.8
+      "seconds": 10.8
     },
     {
       "id": "pipe-clear-queue",
@@ -1738,7 +2024,7 @@
       "killed_by": [
         "tests/test_pipeline_fast.py::test_barge_in_silences_the_agent_within_a_second"
       ],
-      "seconds": 9.9
+      "seconds": 10.9
     },
     {
       "id": "pipe-silence-timer",
@@ -1749,7 +2035,7 @@
       "killed_by": [
         "tests/test_pipeline_fast.py::test_silence_is_reprompted_and_then_the_call_is_ended_with_a_callback"
       ],
-      "seconds": 70.2
+      "seconds": 71.1
     },
     {
       "id": "pipe-dtmf-forward",
@@ -1760,7 +2046,7 @@
       "killed_by": [
         "tests/test_pipeline_fast.py::test_pressing_zero_transfers_and_the_two_legs_are_bridged_with_a_whisper_first"
       ],
-      "seconds": 28.2
+      "seconds": 28.4
     },
     {
       "id": "pipe-dtmf-hook",
@@ -1771,7 +2057,7 @@
       "killed_by": [
         "tests/test_pipeline_fast.py::test_pressing_zero_transfers_and_the_two_legs_are_bridged_with_a_whisper_first"
       ],
-      "seconds": 28.2
+      "seconds": 28.6
     },
     {
       "id": "pipe-stt-failure",
@@ -1782,7 +2068,7 @@
       "killed_by": [
         "tests/test_pipeline_fast.py::test_a_failed_stt_utterance_asks_again_and_a_digit_pound_entry_fills_the_phone_field"
       ],
-      "seconds": 44.8
+      "seconds": 45.3
     },
     {
       "id": "pipe-recording-gate",
@@ -1793,7 +2079,7 @@
       "killed_by": [
         "tests/test_pipeline_fast.py::test_recording_is_kept_only_when_the_caller_agreed"
       ],
-      "seconds": 16.5
+      "seconds": 17.1
     },
     {
       "id": "pipe-whisper",
@@ -1804,7 +2090,7 @@
       "killed_by": [
         "tests/test_pipeline_fast.py::test_pressing_zero_transfers_and_the_two_legs_are_bridged_with_a_whisper_first"
       ],
-      "seconds": 35.0
+      "seconds": 35.7
     },
     {
       "id": "pipe-bridge",
@@ -1815,7 +2101,7 @@
       "killed_by": [
         "tests/test_pipeline_fast.py::test_pressing_zero_transfers_and_the_two_legs_are_bridged_with_a_whisper_first"
       ],
-      "seconds": 21.6
+      "seconds": 22.4
     },
     {
       "id": "pipe-desk-hangup",
@@ -1826,7 +2112,7 @@
       "killed_by": [
         "tests/test_pipeline_fast.py::test_the_desk_phone_hanging_up_ends_the_callers_call_too"
       ],
-      "seconds": 23.7
+      "seconds": 23.9
     },
     {
       "id": "pipe-agent-bye",
@@ -1837,29 +2123,7 @@
       "killed_by": [
         "tests/test_pipeline_fast.py::test_silence_is_reprompted_and_then_the_call_is_ended_with_a_callback"
       ],
-      "seconds": 31.3
-    },
-    {
-      "id": "pipe-bridge-delivery",
-      "file": "sipclerk/call.py",
-      "desc": "a finished intake is not sent to the case-management receiver",
-      "layer": "pipeline",
-      "status": "KILLED",
-      "killed_by": [
-        "tests/test_pipeline_fast.py::test_a_full_intake_with_stand_in_models_is_saved_and_queued_to_both_receivers"
-      ],
-      "seconds": 53.9
-    },
-    {
-      "id": "pipe-console-delivery",
-      "file": "sipclerk/call.py",
-      "desc": "the masked call is not sent to the console",
-      "layer": "pipeline",
-      "status": "KILLED",
-      "killed_by": [
-        "tests/test_pipeline_fast.py::test_a_full_intake_with_stand_in_models_is_saved_and_queued_to_both_receivers"
-      ],
-      "seconds": 53.9
+      "seconds": 31.7
     },
     {
       "id": "pipe-blocked-caller",
@@ -1870,7 +2134,7 @@
       "killed_by": [
         "tests/test_pipeline_fast.py::test_a_blocked_caller_is_declined_and_no_session_starts"
       ],
-      "seconds": 6.1
+      "seconds": 7.3
     },
     {
       "id": "pipe-wrong-number",
@@ -1892,7 +2156,7 @@
       "killed_by": [
         "tests/test_pipeline_fast.py::test_calls_beyond_the_limit_get_503_and_a_call_with_no_common_codec_gets_488"
       ],
-      "seconds": 6.2
+      "seconds": 6.3
     },
     {
       "id": "pipe-no-codec",
@@ -1903,7 +2167,7 @@
       "killed_by": [
         "tests/test_pipeline_fast.py::test_a_call_that_offers_no_codec_we_speak_is_refused_with_488"
       ],
-      "seconds": 6.0
+      "seconds": 6.6
     },
     {
       "id": "pipe-duplicate-call",
@@ -1914,7 +2178,7 @@
       "killed_by": [
         "tests/test_pipeline_fast.py::test_the_same_caller_cannot_hold_two_calls_on_one_line"
       ],
-      "seconds": 6.0
+      "seconds": 6.2
     },
     {
       "id": "pipe-anonymous-callers",
@@ -1925,7 +2189,7 @@
       "killed_by": [
         "tests/test_pipeline_fast.py::test_two_anonymous_callers_on_one_line_are_two_calls_a_real_number_twice_is_one_and_a_retransmission_is_not_a_second_call"
       ],
-      "seconds": 6.2
+      "seconds": 7.1
     },
     {
       "id": "pipe-caller-hangs-up-during-the-transfer",
@@ -1936,7 +2200,216 @@
       "killed_by": [
         "tests/test_pipeline_fast.py::test_the_caller_hanging_up_while_the_desk_phone_rings_cancels_the_desk_invite_and_still_leaves_a_callback"
       ],
-      "seconds": 20.2
+      "seconds": 20.8
+    },
+    {
+      "id": "pipe-bridge-delivery",
+      "file": "sipclerk/delivery.py",
+      "desc": "a finished intake is not sent to the case-management receiver",
+      "layer": "pipeline",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_pipeline_fast.py::test_the_saved_call_is_readable_only_by_that_firms_staff_and_both_deliveries_are_queued"
+      ],
+      "seconds": 15.8
+    },
+    {
+      "id": "pipe-console-delivery",
+      "file": "sipclerk/delivery.py",
+      "desc": "the masked call is not sent to the console",
+      "layer": "pipeline",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_pipeline_fast.py::test_the_saved_call_is_readable_only_by_that_firms_staff_and_both_deliveries_are_queued"
+      ],
+      "seconds": 14.8
+    },
+    {
+      "id": "pipe-hangup-reaches-the-bridge",
+      "file": "sipclerk/call.py",
+      "desc": "a caller who hangs up mid intake leaves no outcome, no task and nothing for the bridge",
+      "layer": "pipeline",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_outcome_receivers.py::test_a_caller_who_hangs_up_mid_intake_reaches_the_bridge_and_the_console"
+      ],
+      "seconds": 15.0
+    },
+    {
+      "id": "pipe-ack-window-is-64-t1",
+      "file": "sipclerk/sip/stack.py",
+      "desc": "the ACK is waited for far longer or far shorter than 64 * T1",
+      "layer": "pipeline",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_ack_window.py::test_an_ack_that_never_comes_ends_the_session_with_a_bye_frees_the_media_and_leaves_a_record_with_a_callback"
+      ],
+      "seconds": 24.4
+    },
+    {
+      "id": "pipe-ack-2xx-is-resent",
+      "file": "sipclerk/sip/stack.py",
+      "desc": "the 2xx is not resent while the ACK is awaited",
+      "layer": "pipeline",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_ack_window.py::test_an_ack_that_comes_after_the_old_five_second_wait_still_starts_the_call"
+      ],
+      "seconds": 17.7
+    },
+    {
+      "id": "pipe-ack-stops-the-resend",
+      "file": "sipclerk/sip/stack.py",
+      "desc": "the 2xx is resent and the call ended after the ACK came",
+      "layer": "pipeline",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_ack_window.py::test_an_ack_that_comes_after_the_old_five_second_wait_still_starts_the_call"
+      ],
+      "seconds": 17.2
+    },
+    {
+      "id": "pipe-ack-lost-is-told",
+      "file": "sipclerk/sip/stack.py",
+      "desc": "the line is never told the ACK was lost",
+      "layer": "pipeline",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_ack_window.py::test_an_ack_that_never_comes_ends_the_session_with_a_bye_frees_the_media_and_leaves_a_record_with_a_callback"
+      ],
+      "seconds": 25.4
+    },
+    {
+      "id": "pipe-ack-answer-from-the-stack",
+      "file": "sipclerk/sip/stack.py",
+      "desc": "a lost ACK is reported as a caller who hung up",
+      "layer": "pipeline",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_ack_window.py::test_an_ack_that_never_comes_ends_the_session_with_a_bye_frees_the_media_and_leaves_a_record_with_a_callback"
+      ],
+      "seconds": 25.9
+    },
+    {
+      "id": "pipe-ack-line-waits-for-the-stack",
+      "file": "sipclerk/server.py",
+      "desc": "a call whose ACK came is dropped, or one whose ACK did not is started",
+      "layer": "pipeline",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_ack_window.py::test_an_ack_that_comes_in_time_starts_the_call_and_the_window_running_out_later_does_nothing_to_it"
+      ],
+      "seconds": 10.6
+    },
+    {
+      "id": "pipe-ack-lost-is-recorded",
+      "file": "sipclerk/server.py",
+      "desc": "a call whose ACK never came leaves no record",
+      "layer": "pipeline",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_ack_window.py::test_an_ack_that_never_comes_ends_the_session_with_a_bye_frees_the_media_and_leaves_a_record_with_a_callback"
+      ],
+      "seconds": 26.2
+    },
+    {
+      "id": "pipe-ack-record-has-the-cause",
+      "file": "sipclerk/server.py",
+      "desc": "the record of a lost ACK does not name the cause",
+      "layer": "pipeline",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_ack_window.py::test_an_ack_that_never_comes_ends_the_session_with_a_bye_frees_the_media_and_leaves_a_record_with_a_callback"
+      ],
+      "seconds": 22.0
+    },
+    {
+      "id": "pipe-ack-record-is-filed",
+      "file": "sipclerk/server.py",
+      "desc": "the record of a lost ACK is built and never stored or queued",
+      "layer": "pipeline",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_ack_window.py::test_an_ack_that_never_comes_ends_the_session_with_a_bye_frees_the_media_and_leaves_a_record_with_a_callback"
+      ],
+      "seconds": 26.8
+    },
+    {
+      "id": "pipe-ack-record-leaves-a-task",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "a call whose ACK never came leaves no callback task",
+      "layer": "pipeline",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_ack_window.py::test_an_ack_that_never_comes_ends_the_session_with_a_bye_frees_the_media_and_leaves_a_record_with_a_callback"
+      ],
+      "seconds": 21.5
+    },
+    {
+      "id": "pipe-ack-unconfirmed-call-is-on-the-line",
+      "file": "sipclerk/server.py",
+      "desc": "a caller answered and not yet confirmed can be answered a second time",
+      "layer": "pipeline",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_ack_window.py::test_an_ack_that_comes_in_time_starts_the_call_and_the_window_running_out_later_does_nothing_to_it"
+      ],
+      "seconds": 11.6
+    },
+    {
+      "id": "pipe-ack-unconfirmed-call-is-for-its-firm",
+      "file": "sipclerk/server.py",
+      "desc": "an unconfirmed call blocks the other firm's line or none",
+      "layer": "pipeline",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_ack_window.py::test_a_caller_who_has_been_answered_and_not_yet_confirmed_blocks_a_second_call_from_the_same_number"
+      ],
+      "seconds": 29.7
+    },
+    {
+      "id": "pipe-ack-unconfirmed-call-is-forgotten",
+      "file": "sipclerk/server.py",
+      "desc": "a call that ended without a session still blocks its number",
+      "layer": "pipeline",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_ack_window.py::test_a_caller_who_has_been_answered_and_not_yet_confirmed_blocks_a_second_call_from_the_same_number"
+      ],
+      "seconds": 32.3
+    },
+    {
+      "id": "pipe-ack-stopped-line-starts-no-call",
+      "file": "sipclerk/server.py",
+      "desc": "a line that was stopped while a call awaited its ACK starts the call afterwards",
+      "layer": "pipeline",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_ack_window.py::test_an_ack_that_comes_in_time_starts_the_call_and_the_window_running_out_later_does_nothing_to_it"
+      ],
+      "seconds": 13.0
+    },
+    {
+      "id": "pipe-stop-waits-for-the-calls",
+      "file": "sipclerk/server.py",
+      "desc": "the line stops before its live calls have filed their records and torn their pipelines down",
+      "layer": "pipeline",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_ack_window.py::test_stopping_the_line_waits_for_every_live_call_to_file_its_record_and_leaves_no_pipeline_behind"
+      ],
+      "seconds": 35.6
+    },
+    {
+      "id": "pipe-stop-ends-the-calls",
+      "file": "sipclerk/server.py",
+      "desc": "the line stops and leaves its live calls running",
+      "layer": "pipeline",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_ack_window.py::test_stopping_the_line_waits_for_every_live_call_to_file_its_record_and_leaves_no_pipeline_behind"
+      ],
+      "seconds": 61.3
     },
     {
       "id": "pipe-dialled-shapes",
@@ -1947,7 +2420,7 @@
       "killed_by": [
         "tests/test_dialled_number.py::test_the_line_answers_each_shape_and_loads_that_firms_file[sip:4155550101@127.0.0.1-<sip:x@127.0.0.1>-ashgrovepell-+14155550101]"
       ],
-      "seconds": 13.7
+      "seconds": 14.2
     }
   ]
 }
