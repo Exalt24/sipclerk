@@ -17,13 +17,16 @@ from sipclerk import audio  # noqa: E402
 from sipclerk.harness import WAV_DIR, read_wav_8k, wav_name  # noqa: E402
 
 
+CLIP = "My name is Jordan Mitchell."  # a clip the scenarios render; tests/test_script_inputs_exist.py fails when it is not in voice_scripts/wav
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out")
     a = ap.parse_args()
-    pcm = read_wav_8k(WAV_DIR / wav_name("am_adam", "My name is Jordan Reyes."))
+    pcm = read_wav_8k(WAV_DIR / wav_name("am_adam", CLIP))
     frames = audio.frames(pcm)
-    rows = ["clip: 'My name is Jordan Reyes.' (invented caller), %.2f s, %d frames of 20 ms" % (len(pcm) / 16000, len(frames)), ""]
+    rows = [f"clip: '{CLIP}' (invented caller), %.2f s, %d frames of 20 ms" % (len(pcm) / 16000, len(frames)), ""]
     rows.append(f"{'codec':6} {'payload type':>12} {'bytes per 20 ms packet':>24} {'packets per second':>19} {'kbit per second (payload)':>26} {'round-trip SNR dB':>18}")
     for codec in (audio.PCMU, audio.PCMA):
         enc = [audio.encode(f, codec) for f in frames]

@@ -1,10 +1,10 @@
-clip: 'My name is Jordan Reyes.' (invented caller), 1.60 s, 80 frames of 20 ms
+clip: 'My name is Jordan Mitchell.' (invented caller), 1.73 s, 87 frames of 20 ms
 
 codec  payload type   bytes per 20 ms packet  packets per second  kbit per second (payload)  round-trip SNR dB
 PCMU              0                      160                  50                         64               37.3
-PCMA              8                      160                  50                         64               37.5
+PCMA              8                      160                  50                         64               37.4
 
 caller leg: RTP PCMU 8 kHz -> linear 8 kHz (160 samples per frame) -> StreamUpsampler -> 16 kHz (320 samples per frame) -> Silero VAD and Whisper
   streaming upsample against a whole-signal resample: relative error 0.0000, delay 16 input samples (2 ms)
-  samples out per sample in: 25600 / 12800 = 2.0
+  samples out per sample in: 27840 / 13824 = 2.0
 agent leg: Kokoro 24 kHz (24000 samples for 1 s) -> resample 3:1 -> 8 kHz (8000 samples) -> 50 frames of 20 ms -> G.711 -> RTP

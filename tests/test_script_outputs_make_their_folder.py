@@ -25,7 +25,7 @@ def test_class_every_script_with_an_output_path_makes_the_folder():
 
 def test_the_mutation_check_writes_its_report_into_a_folder_that_does_not_exist(tmp_path):
     report = tmp_path / "not" / "yet" / "report.json"
-    p = subprocess.run([sys.executable, "-B", "scripts/mutation_check.py", "--only", "parsers-iso-too-old", "--report", str(report)],
+    p = subprocess.run([sys.executable, "-B", "scripts/mutation_check.py", "--only", "parsers-numeric-date-two-digit-year", "--report", str(report)],
                        cwd=ROOT, capture_output=True, encoding="utf-8", timeout=600)
     assert p.returncode == 0, p.stdout + p.stderr
     assert report.exists()

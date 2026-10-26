@@ -1,6 +1,6 @@
 {
-  "killed": 4,
-  "total": 4,
+  "killed": 5,
+  "total": 5,
   "results": [
     {
       "id": "parsers-future-date",
@@ -11,7 +11,7 @@
       "killed_by": [
         "tests/test_parsers.py::test_date_future_and_too_old_and_garbage"
       ],
-      "seconds": 7.3
+      "seconds": 6.6
     },
     {
       "id": "parsers-too-old",
@@ -22,29 +22,40 @@
       "killed_by": [
         "tests/test_parsers.py::test_date_future_and_too_old_and_garbage"
       ],
-      "seconds": 7.1
+      "seconds": 7.3
     },
     {
-      "id": "parsers-iso-future-date",
+      "id": "parsers-email-words-after-the-ending",
       "file": "sipclerk/intake/parsers.py",
-      "desc": "a whole date from the model, in the future, is accepted",
+      "desc": "words said after a spoken address are glued onto it",
       "layer": "unit",
       "status": "KILLED",
       "killed_by": [
-        "tests/test_date_from_the_model.py::test_class_a_whole_date_from_the_model_is_stored_as_that_date_in_every_month"
+        "tests/test_email_and_date_shapes.py::test_class_words_after_a_spoken_email_are_not_part_of_it"
       ],
-      "seconds": 4.0
+      "seconds": 3.4
     },
     {
-      "id": "parsers-iso-too-old",
+      "id": "parsers-numeric-date-two-digit-year",
       "file": "sipclerk/intake/parsers.py",
-      "desc": "a whole date from the model, impossibly old, is accepted",
+      "desc": "a two digit year in a numeric date is read as the year 24",
       "layer": "unit",
       "status": "KILLED",
       "killed_by": [
-        "tests/test_date_from_the_model.py::test_a_whole_date_older_than_the_question_allows_is_too_old"
+        "tests/test_email_and_date_shapes.py::test_class_a_numeric_date_is_stored_as_that_date"
       ],
-      "seconds": 3.8
+      "seconds": 3.4
+    },
+    {
+      "id": "parsers-compound-ago-days-dropped",
+      "file": "sipclerk/intake/parsers.py",
+      "desc": "the weeks and days of a compound relative date are dropped",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_email_and_date_shapes.py::test_class_two_units_ago_are_both_counted"
+      ],
+      "seconds": 3.4
     }
   ]
 }

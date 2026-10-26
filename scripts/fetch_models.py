@@ -22,8 +22,10 @@ def main() -> int:
         if path.exists():
             print("have", path.name)
             continue
-        print("fetching", path.name)
-        urllib.request.urlretrieve(BASE + path.name, path)
+        print("fetching", path.name, "(a few hundred MB, no progress is shown; a stopped download is deleted and fetched again)")
+        part = path.with_name(path.name + ".part")
+        urllib.request.urlretrieve(BASE + path.name, part)
+        part.replace(path)
     from faster_whisper import WhisperModel
 
     WhisperModel(WHISPER_MODEL, device="cpu", compute_type="int8", download_root=str(MODEL_DIR / "whisper"))

@@ -21,5 +21,5 @@ requirements.txt, requirements-voice.txt   what CI installs, and what the spoken
 voice_scripts/       the spoken scenarios and the rendered WAV clips
 scripts/             replay, mutation check, SIPp media, integration checks, requeue of dead deliveries
 tools/               SIPp in Docker, the bridge receiver
-docs/                PROOF.md, DECISIONS.md, the run logs
+docs/                PROOF.md, DECISIONS.md, LIMITS.md, the run logs
 ```

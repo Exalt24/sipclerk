@@ -6,6 +6,7 @@ fuzzy types (name, date, practice area), and its answer goes through the same va
 """
 from __future__ import annotations
 
+import itertools
 import re
 import unicodedata
 from dataclasses import dataclass
@@ -177,8 +178,21 @@ EMAIL_LEAD = re.compile(
     r"you can use|send it to)\.*(?=\s)(?!\s+(?:dot|at|underscore|dash|plus)\b)\s*)+")
 
 
+def _without_words_after_the_ending(n: str) -> str:
+    """`jordan at example dot com please` ends at `com`: whatever the caller says after the last `dot` and one word is not the address. A spelled
+    ending (`dot c o m`) keeps its letters."""
+    head, sep, tail = n.rpartition(" dot ")
+    words = tail.split()
+    if not sep or len(words) < 2:
+        return n
+    keep = [words[0]]
+    if len(words[0]) == 1:
+        keep += [w for w in itertools.takewhile(lambda w: len(w) == 1, words[1:])]
+    return f"{head}{sep}{' '.join(keep)}"
+
+
 def parse_email(text: str) -> Parsed:
-    n = EMAIL_LEAD.sub("", _norm(text)).strip()
+    n = _without_words_after_the_ending(EMAIL_LEAD.sub("", _norm(text)).strip())
     n = n.replace(" at ", "@").replace(" dot ", ".").replace(" underscore ", "_").replace(" dash ", "-").replace(" plus ", "+")
     n = re.sub(r"\s+", "", n).strip(".")
     if EMAIL_RE.match(n):
@@ -259,19 +273,35 @@ def _day_beside(n: str, month: int) -> int:
     return int(m.group(1)) if m and 1 <= int(m.group(1)) <= 31 else 1
 
 
+def _whole_date(year: int, month: int, day: int, today: date, max_age_days: int | None) -> Parsed:
+    try:
+        found = date(year, month, day)
+    except ValueError:
+        return Parsed(False, reason="not_a_date")
+    if found > today:
+        return Parsed(False, reason="in_the_future", detail=found.isoformat())
+    if max_age_days is not None and (today - found).days > max_age_days:
+        return Parsed(False, reason="too_old", detail=found.isoformat())
+    return Parsed(True, found.isoformat())
+
+
 def parse_date(text: str, today: date, max_age_days: int | None = None) -> Parsed:
     iso = re.fullmatch(r"\s*(\d{4})-(\d{2})-(\d{2})\s*", text)  # the date the model fallback hands back: a whole date, never a bare year
     if iso:
-        try:
-            found = date(int(iso.group(1)), int(iso.group(2)), int(iso.group(3)))
-        except ValueError:
-            return Parsed(False, reason="not_a_date")
-        if found > today:
-            return Parsed(False, reason="in_the_future", detail=found.isoformat())
-        if max_age_days is not None and (today - found).days > max_age_days:
-            return Parsed(False, reason="too_old", detail=found.isoformat())
-        return Parsed(True, found.isoformat())
+        return _whole_date(int(iso.group(1)), int(iso.group(2)), int(iso.group(3)), today, max_age_days)
+    us = re.search(r"(?<![\d/-])(\d{1,2})[/-](\d{1,2})[/-](\d{4}|\d{2})(?![\d/-])", text)  # `12/15/2023`, month first as a US caller writes it
+    if us:
+        year = int(us.group(3))
+        return _whole_date(year + 2000 if year < 100 else year, int(us.group(1)), int(us.group(2)), today, max_age_days)
     n = _ordinal_days(_norm(text))
+    if m := re.search(r"\b((?:\w+ (?:years?|months?|weeks?|days?)(?: and)? )+)ago\b", n):  # `three years and two months ago`, `two weeks and three days ago`: every unit counts
+        spans = re.findall(r"(\w+) (year|month|week|day)s?", m.group(1))
+        counts = [_num(k) for k, _ in spans]
+        if len(spans) > 1 and None not in counts:
+            months = sum(c * {"year": 12, "month": 1}[u] for c, (_, u) in zip(counts, spans) if u in ("year", "month"))
+            days = sum(c * {"week": 7, "day": 1}[u] for c, (_, u) in zip(counts, spans) if u in ("week", "day"))
+            ago = _add_months(today, months) - timedelta(days=days)
+            return _whole_date(ago.year, ago.month, ago.day, today, max_age_days)
     n = re.sub(r"(\d+)(st|nd|rd|th)\b", r"\1", n)
     found: date | None = None
     month = _named_month(n)
@@ -315,11 +345,7 @@ def parse_date(text: str, today: date, max_age_days: int | None = None) -> Parse
         found = date(int(year_m.group(1)), 6, 30)
     if found is None:
         return Parsed(False, reason="not_a_date")
-    if found > today:
-        return Parsed(False, reason="in_the_future", detail=found.isoformat())
-    if max_age_days is not None and (today - found).days > max_age_days:
-        return Parsed(False, reason="too_old", detail=found.isoformat())
-    return Parsed(True, found.isoformat())
+    return _whole_date(found.year, found.month, found.day, today, max_age_days)
 
 
 # ------------------------------------------------------------------ enum and free text

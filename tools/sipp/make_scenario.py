@@ -137,5 +137,5 @@ def build() -> str:
 
 if __name__ == "__main__":
     out = Path(__file__).with_name("uac_intake.xml")
-    out.write_text(build(), encoding="iso-8859-1")
+    out.write_text(build(), encoding="iso-8859-1", newline="\n")
     print("wrote", out)

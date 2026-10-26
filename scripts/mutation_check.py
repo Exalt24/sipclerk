@@ -104,7 +104,15 @@ def main() -> int:
     pipeline = [*PIPELINE_MUTANTS, *PIPELINE_DERIVED]
     pool = [m for m in MUTANTS if m.layer == "unit"] if a.layer == "unit" else pipeline if a.layer == "pipeline" else [*MUTANTS, *pipeline]
     if a.only:
-        pool = [m for m in pool if m.id in a.only.split(",")]
+        wanted = a.only.split(",")
+        known = {m.id for m in [*MUTANTS, *pipeline]}
+        in_layer = {m.id for m in pool}
+        unknown = [i for i in wanted if i not in known]
+        other_layer = [i for i in wanted if i in known and i not in in_layer]
+        if unknown or other_layer:  # a typo or a row of another layer would otherwise print "0 of 0 killed" and exit 0, which reads as a pass
+            print("\n".join([f"no such mutant id: {i}" for i in unknown] + [f"{i} is not in the --layer {a.layer} pool: add --layer all" for i in other_layer]))
+            return 2
+        pool = [m for m in pool if m.id in wanted]
     # every mutant must still apply
     bad = []
     for m in pool:
