@@ -202,6 +202,7 @@ async def test_only_responses_that_make_a_dialog_carry_the_record_route():
 import itertools
 import re
 
+# CLASS-TABLE: a dialog that ignores the route set of a proxy, for every count of record-routing proxies and either kind of nearest router
 DESK_CONTACT = "sip:desk@10.9.9.9:5060"
 LOOSE_PROXIES = ["<sip:p1.example;lr>", "<sip:p2.example;lr;ftag=zz>", "<sip:p3.example;lr>"]
 STRICT_PROXY = "<sip:strict.example>"
@@ -253,7 +254,6 @@ def expected_request(route_set: list[str], contact: str) -> tuple[str, list[str]
     return re.search(r"<([^>]*)>", route_set[0]).group(1), [*route_set[1:], f"<{contact}>"]
 
 
-# CLASS-TABLE: a dialog that ignores the route set of a proxy, for every count of record-routing proxies and either kind of nearest router
 async def test_class_every_count_of_proxies_and_either_kind_of_router_is_followed_by_the_200_ok_and_the_bye_on_the_answering_side():
     wrong = []
     cells = list(route_cells())

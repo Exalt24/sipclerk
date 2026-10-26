@@ -259,13 +259,13 @@ import itertools
 
 from test_pipeline_fast import finished
 
+# CLASS-TABLE: an answered call with a late or lost ACK left with no session and no record, for every ACK arrival time against the window
 T1S = (0.02, 0.1)  # the stack's T1 the cell runs at: the window is 64 * T1, 1.28 s or 6.4 s
 ACK_AT = (0.05, 0.9, 1.4, None)  # when the ACK arrives as a fraction of the window: early, just inside, after it, never
 # the cells that fit the time the suite can spend: every one of the short window, and the long one only where the ACK is late enough for the old fixed five second wait
 ACK_TIMINGS = [(t1, f) for t1, f in itertools.product(T1S, ACK_AT) if 64 * t1 * (f if f is not None else 1.0) <= 2.0 or (f is not None and 5.0 < 64 * t1 * f < 6.0)]
 
 
-# CLASS-TABLE: an answered call with a late or lost ACK left with no session and no record, for every ACK arrival time against the window
 async def test_class_an_ack_inside_the_window_starts_the_call_and_one_after_it_or_never_leaves_a_record_with_a_callback():
     wrong = []
     for n, (t1, fraction) in enumerate(ACK_TIMINGS):
