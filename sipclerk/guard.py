@@ -191,12 +191,15 @@ def _emergency_now(text: str) -> str | None:
     return None
 
 
-def check_input(text: str, tenant: TenantConfig, *, check_scope: bool = False) -> InputVerdict:
-    """Screen what the caller said. Called before the interpreter or any model sees the text."""
+def check_input(text: str, tenant: TenantConfig, *, check_scope: bool = False, not_a_client: bool = False) -> InputVerdict:
+    """Screen what the caller said. Called before the interpreter or any model sees the text.
+
+    `not_a_client` is set once the caller has answered no to "are you already a client": `my case`, `my lawyer is` and the rest then describe the matter
+    they are calling about, not a relationship with this firm, so the existing client rule is not run."""
     t = _norm(text)
     if hit := _emergency_now(t):
         return InputVerdict("emergency", "emergency", hit)
-    if hit := _match(EXISTING_CLIENT, t):
+    if not not_a_client and (hit := _match(EXISTING_CLIENT, t)):
         return InputVerdict("escalate", "existing_client", hit)
     if hit := _match(HUMAN_REQUEST, t):
         return InputVerdict("escalate", "human_request", hit)

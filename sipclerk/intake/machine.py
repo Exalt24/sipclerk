@@ -192,7 +192,8 @@ class IntakeMachine:
             return guard.check_input(text, self.cfg)
         q = self.question
         scope = q is not None and (q.id == "practice_area" or (q.id == "description" and not self._area_in_scope()))
-        return guard.check_input(text, self.cfg, check_scope=scope)
+        asked = self.fields.get("existing_client")
+        return guard.check_input(text, self.cfg, check_scope=scope, not_a_client=asked is not None and asked.value is False)
 
     def _area_in_scope(self) -> bool:
         """True once the caller's practice area is known and the firm takes it: the description is then the story of that matter, and a word in it
