@@ -3,7 +3,7 @@ type: reference
 updated: 2026-10-26
 ---
 
-*Everything here was run on one Windows 11 PC on 2026-10-25 and 2026-10-26 (the latency figures and the SIPp run were measured before the three review rounds' fixes, and the SIPp record carries config version 2026.10.4, now 2026.10.6; the unit suite, the guards, the probes and a replay of the spoken suite after them): an RTX 5070 Ti shared with other work, Python 3.13.14, Pipecat 1.6.0, faster-whisper `small.en` on the GPU (float16), Kokoro through onnxruntime on the CPU, Ollama with `qwen3.5:4b`, and SIPp 3.6.1 from the Debian `sip-tester` package in Docker. Firms, callers, numbers and voices are invented. Each claim names the command that produced it.*
+*Everything here was run on one Windows 11 PC on 2026-10-25 and 2026-10-26 (the latency figures and the SIPp run were measured before the three review rounds' fixes, and the SIPp record carries config version 2026.10.4, now 2026.10.6; the unit suite, the guards, the probes and a replay of the spoken suite after them): an RTX 5070 Ti shared with other work, Python 3.13.14, Pipecat 1.6.0, faster-whisper `small.en` on the GPU (float16), Kokoro through onnxruntime on the CPU, Ollama with `qwen3.5:4b`, and SIPp 3.6.1 from the Debian `sip-tester` package in Docker (the image is not pinned: that is the version as built on 2026-10-25). Firms, callers, numbers and voices are invented. Most claims name the command that produced them; section 5 and the cost table do not.*
 
 ## 1. A real INVITE reaches the agent
 
@@ -14,10 +14,10 @@ docker build -t sipclerk-sipp tools/sipp
 python scripts/replay.py sipp_reference --json scratch/ref.json         # the reference call, with a softphone that waits for the agent
 python tools/sipp/make_scenario.py
 python scripts/make_sipp_media.py scratch/ref.json tools/sipp/media/call.pcap
-python scripts/sipp_demo.py --out docs/sipp_run.json                    # SIPp exit 0 means every message it expected arrived
+python scripts/sipp_demo.py --out docs/sipp_run.json                    # writes over the committed record, use another --out to keep it; SIPp exit 0 means every message it expected arrived
 ```
 
-What the line saw ([`docs/sipp_run.json`](docs/sipp_run.json), full messages in [`docs/test-runs/sipp_messages.txt`](docs/test-runs/sipp_messages.txt)):
+What the line saw ([`docs/sipp_run.json`](sipp_run.json), full messages, copied by hand from `scratch/sipp_logs/messages.log`, in [`docs/test-runs/sipp_messages.txt`](test-runs/sipp_messages.txt)):
 
 | Seconds | Direction | Message |
 |---|---|---|
@@ -30,7 +30,7 @@ What the line saw ([`docs/sipp_run.json`](docs/sipp_run.json), full messages in 
 
 The call: 4,367 RTP packets in and 4,365 out (679,844 bytes of G.711 and events received), 11 keypad events (ten digits and the pound) made the phone number (`callback_number` came from the keypad, not from speech), five fields were spoken (name, practice area, state, urgent deadline, description) and email was skipped, the outcome was `intake_priority`, and the record carries tenant `tidewaterquint`, config version `2026.10.4` and config hash `75569928f389...`.
 
-**Where the audio goes.** G.711 on the wire is 160 bytes per 20 ms packet, 64 kbit/s, SNR after a round trip about 37 dB for both codecs; decoded to 8 kHz linear; upsampled to 16 kHz in 20 ms frames for the voice activity detector and Whisper (relative error against a whole-signal resample 0.0000, 2 ms delay); Kokoro's 24 kHz output is resampled 3 to 1 to 8 kHz and encoded back. [`docs/codec_proof.txt`](docs/codec_proof.txt) is the output of `python scripts/codec_proof.py`.
+**Where the audio goes.** G.711 on the wire is 160 bytes per 20 ms packet, 64 kbit/s, SNR after a round trip about 37 dB for both codecs; decoded to 8 kHz linear; upsampled to 16 kHz in 20 ms frames for the voice activity detector and Whisper (relative error against a whole-signal resample 0.0000, 2 ms delay); Kokoro's 24 kHz output is resampled 3 to 1 to 8 kHz and encoded back. [`docs/codec_proof.txt`](codec_proof.txt) is the output of `python scripts/codec_proof.py`.
 
 **What this does not prove.** SIPp reached the line over a Docker bridge on one machine. A carrier's SIP trunk, a real phone number, NAT between a PBX and the line, jitter and packet loss from the public network were not tried. One finding is worth knowing: Docker Desktop forwards UDP through a NAT that forgets an idle mapping, so a BYE sent by the line 87 seconds after the last message from SIPp never arrived in the first runs. SIPp now sends an in-dialog OPTIONS every 15 seconds, which is what a phone or a session border controller does with a keepalive.
 
@@ -39,8 +39,8 @@ The call: 4,367 RTP packets in and 4,365 out (679,844 bytes of G.711 and events 
 ```
 python -m pytest                    # 3842 passed, 25 deselected (3,839 and 3 skipped without the sibling bridge checkout; about 6 minutes, not saved)
 python -m pytest -m voice           # 25 passed in 1472 s (24 minutes 32 seconds) before the review rounds; replayed after sections 7 to 9: 23 passed in 1541 s with the machine busy, and the other two (barge in, caller correction) failed there and passed alone in 206 s; that output was not kept, and `pytest -m voice` rewrites `docs/voice_suite_run.json`, so a rerun overwrites the evidence of the earlier run
-python scripts/mutation_check.py --layer all --report docs/mutation_report.json   # 220 of 220 killed before the third review round, run in a copy of the repository
-python scripts/mutation_check.py --only <the 12 added in round 3> --report docs/mutation_report_round3.json   # 12 of 12 killed; 89 earlier rows in the changed files rerun, 89 of 89 killed (the 232 rows are 220 in docs/mutation_report.json plus 12 in docs/mutation_report_round3.json; the 89 reruns were not saved)
+python scripts/mutation_check.py --layer all --report docs/mutation_report.json   # writes over the committed report, use another --report to keep it; 220 of 220 killed before the third review round, run in a copy of the repository
+python scripts/mutation_check.py --only <the ids in `results` of docs/mutation_report_round3.json> --report docs/mutation_report_round3.json   # 12 of 12 killed; 89 earlier rows in the changed files rerun, 89 of 89 killed (the 232 rows are 220 in docs/mutation_report.json plus 12 in docs/mutation_report_round3.json; the 89 reruns were not saved)
 ```
 
 | File | Tests | What it pins |
@@ -135,7 +135,7 @@ Tokens and seconds, not dollars: nothing here is billed.
 
 ## 4. The mutation check
 
-232 deliberate breaks, one at a time (194 in the unit layer, 38 through the real line with stand-in models), run in a temporary copy of the repository so the working tree is never edited. A mutant counts as killed only when pytest ran and a test failed; a crash or a collection error does not count. The report with the test that killed each one is [`docs/mutation_report.json`](docs/mutation_report.json). The report holds the 220 rows that existed before the third review round (the 12 added in it are in [`docs/mutation_report_round3.json`](docs/mutation_report_round3.json)) and merges one full run of all the unit rows with a second run, on the final code, of every pipeline row and the unit rows on `call.py` (the first run was made before a three line change to `call.py` was dropped again). Rows in `scripts/mutants_derived.py` (120 of them) take their edit from the code's syntax tree with `scripts/mutate_ast.py` (a function, a kind of change and a snippet of the code at that site), so rewording a line moves the site instead of leaving a typed old text that matches nowhere.
+232 deliberate breaks, one at a time (194 in the unit layer, 38 through the real line with stand-in models), run in a temporary copy of the repository so the working tree is never edited. A mutant counts as killed only when pytest ran and a test failed; a crash or a collection error does not count. The report with the test that killed each one is [`docs/mutation_report.json`](mutation_report.json). The report holds the 220 rows that existed before the third review round (the 12 added in it are in [`docs/mutation_report_round3.json`](mutation_report_round3.json)) and merges one full run of all the unit rows with a second run, on the final code, of every pipeline row and the unit rows on `call.py` (the first run was made before a three line change to `call.py` was dropped again). Rows in `scripts/mutants_derived.py` (120 of them) take their edit from the code's syntax tree with `scripts/mutate_ast.py` (a function, a kind of change and a snippet of the code at that site), so rewording a line moves the site instead of leaving a typed old text that matches nowhere.
 
 Every guard rule, every branch of the state machine that decides something, every field parser check, every tenant, storage and delivery rule, and the barge-in, silence, keypad, recording, transfer and routing paths in the pipeline each have a mutant. The check found seven test gaps while it was being built, each now closed: an unclear recording answer (the test sent "I don't know", which the parser reads as a no), an unsupported practice area never driven through the machine, the callback task of a failed transfer never asserted, duplicate RTP packets, a recording gate that a second gate hid (found by timing how much of the greeting was in the recording), a failed transcription that the test did not require an answer to, and the refusal of a call with no common codec. One mutant was written and dropped as equivalent (`scripts/mutants_found.py` says why), and a branch that could not be reached was deleted instead of tested.
 
@@ -143,7 +143,7 @@ Not covered: a mutant whose failing test leaves a call open can hang the test pr
 
 ## 5. The two receivers
 
-[`docs/integration_run.txt`](docs/integration_run.txt) is one call delivered over real HTTP: `clio-matter-bridge`'s own verification code (imported, not copied) accepted the signed delivery and called a redelivery a duplicate (`tests/test_bridge_contract.py`), and the `clinic-call-console` API, built from its repository and run from a scratch copy, created the call (`201`), called the repeat a duplicate (`200`), refused a forged, a stale and a missing signature (`401`), and showed the transcript masked ("My name is [NAME]", "[number]").
+[`docs/integration_run.txt`](integration_run.txt) is one call delivered over real HTTP: `clio-matter-bridge`'s own verification code (imported, not copied) accepted the signed delivery and called a redelivery a duplicate (`tests/test_bridge_contract.py`), and the `clinic-call-console` API, built from its repository and run from a scratch copy, created the call (`201`), called the repeat a duplicate (`200`), refused a forged, a stale and a missing signature (`401`), and showed the transcript masked ("My name is [NAME]", "[number]").
 
 No Clio record was written. A Clio developer trial token was tried once with a read (`who_am_i`) and answered `401`; nothing in this repository records that call, and the trial ended in August 2026.
 

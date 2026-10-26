@@ -68,11 +68,11 @@ The SIP leg, from [`docs/sipp_run.json`](docs/sipp_run.json): SIPp offered PCMA,
 
 ## Run it
 
-Needs Python 3.13, Docker Desktop for the SIPp caller (seen on Windows only), and [Ollama](https://ollama.com) with `qwen3.5:4b` (`ollama pull qwen3.5:4b`). Timings are on an RTX 5070 Ti, Whisper in float16; the int8 CPU fallback was not run.
+Needs Python 3.13, Docker Desktop for the SIPp caller (needs `host.docker.internal`, seen on Windows only), and [Ollama](https://ollama.com) with `qwen3.5:4b` (`ollama pull qwen3.5:4b`). Timings are on an RTX 5070 Ti, Whisper in float16; no GPU is required, it falls back to CPU int8 by itself (`SIPCLERK_DEVICE` forces one) and that path was not run.
 
 ```
 pip install -r requirements-voice.txt
-python scripts/fetch_models.py                      # Kokoro and Whisper into ./models
+python scripts/fetch_models.py                      # downloads Kokoro (GitHub) and Whisper (Hugging Face) into ./models
 python scripts/replay.py normal_intake              # one spoken call through the line, printed
 python scripts/replay.py --list                     # 21: the suite's 20 and sipp_reference
 ```
@@ -84,7 +84,7 @@ docker build -t sipclerk-sipp tools/sipp
 python scripts/replay.py sipp_reference --json scratch/ref.json
 python tools/sipp/make_scenario.py
 python scripts/make_sipp_media.py scratch/ref.json tools/sipp/media/call.pcap
-python scripts/sipp_demo.py --out docs/sipp_run.json
+python scripts/sipp_demo.py --out docs/sipp_run.json  # writes over the committed record: use another --out
 ```
 
 ## Tests
@@ -109,9 +109,9 @@ Rows in `scripts/mutants_derived.py` take their edit from the syntax tree, not t
 - **The plain readers still guess.** A date answer is taken as heard with no read-back, a keyword such as `trust` has an everyday meaning, `No problem` to the recording question turns recording off, and a caller who says no to being a client and then says they are one is not handed to a person. [`docs/DECISIONS.md`](docs/DECISIONS.md) lists each known limit with its reason.
 - **Retention and delivery have edges.** A call folder with no readable `meta.json` is skipped by retention, never deleted, because it cannot be told from a call still being saved. A delivery is dead about 23 hours after it was queued and waits for `scripts/requeue_dead.py`. A route given as a host name is not resolved.
 - **Latency is this machine's.** A GPU shared with other work, one event loop for the line and the test caller, and a model of 4 billion parameters. Nothing here says what a production deployment would measure.
-- **Case management is not Clio.** No Clio record is written: a Clio developer trial token answered 401 when tried (not reproducible from the repo; the trial ended in August 2026). The intake goes to the verification code of the sibling repo `Exalt24/clio-matter-bridge` as a Clio-shaped delivery and to a local `Exalt24/clinic-call-console` API (neither is needed for the tests, both for `docs/integration_run.txt`), whose reasons are clinic ones, so every intake maps to `OTHER`.
+- **Case management is not Clio.** No Clio record is written: a Clio developer trial token answered 401 when tried (not reproducible from the repo; the trial ended in August 2026). The intake goes to the verification code of the sibling repo `Exalt24/clio-matter-bridge` as a Clio-shaped delivery and to a local `Exalt24/clinic-call-console` API (neither is needed for the tests, both for `docs/integration_run.txt`, which cannot be reproduced from this repo alone: it needs the console built locally), whose reasons are clinic ones, so every intake maps to `OTHER`.
 - **No conflict check, no booking, no calendar.** A caller who says they are an existing client is handed to a person; nothing checks a conflict list.
-- **Scripts and tests only.** No server command starts the line: it runs inside `replay.py`, `sipp_demo.py` and the tests. Three bridge tests skip without node and a sibling `clio-matter-bridge` checkout, so a fresh clone shows 3,839 passed and 3 skipped.
+- **Scripts and tests only.** No server command starts the line: it runs inside `replay.py`, `sipp_demo.py` and the tests. Three bridge tests skip without node and a `clio-matter-bridge` checkout beside this repo (or `CLIO_BRIDGE_DIR`), so a fresh clone shows 3,839 passed and 3 skipped.
 - **No staff screen, two calls at once.** Nothing reads a stored record back (`TenantStore.read` has no caller, as `tests/test_wiring.py` says), and two simultaneous calls were run, not twenty.
 
 ## Layout
