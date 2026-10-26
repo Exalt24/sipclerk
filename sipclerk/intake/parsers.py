@@ -260,6 +260,17 @@ def _day_beside(n: str, month: int) -> int:
 
 
 def parse_date(text: str, today: date, max_age_days: int | None = None) -> Parsed:
+    iso = re.fullmatch(r"\s*(\d{4})-(\d{2})-(\d{2})\s*", text)  # the date the model fallback hands back: a whole date, never a bare year
+    if iso:
+        try:
+            found = date(int(iso.group(1)), int(iso.group(2)), int(iso.group(3)))
+        except ValueError:
+            return Parsed(False, reason="not_a_date")
+        if found > today:
+            return Parsed(False, reason="in_the_future", detail=found.isoformat())
+        if max_age_days is not None and (today - found).days > max_age_days:
+            return Parsed(False, reason="too_old", detail=found.isoformat())
+        return Parsed(True, found.isoformat())
     n = _ordinal_days(_norm(text))
     n = re.sub(r"(\d+)(st|nd|rd|th)\b", r"\1", n)
     found: date | None = None
