@@ -1,0 +1,104 @@
+{
+  "scenarios_run": 20,
+  "caller_side_ms": {
+    "n": 141,
+    "p50": 604,
+    "p95": 1631,
+    "max": 1798
+  },
+  "agent_side_vad_stop_to_first_audio_ms": {
+    "cached_prompt_no_model": {
+      "n": 125,
+      "p50": 55,
+      "p95": 74
+    },
+    "a_sentence_rendered_on_the_spot": {
+      "n": 0,
+      "p50": null,
+      "p95": null
+    },
+    "language_model_in_the_turn": {
+      "n": 14,
+      "p50": 426,
+      "p95": 512
+    }
+  },
+  "per_completed_intake": {
+    "calls": 13,
+    "call_seconds": 80.38,
+    "llm_calls": 1.08,
+    "llm_prompt_tokens": 82.69,
+    "llm_completion_tokens": 15.0,
+    "llm_seconds": 0.31,
+    "stt_calls": 9.46,
+    "stt_compute_seconds": 0.55,
+    "agent_speech_seconds": 45.68,
+    "caller_audio_seconds": 80.75
+  },
+  "tts_sentence_cache": {
+    "hits": 371,
+    "misses": 119
+  },
+  "calls": {
+    "normal_intake": {
+      "wall_s": 80.9
+    },
+    "normal_intake_second_firm": {
+      "wall_s": 89.3
+    },
+    "after_hours": {
+      "wall_s": 82.2
+    },
+    "barge_in": {
+      "wall_s": 70.5
+    },
+    "long_silence": {
+      "wall_s": 90.0
+    },
+    "abandoned_silence": {
+      "wall_s": 37.2
+    },
+    "noisy_line": {
+      "wall_s": 75.4
+    },
+    "caller_correction": {
+      "wall_s": 80.5
+    },
+    "invalid_answers": {
+      "wall_s": 93.6
+    },
+    "dtmf_phone_number": {
+      "wall_s": 72.8
+    },
+    "unsupported_practice_area": {
+      "wall_s": 64.4
+    },
+    "legal_advice_request": {
+      "wall_s": 84.5
+    },
+    "legal_advice_repeated": {
+      "wall_s": 50.3
+    },
+    "provider_llm_error": {
+      "wall_s": 78.5
+    },
+    "existing_client_transfer": {
+      "wall_s": 37.5
+    },
+    "transfer_busy": {
+      "wall_s": 28.7
+    },
+    "transfer_no_answer": {
+      "wall_s": 34.7
+    },
+    "dtmf_zero_for_a_person": {
+      "wall_s": 30.7
+    },
+    "provider_stt_timeout": {
+      "wall_s": 82.8
+    },
+    "provider_webhook_500": {
+      "wall_s": 75.8
+    }
+  }
+}

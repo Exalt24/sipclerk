@@ -30,6 +30,6 @@ Each item below was reproduced against this repository by running the code or re
 
 ## What was run, and on what
 
-- **Versions.** Every figure and the spoken suite come from Pipecat 1.6.0, numpy 2.2.6 and pydantic 2.12.5. `requirements.txt` now pins Pipecat 1.13.0, numpy 2.5.4, pydantic 2.14.1, pytest 9.1.1 and pytest-asyncio 1.4.0 (a Dependabot merge made after those runs). CI runs the unit and pipeline tests on the new pins and passes; the spoken suite and the latency, token and call figures were not rerun on them.
+- **Versions.** Every figure and the spoken suite come from Pipecat 1.6.0, numpy 2.2.6 and pydantic 2.12.5. `requirements.txt` now pins Pipecat 1.13.0, numpy 2.5.4, pydantic 2.14.1, pytest 9.1.1 and pytest-asyncio 1.4.0 (a Dependabot merge made after those runs). CI runs the unit and pipeline tests on the new pins and passes, and the spoken suite was run on the pinned versions on 2026-10-26 and passed 25 of 25 (`docs/voice_suite_run_pins_2026-10-26.json`); the latency, token and call tables in README and PROOF are still from the earlier Pipecat 1.6.0 run.
 - **Cached and rendered turns.** The 125 turns counted as "cached, no model" come from a flag that never marked a turn as rendered on the spot, so that bucket may include a read-back that was rendered when it was needed. The 151 ms median is read with that in mind.
 - **The test run.** The suite can stall at exit on a loaded machine (stop it with Ctrl-C and run it again). The spoken suite rewrites `docs/voice_suite_run.json`, which is the source of the latency table.

@@ -8,7 +8,7 @@ A voice intake line for invented law firms: a real SIP call comes in, the dialle
 
 *A separate SIP client (SIPp, in Docker) places an INVITE with G.711 audio and keypad digits. This is the logged run replayed at 4x. Full quality: [`docs/demo.mp4`](docs/demo.mp4).*
 
-**Proof, run here 2026-10-25 and 26:** 4,008 tests pass (4,005 and 3 skipped without the sibling bridge checkout) and 101 of 255 deliberate breaks rerun after the third review round (89 not saved), plus 26 rows after the last change, are all caught by a failing test. The 25 spoken tests over 20 scenarios (real SIP and RTP through Whisper, a local language model and Kokoro) were replayed after the review rounds: 23 passed, barge-in and a caller's correction failed once on a busy machine and passed alone (the replay output was not kept). The first audio of the answer arrived 619 ms (median) and 1611 ms (95th percentile) after the caller stopped talking, in the earlier run on a shared machine. Every figure and command is in [`docs/PROOF.md`](docs/PROOF.md).
+**Proof, run here 2026-10-25 and 26:** 4,008 tests pass (4,005 and 3 skipped without the sibling bridge checkout) and 101 of 255 deliberate breaks rerun after the third review round (89 not saved), plus 26 rows after the last change, are all caught by a failing test. The 25 spoken tests over 20 scenarios (real SIP and RTP through Whisper, a local language model and Kokoro) passed 25 of 25 on the final code with the pinned versions (Pipecat 1.13.0), 24 min 40 s, saved in `docs/voice_suite_run_pins_2026-10-26.json`. The first audio of the answer arrived 619 ms (median) and 1611 ms (95th percentile) after the caller stopped talking, in the earlier run on a shared machine. Every figure and command is in [`docs/PROOF.md`](docs/PROOF.md).
 
 > **A lab, not a service.** Two invented firms, synthetic callers and voices, no real phone number, no production traffic and no customer. The main untested leg is a real carrier phone number, because that is the part that costs money. [Limits](#limits) lists the rest.
 
@@ -118,7 +118,7 @@ Folder by folder: [`docs/layout.md`](docs/layout.md).
 
 ## Stack
 
-Python 3.13, Pipecat 1.13.0 (runs used 1.6.0), Silero VAD, faster-whisper, Kokoro (kokoro-onnx), Ollama with qwen3.5:4b, pydantic, cryptography, SIPp (GPL-2.0, in a container).
+Python 3.13, Pipecat 1.13.0 (figures below: 1.6.0), Silero VAD, faster-whisper, Kokoro (kokoro-onnx), Ollama with qwen3.5:4b, pydantic, cryptography, SIPp (GPL-2.0, in a container).
 
 ## License
 
