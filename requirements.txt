@@ -1,11 +1,11 @@
-pipecat-ai[silero]==1.6.0
-numpy==2.2.6
-scipy==1.18.0
-pydantic==2.12.5
+pipecat-ai[silero]==1.13.0
+numpy==2.5.4
+scipy==1.18.1
+pydantic==2.14.1
 PyYAML==6.0.3
-tzdata==2026.3
+tzdata==2026.5
 cryptography==49.0.0
 httpx==0.28.1
 audioop-lts==0.2.2; python_version >= "3.13"
-pytest==9.0.3
-pytest-asyncio==1.3.0
+pytest==9.1.1
+pytest-asyncio==1.4.0
