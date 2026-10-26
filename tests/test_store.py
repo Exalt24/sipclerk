@@ -254,3 +254,147 @@ def test_an_audit_line_that_is_not_json_reads_as_a_broken_chain_not_a_crash(stor
     with store._audit_path("ashgrovepell").open("a", encoding="utf-8") as fh:
         fh.write("not json at all\n")
     assert store.verify_audit("ashgrovepell") is False
+
+
+# ---- the class, enumerated: every way one call folder can be broken x where it sits in the pass x which firm owns it x how the pass is run
+#
+# GROUNDING (docs/DECISIONS.md): "Inside a pass, one call folder that cannot be read (a half written one from a crash, a torn `meta.json`), deleted or audited is skipped,
+# logged and counted in `result.skipped`, and the folders after it and the other firm's are still processed." and "A retention setting per tenant deletes expired calls and
+# audits the deletion."
+# WHY: the machine loses power while a call is being saved, which leaves one half written folder. From then on the hourly retention pass raises at that folder, so no firm
+# deletes any expired call again and every caller's data is kept past the retention the firm promised, until someone notices.
+import itertools
+from unittest import mock
+
+BREAKS = ["meta missing", "meta empty", "meta torn", "meta without saved_at", "meta with a date that is not a date", "meta that is a list", "meta with a null date",
+          "meta with a number for a date", "meta with an empty date", "meta that is not text", "meta that is a folder", "a folder that cannot be deleted",
+          "an audit line that cannot be written", "a firm whose calls cannot be listed", "a folder with a name the store refuses", "a stray file among the calls"]
+POSITIONS = ["first", "middle", "last"]  # where the broken call sorts among the firm's three calls c1, c2, c3
+SCOPES = ["ashgrovepell", "tidewaterquint"]  # the firm that holds the broken folder
+RUNS = ["now from the clock", "run twice"]
+CALLS = ("c1", "c2", "c3")
+
+
+def damage(s, tmp_path, tenant, call, how):
+    """Break one folder of `tenant` the way `how` says. Returns the context managers that must stay open while the pass runs."""
+    meta = s._call_dir(tenant, call) / "meta.json"
+    texts = {"meta missing": None, "meta empty": "", "meta torn": '{"call_id": "x", "saved_at": "2026-10-2', "meta without saved_at": '{"call_id": "x"}',
+             "meta with a date that is not a date": '{"saved_at": "last tuesday"}', "meta that is a list": "[1, 2]", "meta with a null date": '{"saved_at": null}',
+             "meta with a number for a date": '{"saved_at": 12345}', "meta with an empty date": '{"saved_at": ""}'}
+    managers = []
+    if how in texts:
+        if texts[how] is None:
+            meta.unlink()
+        else:
+            meta.write_text(texts[how], encoding="utf-8")
+    elif how == "meta that is not text":
+        meta.write_bytes(b"\xff\xfe\x00\x81\x82")
+    elif how == "meta that is a folder":
+        meta.unlink()
+        meta.mkdir()
+    elif how == "a folder that cannot be deleted":
+        real = st.shutil.rmtree
+
+        def flaky(path, *a, **kw):
+            if str(path).replace("\\", "/").endswith(f"/{tenant}/calls/{call}"):
+                raise PermissionError("held open by another program")
+            return real(path, *a, **kw)
+
+        managers.append(mock.patch.object(st.shutil, "rmtree", flaky))
+    elif how == "an audit line that cannot be written":
+        real_audit = s._audit
+
+        def flaky_audit(t, actor, role, action, call_id, *rest):
+            if action == "purge" and call_id == call:
+                raise OSError("disk full")
+            return real_audit(t, actor, role, action, call_id, *rest)
+
+        managers.append(mock.patch.object(s, "_audit", flaky_audit))
+    elif how == "a firm whose calls cannot be listed":
+        real_list = s.list_calls
+
+        def listing(t):
+            if t == tenant:
+                raise PermissionError("access denied")
+            return real_list(t)
+
+        managers.append(mock.patch.object(s, "list_calls", listing))
+    elif how == "a folder with a name the store refuses":
+        (tmp_path / "tenants" / tenant / "calls" / "not.a.call").mkdir()
+    elif how == "a stray file among the calls":
+        (tmp_path / "tenants" / tenant / "calls" / "stray.txt").write_text("x", encoding="utf-8")
+    return managers
+
+
+def run_pass(s, clock, how_run):
+    clock["now"] = NOW + timedelta(days=100)
+    if how_run == "now given":
+        return s.purge(NOW + timedelta(days=100))
+    first = s.purge()
+    return s.purge() if how_run == "run twice" else first
+
+
+def expected(how, broken):
+    """(what the firm that owns the broken folder still holds besides `fresh`, what `result.skipped` must name for that firm)."""
+    if how == "an audit line that cannot be written":
+        return set(), set()  # the folder is gone and only its audit line failed: logged, not skipped
+    if how == "a firm whose calls cannot be listed":
+        return set(CALLS), {""}
+    if how == "a folder with a name the store refuses":
+        return {"not.a.call"}, {"not.a.call"}
+    if how == "a stray file among the calls":
+        return {"stray.txt"}, {"stray.txt"}
+    return {broken}, {broken}
+
+
+# CLASS-TABLE: one broken call folder aborting a pass over all of them, for every way of breaking, position, firm and way of running the pass
+def test_class_whatever_is_wrong_with_one_folder_wherever_it_sits_whoever_owns_it_and_however_the_pass_runs_every_other_expired_call_is_purged(registry, tmp_path):
+    cells = list(itertools.product(BREAKS, POSITIONS, SCOPES, RUNS))
+    wrong = []
+    for n, (how, position, scope, how_run) in enumerate(cells):
+        root = tmp_path / f"cell{n}"
+        clock = {"now": NOW}
+        s = TenantStore(root, registry, MASTER, clock=lambda: clock["now"])
+        for tenant in SCOPES:
+            for call in CALLS:
+                put(s, tenant, call)
+        clock["now"] = NOW + timedelta(days=99)
+        for tenant in SCOPES:
+            put(s, tenant, "fresh")  # saved a day before the pass: no firm's retention has run out for it
+        broken = CALLS[POSITIONS.index(position)]
+        managers = damage(s, root, scope, broken, how)
+        try:
+            for m in managers:
+                m.__enter__()
+            try:
+                result = run_pass(s, clock, how_run)
+                skipped = {(t, c) for t, c, _why in result.skipped}
+            except Exception as exc:  # the pass must never raise: this is the class
+                wrong.append((how, position, scope, how_run, f"raised {type(exc).__name__}"))
+                continue
+        finally:
+            for m in reversed(managers):
+                m.__exit__(None, None, None)
+        holds, want_skipped = expected(how, broken)
+        other = next(t for t in SCOPES if t != scope)
+        problems = []
+        if set(s.list_calls(other)) != {"fresh"}:
+            problems.append(f"the other firm still holds {sorted(s.list_calls(other))}")
+        if set(s.list_calls(scope)) != {"fresh"} | holds:
+            problems.append(f"the firm holds {sorted(s.list_calls(scope))}, expected {sorted({'fresh'} | holds)}")
+        if not {(scope, c) for c in want_skipped} <= skipped or any(t == other for t, _c in skipped):
+            problems.append(f"skipped says {sorted(skipped)}, expected {sorted(want_skipped)} for {scope} only")
+        if problems:
+            wrong.append((how, position, scope, how_run, problems))
+    assert not wrong, f"{len(wrong)} of {len(cells)} cells let one broken folder spoil the pass: {wrong[:6]}"
+    # the rows that must pass: on an ordinary day with nothing broken every expired call goes, a fresh one stays and nothing is skipped
+    for how_run in RUNS:
+        clock = {"now": NOW}
+        s = TenantStore(tmp_path / f"ordinary-{how_run}", registry, MASTER, clock=lambda: clock["now"])
+        for tenant, call in itertools.product(SCOPES, CALLS):
+            put(s, tenant, call)
+        clock["now"] = NOW + timedelta(days=99)
+        for tenant in SCOPES:
+            put(s, tenant, "fresh")
+        result = run_pass(s, clock, how_run)
+        assert all(set(s.list_calls(t)) == {"fresh"} for t in SCOPES) and list(getattr(result, "skipped", [])) == [], how_run
