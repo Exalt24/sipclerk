@@ -221,3 +221,37 @@ async def test_a_transfer_ended_by_the_callers_hang_up_reaches_the_bridge_and_th
         assert rec["outcome"] == "caller_hung_up" and any(t["kind"] == "callback" for t in rec["tasks"])
         assert sorted(e.target for e in r.outbox.entries.values() if e.key == rec["idempotency_key"]) == ["bridge", "console"]
         await asyncio.sleep(3.3)
+
+
+# ---- the class, enumerated: every outcome a call can end in x each firm x which receivers the firm has switched on
+#
+# GROUNDING (docs/DECISIONS.md): "the console gets every call, the bridge gets every call that has a task, as `intake.incomplete` when it was never qualified" and
+# "A caller who hung up mid intake, or while the desk phone rang, got a stored callback task and a console delivery and nothing for the case-management bridge".
+# WHY: a caller hangs up while the desk phone rings. The line stores a callback task for staff, but the case management system never hears of it, so the firm's matter list
+# has no entry and nobody phones the person back; only the call console, which nobody works from, has the task.
+import itertools
+
+RECEIVER_SWITCHES = [(True, True), (True, False), (False, True), (False, False)]  # (case management on, call console on)
+
+
+# CLASS-TABLE: an outcome that creates a callback task reaching only one receiver, for every outcome, firm and switch of the receivers
+async def test_class_every_outcome_reaches_each_receiver_the_firm_has_on_exactly_once_and_the_bridge_only_when_there_is_a_task(registry, tmp_path):
+    wrong, cells = [], list(itertools.product(CASES, ["ashgrovepell", "tidewaterquint"], RECEIVER_SWITCHES))
+    for n, ((label, outcome, drive), tenant_id, (bridge_on, console_on)) in enumerate(cells):
+        tenant = registry.by_id(tenant_id)
+        record = drive(tenant).record()
+        server, store, outbox = lab(tmp_path / f"cell{n}", registry, IN_HOURS)
+        cfg = config(tenant, bridge_on, console_on)
+        server.file_call(cfg, record, [{"speaker": "CALLER", "text": "hello"}], "summary", None, 30)
+        server.file_call(cfg, record, [], "summary", None, 30)  # filed twice (a retransmitted hang up): still one delivery each
+        got = sorted(e.target for e in outbox.entries.values() if e.key == record["idempotency_key"])
+        # a call that ended in a connected transfer carries no task: console only, and no matter for the bridge (these rows must pass too)
+        want = sorted(({"bridge"} if bridge_on and record["tasks"] else set()) | ({"console"} if console_on else set()))
+        if got != want:
+            wrong.append((label, tenant_id, (bridge_on, console_on), got, want))
+        elif bridge_on and record["tasks"]:
+            payload = next(e for e in outbox.entries.values() if e.target == "bridge" and e.key == record["idempotency_key"]).payload
+            if payload["data"]["follow_up_tasks"] != record["tasks"]:
+                wrong.append((label, tenant_id, (bridge_on, console_on), "the bridge body lost the task"))
+    await asyncio.gather(*[t for t in asyncio.all_tasks() if t is not asyncio.current_task()])
+    assert not wrong, f"{len(wrong)} of {len(cells)} cells reached the wrong receivers: {wrong[:5]}"
