@@ -92,6 +92,7 @@ LEGAL_NOUNS = ["hearing", "hearings", "motion", "order", "petition", "filing", "
 HEDGES = ["kind of", "sort of", "a bit of", "a little bit of", "somewhat of"]
 
 
+# CLASS-TABLE: the emergency rule firing on a reported injury, for every body part and verb and every person and way of asking for help
 def test_class_a_body_part_that_is_hurt_is_never_an_alarm_and_a_person_who_is_badly_hurt_always_is(ashgrove):
     for part, verb in itertools.product(BODY_PARTS, ["is hurt", "is badly hurt", "are hurt", "are seriously hurt"]):
         said = f"since the crash my {part} {verb}"
@@ -106,6 +107,7 @@ def test_class_a_body_part_that_is_hurt_is_never_an_alarm_and_a_person_who_is_ba
             assert guard.check_input(f"{who} {verb} hurt, {ask}", ashgrove.config).action == "emergency", (who, ask)
 
 
+# CLASS-TABLE: the emergency rule firing on a legal use of the word emergency, for every court noun and every hedge
 def test_class_the_word_emergency_before_a_legal_noun_or_after_a_hedge_is_not_an_alarm_and_alone_it_is(ashgrove):
     for noun in LEGAL_NOUNS:
         assert guard.check_input(f"I need an emergency {noun} this week", ashgrove.config).action == "allow", noun

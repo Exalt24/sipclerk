@@ -89,6 +89,7 @@ SUBJECTS_NOW = ["I am", "I'm", "he is", "he's", "she's", "they are", "my husband
 CONDITIONS = ["unconscious", "bleeding badly", "bleeding heavily", "not breathing", "in danger", "in immediate danger", "being followed", "being attacked", "being threatened"]
 
 
+# CLASS-TABLE: the emergency rule firing on an account of the past, for every condition word with every past and present subject and every tail
 def test_class_the_same_condition_in_the_past_is_an_account_and_in_the_present_is_an_emergency(ashgrove):
     """Every condition the rule knows, said with a past subject and with a present one, with and without a trailing account."""
     for cond, tails in itertools.product(CONDITIONS, ["", " at the scene", " when the paramedics arrived", " after the crash"]):
