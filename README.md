@@ -8,7 +8,7 @@ A voice intake line for invented law firms: a real SIP call comes in, the dialle
 
 *A separate SIP client (SIPp, in Docker) places an INVITE with G.711 audio and keypad digits. This is the logged run replayed at 4x. Full quality: [`docs/demo.mp4`](docs/demo.mp4).*
 
-**Proof, run on this machine on 2026-10-26:** 3,842 tests pass and the 101 of 232 deliberate breaks rerun after the third review round are all caught by a failing test. The 25 spoken tests over 20 scenarios (real SIP and RTP through Whisper, a local language model and Kokoro) were replayed after the review rounds: 23 passed, barge-in and a caller's correction failed once on a busy machine and passed alone. The first audio of the agent's answer arrived 619 ms (median) and 1611 ms (95th percentile) after the caller stopped talking in the earlier, quieter run. Every figure and command is in [`docs/PROOF.md`](docs/PROOF.md).
+**Proof, run on this machine on 2026-10-26:** 3,842 tests pass (3,839 and 3 skipped without the sibling bridge checkout) and the 101 of 232 deliberate breaks rerun after the third review round are all caught by a failing test. The 25 spoken tests over 20 scenarios (real SIP and RTP through Whisper, a local language model and Kokoro) were replayed after the review rounds: 23 passed, barge-in and a caller's correction failed once on a busy machine and passed alone (the replay output was not kept, and `pytest -m voice` overwrites `docs/voice_suite_run.json`). The first audio of the agent's answer arrived 619 ms (median) and 1611 ms (95th percentile) after the caller stopped talking in the earlier, quieter run. Every figure and command is in [`docs/PROOF.md`](docs/PROOF.md).
 
 > **A lab, not a service.** Two invented firms, synthetic callers and voices, no real phone number, no production traffic and no customer. The one leg not tested is a real phone number from a carrier, because that is the only part that costs money. [Limits](#limits) lists the rest.
 
@@ -48,9 +48,9 @@ First audio after the caller stops talking, measured at the caller's side from t
 | Agent side, from the detector's end of speech to the first audio, no model in the turn | 125 | 151 ms | 267 ms |
 | Agent side, the language model in the turn (the closing acknowledgement) | 14 | 572 ms | 1019 ms |
 
-Most of the median is the silence that ends a turn (0.5 s for a yes or a name, 1.0 s for a number, 1.2 s for a story), not compute: Whisper transcribes an utterance in about 155 ms, which sits inside the agent side's 151 ms. Fixed prompts and read-backs are rendered once and cached: in this suite (two invented callers) the cache answered 370 sentences and missed 120, most of the misses being the start-up render of the fixed lines, and no turn is measured on a sentence rendered on the spot. A real caller's first read-back is rendered on the spot and adds to that turn; that time was not kept.
+Most of the median is the silence that ends a turn (0.5 s for a yes or a name, 1.0 s for a number, 1.2 s for a story), not compute: Whisper transcribes an utterance in about 155 ms, which is roughly all of the agent side's 151 ms median. Fixed prompts are rendered once and cached (370 sentences answered, 120 missed, mostly the start-up render); the 14 closing turns speak a sentence the model wrote, so their time includes rendering it, and a real caller's first read-back is rendered on the spot too, a time that was not kept. These figures were measured before the review round fixes; the replay after them did not save its numbers.
 
-Per call, a completed intake took 80.4 s on the line and 1.08 model calls, not counting the staff summary call (tokens and seconds, nothing here is billed); the table is in [`docs/PROOF.md`](docs/PROOF.md).
+Per call, in the same earlier run, a completed intake took 80.4 s on the line and 1.08 model calls, not counting the staff summary call (tokens and seconds, nothing here is billed); the table is in [`docs/PROOF.md`](docs/PROOF.md).
 
 The SIP leg, from [`docs/sipp_run.json`](docs/sipp_run.json): SIPp offered PCMA, PCMU and telephone-event, the line answered PCMU 8 kHz, 4,367 RTP packets arrived, eleven keypad events became the phone number, and the call ended with the agent's BYE. The audio path, with numbers, is in [`docs/codec_proof.txt`](docs/codec_proof.txt).
 
@@ -59,7 +59,7 @@ The SIP leg, from [`docs/sipp_run.json`](docs/sipp_run.json): SIPp offered PCMA,
 - **Speech after silence vanished.** Pipecat's streaming resampler swallowed speech that followed a long stretch of digital silence, so a caller who waited out the greeting went unheard. Found by replaying a clip after 12 seconds of zeros; fixed with a stateful upsampler that costs 2 ms (`test_stream_upsampler_*`).
 - **A pause is not the end of a turn.** Callers pause between digit groups and inside a story, and a 0.5 s window cut them off. The window is now set per question (1.0 s for a number, 1.2 s for a story), and a phone number heard in pieces is kept and completed.
 - **A failed write killed the hang-up.** A record with no qualification (a caller who went silent) crashed the delivery builder inside the hang-up path and left calls that never ended. A property test now delivers every record a random call can make, and a failing write is logged and the call still ends.
-- **The model sits behind fences.** It reads an answer only when the plain parser could not (it always writes the closing acknowledgement and the staff summary), its answers go through the same validators, its acknowledgement goes through the output guard, and with it down the call completes (`provider_llm_error`).
+- **The model sits behind fences.** It reads an answer only when the plain parser could not (it also writes a closing acknowledgement when the call has a description, and a staff summary), its answers go through the same validators, its acknowledgement goes through the output guard, and with it down the call completes (`provider_llm_error`).
 - **The guard fired on ordinary calls three times.** "I was hurt in a crash", then "I was taken to the emergency room", then "my back is hurt" and "an emergency hearing" each got the 911 line and a transfer. The rule now fires on a danger happening now, and tables pin each phrasing next to the same words said as a real alarm.
 - **An offset typed into the file is not a clock.** The hours used a fixed UTC offset, so once the clocks went back the last open hour read as closed and the hour before opening as open. The firms now name a time zone, and a table checks both of them against it for two years, minute by minute around each clock change.
 - **Features tested and never run.** A review that read the files found that `TenantStore.purge` had no caller, that the outbox held callers' names and stories in plaintext, and that six retries over 31 seconds gave up on a receiver down for ten minutes. Retention now runs hourly, the outbox body is encrypted per firm, retries last about 23 hours, and `tests/test_wiring.py` fails when a public method has no caller.
@@ -94,7 +94,7 @@ python scripts/sipp_demo.py --out docs/sipp_run.json
 | Unit and property | `python -m pytest` | tenant files, parsers, names in any language, the guard, the state machine (examples plus 160 seeded random calls), storage, retention and access, the outbox, the dialled number and the caller id, the ACK window, route sets, SIP, SDP, RTP, the language model fences, the office hours, and the 59 cases of the third review round replayed from `tests/corpus` | 3,842 |
 | The line with stand-in models | included in the above | real SIP and RTP over UDP, real voice activity detection and Pipecat, with Whisper and Kokoro replaced: routing, barge-in, silence, keypad, recording consent, transfer and bridge, an abandoned transfer, anonymous callers, a full intake | 18 |
 | Spoken scenarios | `python -m pytest -m voice` | 25 tests over 20 scenarios replayed as WAV through real SIP, Whisper, the model and Kokoro (about 25 minutes, each call in real time) | 25 |
-| Mutation check | `python scripts/mutation_check.py --layer all` | 232 deliberate breaks, one at a time, run in a copy of the repository, each must fail a named test | 232 rows; 101 rerun after round 3, all killed |
+| Mutation check | `python scripts/mutation_check.py --layer all` | 232 deliberate breaks, one at a time, run in a copy of the repository, each must fail a named test | 232 rows in two reports; 101 rerun after round 3, all killed (output not kept) |
 
 The 20 spoken scenarios, with what each does and how long it lasts, are in [`docs/PROOF.md`](docs/PROOF.md).
 
@@ -109,29 +109,14 @@ Rows in `scripts/mutants_derived.py` take their edit from the syntax tree, not t
 - **The plain readers still guess.** A date answer is taken as heard with no read-back, a keyword such as `trust` has an everyday meaning, `No problem` to the recording question turns recording off, and a caller who says no to being a client and then says they are one is not handed to a person. [`docs/DECISIONS.md`](docs/DECISIONS.md) lists each known limit with its reason.
 - **Retention and delivery have edges.** A call folder with no readable `meta.json` is skipped by retention, never deleted, because it cannot be told from a call still being saved. A delivery is dead about 23 hours after it was queued and waits for `scripts/requeue_dead.py`. A route given as a host name is not resolved.
 - **Latency is this machine's.** A GPU shared with other work, one event loop for the line and the test caller, and a model of 4 billion parameters. Nothing here says what a production deployment would measure.
-- **Case management is not Clio.** No Clio record is written: a Clio developer trial token answered 401 when tried (not reproducible from the repo; the trial ended in August 2026). The intake goes to the verification code of `clio-matter-bridge` as a Clio-shaped delivery and to a local `clinic-call-console` API, whose reasons are clinic ones, so every intake maps to `OTHER`.
+- **Case management is not Clio.** No Clio record is written: a Clio developer trial token answered 401 when tried (not reproducible from the repo; the trial ended in August 2026). The intake goes to the verification code of the sibling repo `Exalt24/clio-matter-bridge` as a Clio-shaped delivery and to a local `Exalt24/clinic-call-console` API (neither is needed for the tests, both for `docs/integration_run.txt`), whose reasons are clinic ones, so every intake maps to `OTHER`.
 - **No conflict check, no booking, no calendar.** A caller who says they are an existing client is handed to a person; nothing checks a conflict list.
 - **Scripts and tests only.** No server command starts the line: it runs inside `replay.py`, `sipp_demo.py` and the tests. Three bridge tests skip without node and a sibling `clio-matter-bridge` checkout, so a fresh clone shows 3,839 passed and 3 skipped.
 - **No staff screen, two calls at once.** Nothing reads a stored record back (`TenantStore.read` has no caller, as `tests/test_wiring.py` says), and two simultaneous calls were run, not twenty.
 
 ## Layout
 
-```
-sipclerk/sip/        SIP messages and SDP, the user agent, RTP with G.711 and RFC 4733, the softphone
-sipclerk/intake/     the state machine and the field parsers
-sipclerk/voice/      Pipecat processors, shared Whisper and Kokoro, the language model fences
-sipclerk/guard.py    the guard, before and after the model
-sipclerk/tenants.py  tenant files, schema, hash, lookup by dialled number
-sipclerk/store.py    encrypted per-tenant storage, roles, audit chain, retention
-sipclerk/delivery.py signed deliveries with an outbox
-sipclerk/server.py   the listener, retention and outbox loops
-sipclerk/call.py     one call from INVITE to hang-up, the transfer leg
-tenants/             the two invented firms and the JSON schema
-voice_scripts/       the spoken scenarios and the rendered WAV clips
-scripts/             replay, mutation check, SIPp media, integration checks, requeue of dead deliveries
-tools/               SIPp in Docker, the bridge receiver
-docs/                PROOF.md, DECISIONS.md, the run logs
-```
+Folder by folder: [`docs/layout.md`](docs/layout.md).
 
 ## Stack
 
