@@ -1,0 +1,138 @@
+{
+  "killed": 12,
+  "total": 12,
+  "results": [
+    {
+      "id": "hours-clock-is-the-firms-zone",
+      "file": "sipclerk/tenants.py",
+      "desc": "the wall clock at the firm is not read from its named zone",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_hours_time_zone.py::test_the_failing_cases_of_the_round"
+      ],
+      "seconds": 3.5
+    },
+    {
+      "id": "hours-a-naive-time-is-utc",
+      "file": "sipclerk/tenants.py",
+      "desc": "a naive time is read in the machine's own zone, not as UTC",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_hours_time_zone.py::test_the_failing_cases_of_the_round"
+      ],
+      "seconds": 3.6
+    },
+    {
+      "id": "hours-the-end-is-closed",
+      "file": "sipclerk/tenants.py",
+      "desc": "the minute the office closes still counts as open",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_hours_time_zone.py::test_the_failing_cases_of_the_round"
+      ],
+      "seconds": 3.5
+    },
+    {
+      "id": "keypad-closes-at-the-tenth-digit",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "ten digits not starting with 1 wait for a pound that is not coming",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_keypad_entry_length.py::test_a_keypad_entry_is_closed_when_it_is_complete[2-10]"
+      ],
+      "seconds": 3.6
+    },
+    {
+      "id": "keypad-a-leading-one-is-eleven-digits",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "the eleven digit form is cut at ten or a ten digit number waits for eleven",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_keypad_entry_length.py::test_a_keypad_entry_is_closed_when_it_is_complete[1-1]"
+      ],
+      "seconds": 3.6
+    },
+    {
+      "id": "machine-tells-the-guard-the-answer-was-no",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "the guard is told a caller said no when they said yes, or the other way round",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_existing_client_after_no.py::test_after_a_no_the_phrase_is_the_matter_not_a_client[no-I'm"
+      ],
+      "seconds": 3.7
+    },
+    {
+      "id": "guard-existing-client-skipped-after-no",
+      "file": "sipclerk/guard.py",
+      "desc": "the existing client rule still runs on a caller who said they are not a client",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_existing_client_after_no.py::test_after_a_no_the_phrase_is_the_matter_not_a_client[no-I'm"
+      ],
+      "seconds": 3.6
+    },
+    {
+      "id": "date-a-named-day-of-last-month",
+      "file": "sipclerk/intake/parsers.py",
+      "desc": "the 5th of last month is last month's today",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_date_named_month.py::test_a_day_of_last_month_or_this_month[today0]"
+      ],
+      "seconds": 3.9
+    },
+    {
+      "id": "date-a-relative-year-says-which-year",
+      "file": "sipclerk/intake/parsers.py",
+      "desc": "last year after a named month is ignored",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_date_named_month.py::test_a_named_month_with_a_relative_year[today0-1]"
+      ],
+      "seconds": 3.7
+    },
+    {
+      "id": "date-may-the-verb-is-not-a-month",
+      "file": "sipclerk/intake/parsers.py",
+      "desc": "may have been in August is read as May",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_date_named_month.py::test_a_named_month_with_a_relative_year[today4-5]"
+      ],
+      "seconds": 3.7
+    },
+    {
+      "id": "date-the-day-is-the-one-beside-the-month",
+      "file": "sipclerk/intake/parsers.py",
+      "desc": "5 pm on March 3rd is read as the 5th",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_date_named_month.py::test_a_named_month_and_day[today0-1]"
+      ],
+      "seconds": 3.6
+    },
+    {
+      "id": "date-ordinal-words-are-days",
+      "file": "sipclerk/intake/parsers.py",
+      "desc": "the third of March is read as the first",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_date_named_month.py::test_a_named_month_with_a_relative_year[today0-1]"
+      ],
+      "seconds": 3.7
+    }
+  ]
+}
