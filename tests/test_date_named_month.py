@@ -80,11 +80,25 @@ def test_a_day_of_last_month_or_this_month(today):
             _check(text, today, (False, "in_the_future") if this > today else (True, this.isoformat()))
 
 
+# CLASS-TABLE: every date x every day 0 to 31 x last month and this month: a day the month does not have is not a date
+@pytest.mark.parametrize("today", TODAYS)
+def test_a_day_the_month_does_not_have_is_not_a_date(today):
+    last = date(today.year - 1, 12, 1) if today.month == 1 else date(today.year, today.month - 1, 1)
+    for day in (0, 29, 30, 31):
+        for text, base in ((f"the {day} of last month", last), (f"the {day} of this month", today)):
+            try:
+                found = date(base.year, base.month, day)
+            except ValueError:
+                _check(text, today, (False, "not_a_date"))
+                continue
+            _check(text, today, (False, "in_the_future") if found > today else (True, found.isoformat()))
+
+
 # CLASS-TABLE: every month x every shape where a number other than a day stands in the answer: the month is read and the day is the 1st
 @pytest.mark.parametrize("today,month", list(itertools.product(TODAYS, range(1, 13))))
 def test_a_number_that_is_no_day_leaves_the_first_of_the_month(today, month):
     name = MONTHS[month - 1]
-    for text in (f"in {name}, when I was 45", f"{name} 45", f"it was {name} and I was 60 years old"):
+    for text in (f"in {name}, when I was 45", f"{name} 45", f"{name} 32", f"it was {name} and I was 60 years old"):
         _check(text, today, _expect(today, None, month, 1))
 
 
