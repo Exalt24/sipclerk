@@ -169,9 +169,16 @@ def is_skip(text: str) -> bool:
     return any(n == s or n.startswith(s + " ") or s in n.split(". ")[0] for s in SKIP_WORDS)
 
 
+# What a caller says before the address: a filler (`um`, `yeah`, `sure`) or a lead-in (`my email is`, `it's`). A word that a spoken connector follows is the
+# start of the address (`sure at gmail dot com`), so it stays.
+EMAIL_LEAD = re.compile(
+    r"^(?:(?:uh|um|uhm|er|erm|ah|oh|hmm|well|so|okay|ok|alright|yeah|yes|yep|yup|sure|right|hi|hello|hey|actually|please|"
+    r"my email(?: address)?(?: is)?|the email(?: address)?(?: is)?|email(?: address)? is|it's|it is|its|that's|that is|this is|"
+    r"you can use|send it to)\.*(?=\s)(?!\s+(?:dot|at|underscore|dash|plus)\b)\s*)+")
+
+
 def parse_email(text: str) -> Parsed:
-    n = _norm(text)
-    n = re.sub(r"\b(?:my email is|it's|it is|email is)\b", "", n).strip()
+    n = EMAIL_LEAD.sub("", _norm(text)).strip()
     n = n.replace(" at ", "@").replace(" dot ", ".").replace(" underscore ", "_").replace(" dash ", "-").replace(" plus ", "+")
     n = re.sub(r"\s+", "", n).strip(".")
     if EMAIL_RE.match(n):
