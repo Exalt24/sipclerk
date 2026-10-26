@@ -165,7 +165,7 @@ DERIVED_MUTANTS: list[DerivedMutant] = [
     D("message-withheld-zeros", MS, "caller_is_withheld", "Eq -> NotEq", "set(digits)", "a caller id of only zeros counts as a real number", ANON),
     # ---- the emergency rule fires on a danger happening now, not on an account of one (F12)
     D("guard-emergency-account-dropped", GD, "_emergency_now", "negate the condition", "_is_account", "the emergency rule fires only on accounts of the past", TENSE),
-    D("guard-emergency-present-verb-is-live", GD, "_is_account", "negate the condition", "(?:is|are)", "a hit that says `is bleeding` is dropped when the clause mentions the past", TENSE),
+    D("guard-emergency-present-verb-is-live", GD, "_is_account", "negate the condition", "(?:is|are|am", "a hit that says `is bleeding` is dropped when the clause mentions the past", TENSE),
     D("guard-emergency-now-before-the-hit", GD, "_is_account", "negate the condition", "_NOW_BEFORE_HIT", "`he's unconscious after the fall` is dropped as an account", TENSE),
     D("guard-emergency-past-clause", GD, "_is_account", "return value -> None", "", "no clause is ever an account of the past", TENSE),
     # ---- the emergency rule fires on a danger now, not on an injury or a deadline being reported (output round 2, F1 and F2)

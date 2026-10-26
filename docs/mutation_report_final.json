@@ -1,6 +1,6 @@
 {
-  "killed": 17,
-  "total": 17,
+  "killed": 26,
+  "total": 26,
   "results": [
     {
       "id": "parsers-future-date",
@@ -11,7 +11,7 @@
       "killed_by": [
         "tests/test_parsers.py::test_date_future_and_too_old_and_garbage"
       ],
-      "seconds": 7.0
+      "seconds": 7.5
     },
     {
       "id": "parsers-too-old",
@@ -44,7 +44,7 @@
       "killed_by": [
         "tests/test_email_and_date_shapes.py::test_class_courtesy_said_after_a_name_is_not_part_of_it"
       ],
-      "seconds": 3.4
+      "seconds": 3.5
     },
     {
       "id": "parsers-yes-phrases",
@@ -55,7 +55,7 @@
       "killed_by": [
         "tests/test_probe_fixes.py::test_class_every_plain_yes_reads_as_yes"
       ],
-      "seconds": 5.9
+      "seconds": 3.7
     },
     {
       "id": "parsers-dont-know-is-not-a-no",
@@ -66,7 +66,7 @@
       "killed_by": [
         "tests/test_probe_fixes.py::test_i_dont_know_is_not_a_stored_no[I"
       ],
-      "seconds": 5.7
+      "seconds": 3.8
     },
     {
       "id": "parsers-skip-whole-words",
@@ -77,7 +77,7 @@
       "killed_by": [
         "tests/test_probe_fixes.py::test_class_a_skip_word_inside_a_longer_word_is_not_a_skip"
       ],
-      "seconds": 3.6
+      "seconds": 4.4
     },
     {
       "id": "parsers-two-options-named",
@@ -88,7 +88,7 @@
       "killed_by": [
         "tests/test_probe_fixes.py::test_class_two_states_named_are_not_decided_by_the_list_order"
       ],
-      "seconds": 3.5
+      "seconds": 3.6
     },
     {
       "id": "parsers-month-beats-yesterday",
@@ -99,7 +99,7 @@
       "killed_by": [
         "tests/test_probe_fixes.py::test_class_a_named_month_beats_today_and_yesterday"
       ],
-      "seconds": 3.6
+      "seconds": 3.8
     },
     {
       "id": "parsers-correction-cue-replaces",
@@ -110,7 +110,7 @@
       "killed_by": [
         "tests/test_probe_fixes.py::test_class_a_correction_replaces_the_first_answer"
       ],
-      "seconds": 3.5
+      "seconds": 3.7
     },
     {
       "id": "machine-first-name-then-last-name",
@@ -121,7 +121,7 @@
       "killed_by": [
         "tests/test_probe_fixes.py::test_first_name_then_last_name_in_two_answers"
       ],
-      "seconds": 3.5
+      "seconds": 3.7
     },
     {
       "id": "machine-this-number-is-the-caller-id",
@@ -132,7 +132,7 @@
       "killed_by": [
         "tests/test_probe_fixes.py::test_class_the_caller_id_is_offered_back_when_the_caller_says_to_use_it[this"
       ],
-      "seconds": 3.5
+      "seconds": 3.6
     },
     {
       "id": "guard-human-request-other-words",
@@ -143,7 +143,95 @@
       "killed_by": [
         "tests/test_probe_fixes.py::test_class_every_way_of_asking_for_a_person_escalates[transfer"
       ],
-      "seconds": 3.5
+      "seconds": 3.6
+    },
+    {
+      "id": "parsers-no-without-the-word-no",
+      "file": "sipclerk/intake/parsers.py",
+      "desc": "nothing and I haven't are not read as no",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_probe_fixes.py::test_class_a_no_said_without_the_word_no_is_a_no[nothing]"
+      ],
+      "seconds": 3.6
+    },
+    {
+      "id": "machine-dictated-number-beats-caller-id",
+      "file": "sipclerk/intake/machine.py",
+      "desc": "a number dictated next to this number is replaced by the caller ID",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_probe_fixes.py::test_a_dictated_number_beats_the_caller_id[I'm"
+      ],
+      "seconds": 3.7
+    },
+    {
+      "id": "parsers-two-thousand-year",
+      "file": "sipclerk/intake/parsers.py",
+      "desc": "two thousand twenty three is not read as a year",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_probe_fixes.py::test_class_a_year_said_as_two_thousand_and_a_number[two"
+      ],
+      "seconds": 3.6
+    },
+    {
+      "id": "guard-a-device-dying-is-not-an-emergency",
+      "file": "sipclerk/guard.py",
+      "desc": "my phone's dying fires the 911 line",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_probe_fixes.py::test_class_an_ordinary_sentence_with_an_emergency_word_does_not_fire[my"
+      ],
+      "seconds": 3.7
+    },
+    {
+      "id": "guard-urgency-cue-in-the-same-clause",
+      "file": "sipclerk/guard.py",
+      "desc": "right now anywhere in the answer makes a hurt caller an alarm",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_probe_fixes.py::test_class_an_ordinary_sentence_with_an_emergency_word_does_not_fire[I'm"
+      ],
+      "seconds": 3.9
+    },
+    {
+      "id": "parsers-name-spelled-tail",
+      "file": "sipclerk/intake/parsers.py",
+      "desc": "a spelling said after a name is stored as part of it",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_probe_fixes.py::test_class_a_name_said_with_a_lead_in_or_a_tail_is_just_the_name[Priya"
+      ],
+      "seconds": 3.7
+    },
+    {
+      "id": "parsers-name-bare-filler",
+      "file": "sipclerk/intake/parsers.py",
+      "desc": "oh sure Priya Raman keeps its filler",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_probe_fixes.py::test_class_a_name_said_with_a_lead_in_or_a_tail_is_just_the_name[oh"
+      ],
+      "seconds": 3.6
+    },
+    {
+      "id": "guard-a-story-is-not-a-request-for-a-person",
+      "file": "sipclerk/guard.py",
+      "desc": "I haven't had a chance to speak to a lawyer escalates",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_probe_fixes.py::test_class_a_story_is_not_a_request_for_a_person[I"
+      ],
+      "seconds": 3.6
     },
     {
       "id": "parsers-number-words-compound",
@@ -154,7 +242,7 @@
       "killed_by": [
         "tests/test_email_and_date_shapes.py::test_class_a_number_said_in_words_is_that_many_units_ago"
       ],
-      "seconds": 3.4
+      "seconds": 3.6
     },
     {
       "id": "guard-emergency-contractions",
@@ -165,7 +253,7 @@
       "killed_by": [
         "tests/test_emergency_contractions.py::test_class_every_way_of_saying_someone_is_in_danger_fires"
       ],
-      "seconds": 3.5
+      "seconds": 3.7
     },
     {
       "id": "parsers-numeric-date-two-digit-year",
@@ -176,7 +264,7 @@
       "killed_by": [
         "tests/test_email_and_date_shapes.py::test_class_a_numeric_date_is_stored_as_that_date"
       ],
-      "seconds": 3.4
+      "seconds": 3.8
     },
     {
       "id": "parsers-compound-ago-days-dropped",
@@ -187,7 +275,18 @@
       "killed_by": [
         "tests/test_email_and_date_shapes.py::test_class_two_units_ago_are_both_counted"
       ],
-      "seconds": 3.4
+      "seconds": 3.6
+    },
+    {
+      "id": "guard-emergency-present-verb-is-live",
+      "file": "sipclerk/guard.py",
+      "desc": "a hit that says `is bleeding` is dropped when the clause mentions the past",
+      "layer": "unit",
+      "status": "KILLED",
+      "killed_by": [
+        "tests/test_emergency_tense.py::test_an_account_of_something_that_happened_is_not_an_emergency[I"
+      ],
+      "seconds": 3.6
     }
   ]
 }

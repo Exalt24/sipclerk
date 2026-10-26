@@ -211,7 +211,7 @@ class IntakeMachine:
         q = self.question
         if q is None:
             return Parsed(False, reason="no_question")
-        if q.type == "phone" and SAME_NUMBER.search(parsers._norm(text)):
+        if q.type == "phone" and SAME_NUMBER.search(parsers._norm(text)) and len(parsers.spoken_digits(text)) < 7:  # a number the caller dictated beats the caller ID
             # `this number is fine`, `the number I'm calling from`: the caller ID, offered back for the read-back like any other number.
             own = parsers.parse_phone(self.caller_number or "")
             if own.ok:

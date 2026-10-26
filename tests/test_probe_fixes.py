@@ -209,3 +209,80 @@ def test_class_an_executor_is_in_scope_for_the_estate_firm(tidewater, said):
 
 def test_a_plain_dui_charge_is_still_out_of_scope(ashgrove):
     assert guard.check_input("I got a DUI last night and need a lawyer", ashgrove.config, check_scope=True).action == "out_of_scope"
+
+
+# ---- the final independent recall (b306cb2): regressions from the widenings above and the plain wordings they missed
+# CLASS-TABLE: ordinary sentences that hold a word of the request-for-a-person rule and are NOT a request, in a story
+STORY_SENTENCES = ["I tried to talk to my boss about the overtime and then he fired me", "the surgery put me through months of therapy",
+                   "they wanted to transfer me to another location", "I was a crane operator", "I was a forklift operator at the plant",
+                   "I haven't had a chance to speak to a lawyer yet", "my boss wants to connect me with a recruiter", "I never got the time to speak to someone about it"]
+
+
+@pytest.mark.parametrize("said", STORY_SENTENCES)
+def test_class_a_story_is_not_a_request_for_a_person(ashgrove, said):
+    assert guard.check_input(said, ashgrove.config).rule != "human_request", said
+
+
+# CLASS-TABLE: every plain no that is said without the word no, and the hedges that are not one
+@pytest.mark.parametrize("said", ["nothing", "none", "there's nothing", "nothing scheduled", "I haven't", "I don't know of any", "I don't see any", "I've never been a client",
+                                  "nobody", "not that I know of"])
+def test_class_a_no_said_without_the_word_no_is_a_no(said):
+    r = parsers.parse_yesno(said)
+    assert r.ok and r.value is False, (said, r.value if r.ok else r.reason)
+
+
+@pytest.mark.parametrize("said", ["nothing right now", "none right now"])
+def test_a_no_with_a_right_now_is_never_stored_as_a_yes(said):
+    r = parsers.parse_yesno(said)
+    assert not (r.ok and r.value is True), (said, r.value)
+
+
+# CLASS-TABLE: a caller who dictates a number while saying whose phone it is
+@pytest.mark.parametrize("said", ["I'm calling from my sister's phone, but you can reach me on 415 555 0188", "call me on 415 555 0188, this number is my cell"])
+def test_a_dictated_number_beats_the_caller_id(tidewater, said):
+    m = IntakeMachine(tidewater, "c1", "+14155550142", IN_HOURS)
+    m.begin()
+    run(m, "Jordan Reyes", "yes")
+    out = " ".join(says(run(m, said)))
+    assert "eight eight" in out.lower() or "0188" in out or "zero one eight eight" in out.lower() or "1 8 8" in out, out
+    assert "one four two" not in out.lower() and "0142" not in out
+
+
+# CLASS-TABLE: a name with a lead-in or a tail said the way people say it
+@pytest.mark.parametrize("said", ["Okay, so it's Priya Raman", "alright it's Priya Raman", "oh sure, Priya Raman", "Priya Raman speaking", "Priya Raman here",
+                                  "hey Priya Raman", "Priya Raman, that's R-A-M-A-N", "actually it's Priya Raman"])
+def test_class_a_name_said_with_a_lead_in_or_a_tail_is_just_the_name(said):
+    r = parsers.parse_name(said)
+    assert r.ok and r.value == "Priya Raman", (said, r.value if r.ok else r.reason)
+
+
+def test_a_last_name_followed_by_its_spelling_keeps_only_the_name():
+    r = parsers.parse_name("Reyes, R-E-Y-E-S")
+    assert r.value == "Reyes" and r.reason == "need_last_name"
+
+
+# CLASS-TABLE: sentences that hold a word of the emergency rule and are an ordinary call, and the present danger that must still fire
+NOT_AN_EMERGENCY = ["my phone's dying so I'll be quick, it's a custody case", "I'm dying to get this sorted", "my husband's dying to move to Texas",
+                    "he's bleeding me dry with child support", "she's hurt that he left and wants a divorce right now", "I'm hurt and out of work right now",
+                    "I'm in danger of losing my kids, my ex wants custody", "I'm in danger of losing my green card", "he is in danger of losing his work permit"]
+EMERGENCY_NOW = ["I'm bleeding from my head after I hit the windshield", "I'm bleeding after the accident and my car is on fire", "Help, I'm bleeding, I was in a crash",
+                 "he's bleeding", "I'm dying"]
+
+
+@pytest.mark.parametrize("said", NOT_AN_EMERGENCY)
+def test_class_an_ordinary_sentence_with_an_emergency_word_does_not_fire(tidewater, said):
+    assert guard.check_input(said, tidewater.config).action != "emergency", said
+
+
+@pytest.mark.parametrize("said", EMERGENCY_NOW)
+def test_class_a_danger_happening_now_still_fires(tidewater, said):
+    assert guard.check_input(said, tidewater.config).action == "emergency", said
+
+
+# CLASS-TABLE: a year said as two thousand and a number, in every position of the sentence
+@pytest.mark.parametrize("said,want", [("two thousand twenty three in June", "2023-06-01"), ("June of two thousand twenty three", "2023-06-01"),
+                                       ("March third two thousand twenty five", "2025-03-03"), ("in two thousand twenty one", "2021-06-30"),
+                                       ("two thousand and nineteen", "2019-06-30"), ("sometime in two thousand twenty", "2020-06-30")])
+def test_class_a_year_said_as_two_thousand_and_a_number(said, want):
+    r = parsers.parse_date(said, TODAY)
+    assert r.ok and r.value == want, (said, r.value if r.ok else r.reason)

@@ -64,7 +64,8 @@ YES = {"yes", "yeah", "yep", "yup", "sure", "correct", "right", "absolutely", "a
        "definitely", "exactly", "indeed", "fine", "alright", "mm-hmm", "mmhmm", "mm"}
 YES_PHRASES = ("that's me", "that is me", "that's it", "that is it", "that's fine", "that is fine", "that's good", "that's correct", "go ahead", "of course",
                "all right", "sounds good", "that works", "that's what it is")
-NO = {"no", "nope", "nah", "wrong", "incorrect", "negative", "not"}
+NO = {"no", "nope", "nah", "wrong", "incorrect", "negative", "not", "nothing", "none", "never", "nobody", "haven't", "hasn't", "hadn't"}
+NO_PHRASES = ("don't know of any", "don't see any", "don't have any", "do not have any", "not that i know", "not that i'm aware")
 # `I don't know` and `I don't remember` are not a no: the answer is unknown, and a stored no on a deadline question is a wrong record.
 NOT_A_NO_AFTER_DONT = {"know", "remember", "recall", "care", "mind", "see"}
 
@@ -81,6 +82,8 @@ def parse_yesno(text: str) -> Parsed:
         yes_i = head.index("right")
     if yes_i is None and no_i is None:
         said = " ".join(head)
+        if any(ph in " ".join(words) for ph in NO_PHRASES):
+            return Parsed(True, False, remainder="")
         phrase = next((ph for ph in YES_PHRASES if ph in said), None)
         if phrase:
             return Parsed(True, True, remainder="")
@@ -98,9 +101,11 @@ def parse_yesno(text: str) -> Parsed:
 
 # ------------------------------------------------------------------ name
 
-NAME_LEAD = re.compile(r"^(?:(?:uh|um|well|yes|yeah|hi|hello|hey|sure|okay|ok)[,\s]+)*"
+NAME_LEAD = re.compile(r"^(?:(?:uh|um|well|yes|yeah|hi|hello|hey|sure|okay|ok|so|alright|oh|like|actually|right)[,\s]+)*"
                        r"(?:my (?:full |last |family )?name(?: is|'s)|this is|it is|it's|its|i am|i'm|name is|name's|call me|they call me)\s+", re.I)
-NAME_TRAIL = re.compile(r"(?:[,.\s]+(?:please|thanks|thank you(?: very much)?|that's it|that is it|that's all|that is all|okay|ok))+[.!\s]*$", re.I)  # courtesy said after the name
+NAME_TRAIL = re.compile(r"(?:[,.\s]+(?:please|thanks|thank you(?: very much)?|that's it|that is it|that's all|that is all|okay|ok|speaking|here|right|yeah|calling))+[.!\s]*$", re.I)  # courtesy said after the name
+NAME_FILLER = re.compile(r"^(?:(?:uh|um|well|hey|sure|okay|ok|so|alright|oh|actually)[,\s]+)+", re.I)  # not `yes` or `hi`: a leading yes has always made a name answer unclear
+SPELLED_TAIL = re.compile(r"[,.\s]+(?:that's|that is|it's|it is|spelled|spelt)?\s*(?:[A-Za-z]-){2,}[A-Za-z]\b.*$")  # `Priya Raman, that's R-A-M-A-N`
 NAME_STOP = {"yes", "no", "the", "and", "but", "not", "what", "why", "how", "please", "sorry", "hello", "hi", "um", "uh",
              "skip", "lawyer", "attorney", "client", "person", "someone", "phone", "number", "accident", "injured",
              "is", "was", "are", "were", "my", "i", "need", "want", "help", "have", "has", "had", "with", "for", "at",
@@ -113,7 +118,10 @@ NAME_AMBIGUOUS = {"an", "to", "case", "hurt"}
 def parse_name(text: str, *, named: bool = False) -> Parsed:
     """`named` is for text that is already a name (what the model extracted): the capital letter is then not needed to read An, To, Case or Hurt as part of it."""
     raw = _squash(unicodedata.normalize("NFC", text).replace("’", "'"), "'-", digits=False)
-    raw = NAME_TRAIL.sub("", NAME_LEAD.sub("", raw.strip()))
+    raw = NAME_LEAD.sub("", raw.strip())
+    if (bare := NAME_FILLER.sub("", raw)) and bare != raw:  # `oh sure, Priya Raman`: a filler with no `my name is` after it
+        raw = bare
+    raw = NAME_TRAIL.sub("", SPELLED_TAIL.sub("", raw))
     tokens = [t.strip("-'") for t in raw.split() if t.strip("-'")]
     if not tokens:
         return Parsed(False, reason="empty")
@@ -292,6 +300,8 @@ def _year_words(n: str) -> str:
             return str(head + NUMBER_WORDS[words[1]])
         return str(head + sum(NUMBER_WORDS[w] for w in words))
 
+    two_thousand = rf"\btwo thousand(?: and)?(?: ((?:{_TENS_WORDS})(?:[ -](?:{_UNIT_WORDS}))?|{_TEEN_WORDS}|{_UNIT_WORDS}))?\b"
+    n = re.sub(two_thousand, lambda m: str(2000 + (sum(NUMBER_WORDS[w] for w in m.group(1).replace("-", " ").split()) if m.group(1) else 0)), n)  # `two thousand twenty three`
     return re.sub(pattern, year, n)
 
 

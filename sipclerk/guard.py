@@ -44,15 +44,19 @@ EXISTING_CLIENT = [
     r"\bi(?:'m| am) (?:already )?represented by (?:you|your firm)\b",
 ]
 HUMAN_REQUEST = [
-    r"\b(?:talk|speak) (?:to|with) (?:a |an |the )?(?:real )?(?:person|human|someone|representative|attorney|lawyer|receptionist|operator|staff|somebody)\b",
+    r"(?<!chance to )(?<!time to )(?<!tried to )(?<!trying to )(?<!able to )\b(?:talk|speak) (?:to|with) (?:a |an |the )?(?:real )?(?:person|human|someone|representative|attorney|lawyer|receptionist|operator|staff|somebody)\b",
     r"\b(?:real|live|actual) (?:person|human|agent|representative)\b",
-    r"\boperator\b",
+    r"^\W*(?:the |an? )?operator\W*$|\boperator,? please\b",  # a bare `operator` also sits in `crane operator` and `forklift operator`
     r"\bget me (?:a |an )?(?:person|human|attorney|lawyer|representative)\b",
     r"\bi (?:want|need) (?:a |an )?(?:person|human)\b",
-    # Other ways a caller asks for a person (found by a blind probe: `let me talk to your manager` was stored as the description of the matter).
-    r"\b(?:talk|speak) (?:to|with) (?:your |my |the |an? )?(?:manager|owner|agent|supervisor|boss)\b",
-    r"\b(?:put|get|patch|connect) me (?:through |over )?(?:to )?(?:a |an |the |your )?(?:somebody|someone|person|human|manager|attorney|lawyer|receptionist|representative|agent|staff)\b",
-    r"\btransfer me\b|\bput me through\b|\bconnect me\b",
+    # Other ways a caller asks for a person (found by a blind probe: `let me talk to your manager` was stored as the description of the matter). Each needs a
+    # request in front of it or a plain form: a bare `put me through`, `transfer me` or `talk to my boss` also sits inside ordinary stories (`the surgery put me
+    # through months of therapy`, `they wanted to transfer me to another location`, `I tried to talk to my boss about the overtime`).
+    r"\b(?:let me|can i|could i|may i|i want to|i need to|i'd like to|i would like to|please|i wanna) (?:talk|speak) (?:to|with) (?:your |the |an? )?(?:manager|owner|agent|supervisor|boss)\b",
+    r"\b(?:talk|speak) (?:to|with) your (?:manager|owner|agent|supervisor|boss)\b",
+    r"\b(?:put|get|patch|connect) me (?:through |over )?to (?:a |an |the |your )?(?:somebody|someone|person|human|manager|attorney|lawyer|receptionist|representative|agent|staff)\b",
+    r"(?:^|[,.!?] ?|\bplease |\bcan you |\bcould you |\bwill you )(?:transfer|connect) me\b",
+    r"^\W*(?:please )?(?:put me through|connect me)\W*$",
     r"^\W*(?:a |an )?(?:representative|agent|human|person|manager|receptionist)\W*$",
 ]
 EMERGENCY = [
@@ -62,10 +66,9 @@ EMERGENCY = [
     r"technicians?|treatment|visits?|doctors?|physicians?|staff|lane|brakes?|exits?|lights?|stop|fund|calls?|bills?|transport|helicopter|workers?|"
     r"hearings?|motions?|orders?|petitions?|filings?|applications?|injunctions?|relief|appeals?|stay|custody|guardianship|protective|restraining|temporary|"
     r"ex parte|visitation|divorce|bail|court|session|extension|relocation|removal|proceedings?|consultations?|appointments?|meetings?)\b)",
-    r"\bin (?:immediate )?danger\b(?! of (?:losing (?:my|our|his|her|their|the) (?:home|house|job|visa|custody|business|license|apartment|rights|status|car|"
-    r"benefits|insurance|case|claim)|being (?:evicted|deported|fired|sued|arrested)|eviction|foreclosure|deportation|bankruptcy|defaulting)\b)",
-    r"\b(?:is|are|am|['’]s|['’]re|['’]m) (?:badly |seriously )?(?:bleeding|dying|unconscious)\b",
-    r"\b(?:is|are|am|['’]s|['’]re|['’]m) (?:badly |seriously )?hurt\b",
+    r"\bin (?:immediate )?danger\b(?! of (?:losing\b|being (?:evicted|deported|fired|sued|arrested)|eviction|foreclosure|deportation|bankruptcy|defaulting)\b)",
+    r"(?<!phone)(?<!battery)(?<!laptop)(?<!tablet)(?<!phone )(?<!battery )(?<!laptop )(?<!tablet )\b(?:is|are|am|['’]s|['’]re|['’]m) (?:badly |seriously )?(?:bleeding|dying|unconscious)\b(?! (?:to|for|me)\b)",  # `I'm dying to get this sorted`, `bleeding me dry`, `my phone's dying`
+    r"\b(?:is|are|am|['’]s|['’]re|['’]m) (?:badly |seriously )?hurt\b(?! (?:that|by|because|about)\b)",  # `she's hurt that he left` is a feeling
     r"\b(?:unconscious|overdos\w*|bleeding (?:badly|heavily|out))\b",
     r"\bsuicid\w*|\bkill myself\b",
     r"\bnot breathing\b",
@@ -166,7 +169,7 @@ def check_caller(number: str, tenant: TenantConfig) -> InputVerdict:
 
 def _is_account(text: str, m: re.Match) -> bool:
     """True when the keyword `m` found sits in a clause that tells what happened, with no sign in front of it that it is happening now."""
-    if re.match(r"(?:is|are)\b", m.group(0)):  # `is bleeding`: the pattern itself says now
+    if re.match(r"(?:is|are|am|['’]s|['’]re|['’]m)\b", m.group(0)):  # `is bleeding`, `I'm bleeding`: the pattern itself says now
         return False
     left = max((text.rfind(b, 0, m.start()) + len(b) for b in _CLAUSE_BREAKS if text.rfind(b, 0, m.start()) != -1), default=0)
     right = min((i for b in _CLAUSE_BREAKS if (i := text.find(b, m.end())) != -1), default=len(text))
@@ -183,7 +186,10 @@ def _is_report(text: str, m: re.Match) -> bool:
     if hit.endswith("hurt"):
         if _BODY_PART_BEFORE.search(text[:m.start()]):
             return True
-        return not re.search(r"(?:badly|seriously) hurt$", hit) and not _HELP_NOW.search(text)
+        left = max((text.rfind(b, 0, m.start()) + len(b) for b in _CLAUSE_BREAKS if text.rfind(b, 0, m.start()) != -1), default=0)
+        right = min((i for b in _CLAUSE_BREAKS if (i := text.find(b, m.end())) != -1), default=len(text))
+        # The urgency cue must sit in the same clause: `I'm hurt and out of work right now` is a hurt caller and a job, not an alarm.
+        return not re.search(r"(?:badly|seriously) hurt$", hit) and not _HELP_NOW.search(text[left:right])
     return False
 
 
