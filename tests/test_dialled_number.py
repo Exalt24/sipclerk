@@ -229,7 +229,7 @@ async def test_the_line_answers_each_shape_and_loads_that_firms_file(ruri, to, f
 # ---- the class, enumerated: every written form of a number x every place a carrier puts it x each firm, and a number that is nobody's in the same forms and places
 #
 # GROUNDING (docs/DECISIONS.md): "The number the caller dialled is read from candidates in a fixed order: the Request-URI (`sip:`, `sips:` or `tel:`), then the To header." and
-# "The line read only the user part of the Request-URI" (README.md names the same rows: a trunk name in the Request-URI and the number in the To header).
+# "A `tel:` Request-URI is answered like any other" and "a trunk name such as `s` or `trunk01` dials nothing".
 # WHY: a firm's carrier writes its number as +1 and ten digits, as ten digits alone, with %2B, with 00, with dashes, or inside a tel: URI, and some trunks put their own
 # name in the Request-URI and the real number in the To header. Each of those got a 404, so a person phoning the firm heard the line refuse the call.
 DIDS = {ASH: "ashgrovepell", TIDE: "tidewaterquint"}
