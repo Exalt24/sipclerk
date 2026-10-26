@@ -145,3 +145,62 @@ def test_other_parsers_no_longer_split_words_at_an_accented_letter():
     assert p.parse_area("mi cuñado y yo", [area]).value == "family"  # a keyword a firm wrote with an accent can match at last
     assert p.parse_text("Анна пошла домой", 3).ok and not p.parse_text("ñ", 3).ok
     assert p.parse_email("jose dot garcia at example dot com").value == "jose.garcia@example.com"  # spoken addresses are ASCII on purpose
+
+
+# ---- the class, enumerated: every script x where the letters stand in the name x how the caller introduces it x composed or decomposed
+#
+# GROUNDING (docs/DECISIONS.md): "A name is read with the letters of any language, composed to NFC, and an apostrophe, hyphen or period works as it always did" and
+# "The first parser turned every letter outside A to Z into a space, which stored `Mu Oz` and refused `José García` twice."
+# WHY: a caller named Muñoz or García (or Παπαδόπουλος) says their name; the line reads back `Mu Oz`, the caller says no twice, and the call is handed to a person.
+# The names below are invented. A table over scripts and positions, not 30 names, because the next letter nobody typed is the one a real caller has.
+import itertools
+
+# (script, first name, middle part or "", last name): the non-ASCII letters stand in the first name, the last name, or both
+NAMES_BY_SCRIPT = [
+    ("Latin, Spanish accents", "José", "", "García"), ("Latin, tilde in the last name", "Daniel", "", "Muñoz"), ("Latin, accent in the first name only", "Zoë", "", "Brown"),
+    ("Latin, accent in neither first nor last, in the middle", "Maria", "Sofía", "Reyes"), ("Latin, French", "François", "", "Lefèvre"),
+    ("Latin, German umlauts", "Jürgen", "", "Müller"), ("Latin, Nordic", "Björn", "", "Lindström"), ("Latin, Polish", "Łukasz", "", "Wójcik"),
+    ("Latin, Czech", "Antonín", "", "Dvořák"), ("Latin, Hungarian", "Zoltán", "", "Szűcs"), ("Latin, Turkish cedilla", "Mehmet", "", "Çelik"),
+    ("Latin, Vietnamese stacked marks", "Nguyễn", "Thị", "Hương"), ("Latin, Portuguese", "João", "", "Gonçalves"), ("Greek", "Αλέξανδρος", "", "Παπαδόπουλος"),
+    ("Cyrillic", "Анна", "", "Иванова"), ("Arabic", "محمد", "", "علي"), ("Hebrew", "דוד", "", "כהן"), ("Devanagari", "अनिल", "", "कुमार"), ("Korean", "민수", "", "김"),
+    ("Japanese kana", "さくら", "", "たなか"), ("Chinese", "伟", "", "王"),
+]
+INTRODUCTIONS = ["{}", "My name is {}", "it's {}", "this is {}", "Hi, I am {}"]
+FORMS = [("composed", "NFC"), ("decomposed", "NFD")]
+ASCII_NAMES = [("Jordan", "", "Reyes"), ("Mary", "Jane", "Smith"), ("Ana", "", "Case")]
+
+
+def said_name(first: str, middle: str, last: str) -> str:
+    return " ".join(x for x in (first, middle, last) if x)
+
+
+# CLASS-TABLE: names read with the letters of any language, for every script and every place a letter stands
+def test_class_a_name_in_any_script_is_read_back_as_said_however_the_caller_introduces_it_and_in_either_unicode_form():
+    cells = list(itertools.product(NAMES_BY_SCRIPT, INTRODUCTIONS, FORMS))
+    wrong = []
+    for (script, first, middle, last), intro, (form_label, form) in cells:
+        name = said_name(first, middle, last)
+        heard = intro.format(unicodedata.normalize(form, name))
+        r = p.parse_name(heard)
+        if not (r.ok and r.value == unicodedata.normalize("NFC", name) and unicodedata.is_normalized("NFC", r.value)):
+            wrong.append((script, intro, form_label, r.value, r.reason))
+    assert not wrong, f"{len(wrong)} of {len(cells)} cells misread a name, e.g. {wrong[:6]}"
+    # the rows that must pass: an ordinary ASCII name is read exactly as it always was in every introduction, and what is not a name is still not one
+    for (first, middle, last), intro in itertools.product(ASCII_NAMES, INTRODUCTIONS):
+        name = said_name(first, middle, last)
+        r = p.parse_name(intro.format(name))
+        assert r.ok and r.value == name, (intro, name, r)
+    for junk, intro in itertools.product(["yes", "12 34", "¿¡?!", "ñ"], INTRODUCTIONS):
+        assert not p.parse_name(intro.format(junk)).ok, (intro, junk)
+
+
+def test_class_the_read_back_and_the_stored_name_carry_every_script_through_the_machine(tidewater):
+    """The same names through the call: the read-back line says them and the confirmed record holds them."""
+    wrong = []
+    for (script, first, middle, last), form in itertools.product(NAMES_BY_SCRIPT, ["NFC", "NFD"]):
+        name = said_name(first, middle, last)
+        m, said = drive(tidewater, [unicodedata.normalize(form, name), "yes"])
+        got = m.fields["full_name"].value if "full_name" in m.fields else None
+        if not (f"I have {name}. Is that right?" in said and got == name):
+            wrong.append((script, form, got))
+    assert not wrong, wrong
