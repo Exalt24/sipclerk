@@ -56,5 +56,5 @@ async def test_the_model_fallback_stores_the_date_it_read(ashgrove):
     for u in ["yes", "Jordan Reyes", "yes", "four one five five five five oh one two three", "yes", "no", "car accident"]:
         m.handle_text(u)
     assert m.question.id == "incident_date"
-    p = await vp.Intake(ctx)._interpret("fifteen days ago, or thereabouts")
+    p = await vp.Intake(ctx)._interpret("back when the kids started at their new school")
     assert p.ok and p.value == "2026-03-15"

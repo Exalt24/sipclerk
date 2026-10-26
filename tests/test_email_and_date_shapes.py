@@ -117,3 +117,27 @@ def test_class_a_courtesy_after_any_answer_never_changes_what_is_stored():
             if not plain.ok or not said.ok or plain.value != said.value:
                 bad.append((field, answer + courtesy, said.value if said.ok else said.reason, plain.value if plain.ok else plain.reason))
     assert not bad, bad[:8]
+
+
+# CLASS-TABLE: every number from one to ninety nine said in words, with a space or a hyphen, against every unit it can be counted in
+_ONES = ["", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen",
+         "seventeen", "eighteen", "nineteen"]
+_TENS = {20: "twenty", 30: "thirty", 40: "forty", 50: "fifty", 60: "sixty", 70: "seventy", 80: "eighty", 90: "ninety"}
+_AGO = {"day": lambda d, k: d - timedelta(days=k), "week": lambda d, k: d - timedelta(weeks=k), "month": lambda d, k: _add_months(d, k), "year": lambda d, k: _add_months(d, 12 * k)}
+
+
+def _words(k, sep):
+    if k < 20:
+        return _ONES[k]
+    return _TENS[k // 10 * 10] + (sep + _ONES[k % 10] if k % 10 else "")
+
+
+def test_class_a_number_said_in_words_is_that_many_units_ago():
+    bad = []
+    for k, unit, sep in itertools.product(range(1, 100), _AGO, (" ", "-")):
+        said = f"{_words(k, sep)} {unit}{'' if k == 1 else 's'} ago"
+        r = parsers.parse_date(said, TODAY)
+        want = _AGO[unit](TODAY, k).isoformat()
+        if not r.ok or r.value != want:
+            bad.append((said, r.value if r.ok else r.reason, want))
+    assert not bad, bad[:8]

@@ -30,7 +30,11 @@ FAIL = Parsed(False, reason="unparsed")
 DIGIT_WORDS = {"zero": "0", "oh": "0", "o": "0", "one": "1", "two": "2", "three": "3", "four": "4", "five": "5",
                "six": "6", "seven": "7", "eight": "8", "nine": "9"}
 NUMBER_WORDS = {"a": 1, "an": 1, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8,
-                "nine": 9, "ten": 10, "eleven": 11, "twelve": 12, "couple": 2, "few": 3, "several": 4}
+                "nine": 9, "ten": 10, "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14, "fifteen": 15, "sixteen": 16, "seventeen": 17,
+                "eighteen": 18, "nineteen": 19, "twenty": 20, "thirty": 30, "forty": 40, "fifty": 50, "sixty": 60, "seventy": 70, "eighty": 80, "ninety": 90,
+                "couple": 2, "few": 3, "several": 4}
+_TENS_WORDS = "twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety"
+_UNIT_WORDS = "one|two|three|four|five|six|seven|eight|nine"
 MONTHS = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october",
           "november", "december"]
 WEEKDAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
@@ -274,6 +278,11 @@ def _day_beside(n: str, month: int) -> int:
     return int(m.group(1)) if m and 1 <= int(m.group(1)) <= 31 else 1
 
 
+def _compound_numbers(n: str) -> str:
+    """`twenty one days ago` as `21 days ago`: a number said in two words is one number, and the word before `days` is its last half."""
+    return re.sub(rf"\b({_TENS_WORDS})(?:[ -]({_UNIT_WORDS})\b)?", lambda m: str(NUMBER_WORDS[m.group(1)] + (NUMBER_WORDS[m.group(2)] if m.group(2) else 0)), n)
+
+
 def _whole_date(year: int, month: int, day: int, today: date, max_age_days: int | None) -> Parsed:
     try:
         found = date(year, month, day)
@@ -294,8 +303,8 @@ def parse_date(text: str, today: date, max_age_days: int | None = None) -> Parse
     if us:
         year = int(us.group(3))
         return _whole_date(year + 2000 if year < 100 else year, int(us.group(1)), int(us.group(2)), today, max_age_days)
-    n = _ordinal_days(_norm(text))
-    if m := re.search(r"\b((?:\w+ (?:years?|months?|weeks?|days?)(?: and)? )+)ago\b", n):  # `three years and two months ago`, `two weeks and three days ago`: every unit counts
+    n = _compound_numbers(_ordinal_days(_norm(text)))
+    if m := re.search(r"\b((?:\w+\s(?:years?|months?|weeks?|days?)(?:\sand)?\s)+)ago\b", n):  # `three years and two months ago`, `two weeks and three days ago`: every unit counts
         spans = re.findall(r"(\w+) (year|month|week|day)s?", m.group(1))
         counts = [_num(k) for k, _ in spans]
         if len(spans) > 1 and None not in counts:
