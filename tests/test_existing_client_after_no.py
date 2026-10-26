@@ -96,3 +96,9 @@ def test_the_guard_flag_turns_off_only_the_existing_client_rule(ashgrove, phrase
     for urgent, rule in [("my husband is not breathing", "emergency"), ("let me speak to a real person", "human_request"),
                          ("do I have a case against my boss", "legal_advice_request")]:
         assert guard.check_input(phrase + ". " + urgent, ashgrove.config, not_a_client=True).rule == rule
+
+
+@pytest.mark.parametrize("phrase", CLIENT_PHRASES)
+def test_the_guard_runs_the_rule_unless_it_is_told_the_answer_was_no(ashgrove, phrase):
+    assert guard.check_input(phrase, ashgrove.config).rule == "existing_client", phrase
+    assert guard.check_input(phrase, ashgrove.config, check_scope=True).rule == "existing_client", phrase
