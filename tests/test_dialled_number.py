@@ -224,3 +224,45 @@ async def test_the_line_answers_each_shape_and_loads_that_firms_file(ruri, to, f
         finally:
             sip.close()
             rtp.close()
+
+
+# ---- the class, enumerated: every written form of a number x every place a carrier puts it x each firm, and a number that is nobody's in the same forms and places
+#
+# GROUNDING (docs/DECISIONS.md): "The number the caller dialled is read from candidates in a fixed order: the Request-URI (`sip:`, `sips:` or `tel:`), then the To header." and
+# "The line read only the user part of the Request-URI" (README.md names the same rows: a trunk name in the Request-URI and the number in the To header).
+# WHY: a firm's carrier writes its number as +1 and ten digits, as ten digits alone, with %2B, with 00, with dashes, or inside a tel: URI, and some trunks put their own
+# name in the Request-URI and the real number in the To header. Each of those got a 404, so a person phoning the firm heard the line refuse the call.
+DIDS = {ASH: "ashgrovepell", TIDE: "tidewaterquint"}
+NOBODYS = ["+19995550000", "+14155550102", "+18885550123"]  # a number no firm owns, in the same forms (one differs from a firm's number by a single digit)
+
+
+def written_forms(did: str) -> list[tuple[str, str]]:
+    """The user part a carrier or a PBX may write for the number `did` (a + and eleven digits), as (label, text)."""
+    d = did[1:]
+    n = d[1:]
+    return [("international", did), ("eleven digits", d), ("percent-encoded plus", f"%2B{d}"), ("00 prefix", f"00{d}"), ("dashes", f"+1-{n[:3]}-{n[3:6]}-{n[6:]}"),
+            ("dots", f"+1.{n[:3]}.{n[3:6]}.{n[6:]}"), ("parentheses", f"+1({n[:3]}){n[3:6]}-{n[6:]}"), ("ten digits", n), ("ten digits with dashes", f"{n[:3]}-{n[3:6]}-{n[6:]}"),
+            ("ten digits with phone-context", f"{n};phone-context=+1"), ("npdi parameter", f"{did};npdi=yes"), ("cpc parameter", f"{did};cpc=ordinary"),
+            ("isub parameter", f"{did};isub=12")]
+
+
+# (where the number stands, how the Request-URI and the To header are written around it)
+PLACES = [
+    ("Request-URI sip:", lambda u: (f"sip:{u}@h", "<sip:nobody@carrier.example>")),
+    ("Request-URI sips:", lambda u: (f"sips:{u}@h", "<sip:nobody@carrier.example>")),
+    ("Request-URI tel:", lambda u: (f"tel:{u}", "<sip:nobody@carrier.example>")),
+    ("To header after a trunk name", lambda u: ("sip:trunk01@h", f"<sip:{u}@h>")),
+    ("To header with a display name and a tag", lambda u: ("sip:s@h", f'"Law Office" <sip:{u}@h>;tag=9')),
+    ("To header as tel:", lambda u: ("sip:anonymous@carrier.example", f"<tel:{u}>")),
+]
+
+
+# CLASS-TABLE: dialled number shapes, for every written form, every place it stands and each firm
+def test_class_every_written_form_in_every_place_finds_its_firm_and_a_number_that_is_nobodys_finds_none(registry):
+    rows = []
+    for did, want in itertools.chain(DIDS.items(), ((n, None) for n in NOBODYS)):
+        for (form, user), (place, build) in itertools.product(written_forms(did), PLACES):
+            rows.append((did, form, place, want, who(registry, *build(user))))
+    wrong = [(did, form, place, got, want) for did, form, place, want, got in rows if got != want]
+    assert len(rows) == (len(DIDS) + len(NOBODYS)) * 13 * len(PLACES)
+    assert not wrong, f"{len(wrong)} of {len(rows)} cells found the wrong firm: {wrong[:8]}"
