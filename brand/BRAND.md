@@ -4,7 +4,7 @@
 
 ## Name
 
-- **Chosen:** sipclerk (a clerk who picks up the line; SIP is the protocol the calls arrive on).
+- **sipclerk** (chosen): a clerk who picks up the line; SIP is the protocol the calls arrive on.
 - **Backups:** lineclerk, docketline.
 - Previous names: none
 - Kept on purpose: none
