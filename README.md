@@ -109,7 +109,7 @@ Rows in `scripts/mutants_derived.py` take their edit from the syntax tree, not t
 - **Latency is this machine's.** A GPU shared with other work, one event loop for the line and the test caller, a model of 4 billion parameters, and spoken scenarios run with halved question timeouts. Hours are one window a day: no holidays, split or overnight shifts. Nothing here says what a production deployment would measure.
 - **Case management is not Clio.** No Clio record is written: a Clio developer trial token answered 401 when tried (not recorded here; the trial ended in August 2026). The intake goes to the verification code of the sibling repo `Exalt24/clio-matter-bridge` as a Clio-shaped delivery and to a local `Exalt24/clinic-call-console` API (neither is needed for the tests; `docs/integration_run.txt` needs the console built locally), whose reasons are clinic ones, so every intake maps to `OTHER`.
 - **No conflict check, no booking, no calendar.** A caller who says they are an existing client is handed to a person in office hours; nothing checks a conflict list.
-- **Scripts and tests only.** No server command starts the line: it runs inside `replay.py`, `sipp_demo.py` and the tests. Three bridge tests skip without node and a `clio-matter-bridge` checkout beside this repo (or `CLIO_BRIDGE_DIR`): 3,851 passed and 3 skipped on a fresh clone.
+- **Scripts and tests only.** No server command starts the line: it runs inside `replay.py`, `sipp_demo.py` and the tests. Three bridge tests skip without node and a `clio-matter-bridge` checkout beside this repo (or `CLIO_BRIDGE_DIR`): 4,005 passed and 3 skipped on a fresh clone.
 - **No staff screen, two calls at once.** Nothing reads a stored record back (`TenantStore.read` has no caller, as `tests/test_wiring.py` says), and two simultaneous calls were run, not twenty.
 
 ## Layout
@@ -118,7 +118,7 @@ Folder by folder: [`docs/layout.md`](docs/layout.md).
 
 ## Stack
 
-Python 3.13, Pipecat 1.13.0 (figures below: 1.6.0), Silero VAD, faster-whisper, Kokoro (kokoro-onnx), Ollama with qwen3.5:4b, pydantic, cryptography, SIPp (GPL-2.0, in a container).
+Python 3.13, Pipecat 1.13.0 pinned (the figures in this README were measured on 1.6.0), Silero VAD, faster-whisper, Kokoro (kokoro-onnx), Ollama with qwen3.5:4b, pydantic, cryptography, SIPp (GPL-2.0, in a container).
 
 ## License
 

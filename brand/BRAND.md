@@ -26,4 +26,4 @@ The manual trademark search (USPTO, WIPO, IPOPHL, TMview) has not been done by a
 
 ## Colours and type
 
-Not used: the repo has no UI, no logo and no icon set. The README GIF is a terminal recording.
+Not used: the repo has no UI, no logo and no icon set. The README GIF records an HTML page with Playwright.
