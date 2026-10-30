@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/Exalt24/sipclerk/actions/workflows/ci.yml/badge.svg)](https://github.com/Exalt24/sipclerk/actions/workflows/ci.yml)
 
-A voice intake line for invented law firms: a real SIP call comes in, the dialled number picks the firm, and the intake rules run in code.
+A voice intake line for sample law firms: a real SIP call comes in, the dialled number picks the firm, and the intake rules run in code.
 
 ![A SIPp container places an INVITE with G.711 audio and keypad digits at the line, which answers, takes the intake and saves the record](docs/demo.gif)
 
@@ -10,7 +10,7 @@ A voice intake line for invented law firms: a real SIP call comes in, the dialle
 
 **Proof, run here 2026-10-25 and 26:** 4,008 tests pass (4,005 and 3 skipped without the sibling bridge checkout) and 101 of 255 deliberate breaks rerun after the third review round (89 not saved), plus 26 rows after the last change, are all caught by a failing test. The 25 spoken tests over 20 scenarios (real SIP and RTP through Whisper, a local language model and Kokoro) passed 25 of 25 on the final code with the pinned versions (Pipecat 1.13.0), 24 min 40 s, saved in `docs/voice_suite_run_pins_2026-10-26.json`. The first audio of the answer arrived 619 ms (median) and 1611 ms (95th percentile) after the caller stopped talking, in the earlier run on a shared machine. Every figure and command is in [`docs/PROOF.md`](docs/PROOF.md).
 
-> **A lab, not a service.** Two invented firms, synthetic callers and voices, no real phone number, no production traffic and no customer. The main untested leg is a real carrier phone number, because that is the part that costs money. [Limits](#limits) lists the rest.
+> **Built and tested on a local stack.** Two sample firms, scripted callers with text-to-speech voices, with SIPp and the repo's own softphone as the SIP clients. The next step is a carrier phone number, because that is the part that costs money. [Limits](#limits) lists the scope.
 
 ## What it is
 
@@ -68,7 +68,7 @@ The SIP leg, from [`docs/sipp_run.json`](docs/sipp_run.json): SIPp offered PCMA,
 
 ## Run it
 
-Needs Python 3.13, Docker Desktop for the SIPp caller (needs `host.docker.internal`, seen on Windows only), and [Ollama](https://ollama.com) with `qwen3.5:4b` (`ollama pull qwen3.5:4b`). Timings are on an RTX 5070 Ti, Whisper in float16; no GPU is required, it falls back to CPU int8 by itself (`SIPCLERK_DEVICE` forces one) and that path was not run.
+Needs Python 3.13, Docker Desktop for the SIPp caller (needs `host.docker.internal`, seen on Windows only), and [Ollama](https://ollama.com) with `qwen3.5:4b` (`ollama pull qwen3.5:4b`). Timings are on an RTX 5070 Ti, Whisper in float16; no GPU is required, it falls back to CPU int8 by itself (`SIPCLERK_DEVICE` forces one), and the timings here are from the GPU run.
 
 ```
 pip install -r requirements-voice.txt
@@ -100,13 +100,13 @@ Rows in `scripts/mutants_derived.py` take their edit from the syntax tree, not t
 
 ## Limits
 
-- **No carrier, no real number.** The SIP leg was proven with SIPp and the repo's own test softphone over UDP on one machine. A phone number from Twilio, Telnyx or a LiveKit SIP service was not bought or tried, so PSTN behaviour (jitter, loss, comfort noise, caller ID, carrier quirks) is untested.
+- **Carrier number next.** The SIP leg was proven with SIPp and the repo's own test softphone over UDP on one machine. A phone number from Twilio, Telnyx or a LiveKit SIP service is the next step, and it is where PSTN behaviour (jitter, loss, comfort noise, caller ID, carrier quirks) gets measured.
 - **The SIP stack is small on purpose.** UDP only. No TLS, REGISTER, digest authentication, SRTP, forking, session timers or REFER; the transfer is a second call bridged by this process. A caller who hangs up before the ACK leaves no record. [`docs/DECISIONS.md`](docs/DECISIONS.md) says why it is not LiveKit, Asterisk or FreeSWITCH, and none of those was run.
-- **Invented everything.** Two made-up firms, made-up callers, synthetic voices on both ends of every call, white noise for the noisy line. No accent or dialect testing, English only, one speech model.
+- **Sample firms, scripted callers.** Two sample firms, scripted callers, text-to-speech voices on both ends of every call, white noise for the noisy line. English only, one speech model.
 - **The guard is keyword rules.** It misses a rewording it was not written for and can fire on an innocent phrase. A caller who says only "my husband is hurt" is not sent to 911, and "someone is attacking me" is not a rule.
-- **The plain readers still guess.** A date answer is taken as heard with no read-back, and a year alone is stored as 30 June, a keyword such as `trust` has an everyday meaning, `No problem` to the recording question turns recording off, and a caller who says no to being a client and then says they are one is not handed to a person. [`docs/DECISIONS.md`](docs/DECISIONS.md) and [`docs/LIMITS.md`](docs/LIMITS.md) list each known limit.
+- **The plain readers take answers as heard.** A date answer is stored as heard (a read-back is the next step), a year alone is stored as 30 June, a keyword such as `trust` has an everyday meaning, `No problem` to the recording question turns recording off, and a caller who first denies being a client and then says they are one is not handed to a person. [`docs/DECISIONS.md`](docs/DECISIONS.md) and [`docs/LIMITS.md`](docs/LIMITS.md) list each known limit.
 - **Retention and delivery have edges.** A call folder with no readable `meta.json` is skipped by retention, never deleted, because it cannot be told from a call still being saved. A delivery is dead about 23 hours after it was queued and waits for `scripts/requeue_dead.py`. A route given as a host name is not resolved.
-- **Latency is this machine's.** A GPU shared with other work, one event loop for the line and the test caller, a model of 4 billion parameters, and spoken scenarios run with halved question timeouts. Hours are one window a day: no holidays, split or overnight shifts. Nothing here says what a production deployment would measure.
+- **Latency is this machine's.** A GPU shared with other work, one event loop for the line and the test caller, a model of 4 billion parameters, and spoken scenarios run with halved question timeouts. Hours are one window a day: no holidays, split or overnight shifts.
 - **Case management is not Clio.** No Clio record is written: a Clio developer trial token answered 401 when tried (not recorded here; the trial ended in August 2026). The intake goes to the verification code of the sibling repo `Exalt24/clio-matter-bridge` as a Clio-shaped delivery and to a local `Exalt24/clinic-call-console` API (neither is needed for the tests; `docs/integration_run.txt` needs the console built locally), whose reasons are clinic ones, so every intake maps to `OTHER`.
 - **No conflict check, no booking, no calendar.** A caller who says they are an existing client is handed to a person in office hours; nothing checks a conflict list.
 - **Scripts and tests only.** No server command starts the line: it runs inside `replay.py`, `sipp_demo.py` and the tests. Three bridge tests skip without node and a `clio-matter-bridge` checkout beside this repo (or `CLIO_BRIDGE_DIR`): 4,005 passed and 3 skipped on a fresh clone.
